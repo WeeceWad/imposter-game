@@ -1036,7 +1036,7 @@ function submitGuess() {
 // GAME OVER
 // ──────────────────────────────────────────
 function renderGameOver(data) {
-  const { result, word, category, imposters, guess, correct, votingHistory, allPlayers } = data;
+  const { result, word, category, imposters, imposterWords, blindMode, votingHistory, allPlayers } = data;
   const imposterWon = result === 'imposters-win' || result === 'imposters-win-guess';
   let html = '';
 
@@ -1048,11 +1048,11 @@ function renderGameOver(data) {
         ${imposterWon ? 'Imposters Win!' : 'Players Win!'}
       </div>
       <div class="result-sub">
-        ${result === 'imposters-win-guess'
-          ? `${(imposters||[]).join(' & ')} guessed the word correctly!`
-          : result === 'imposters-win'
+        ${result === 'imposters-win'
           ? 'The innocents were outnumbered!'
-          : `${(imposters||[]).join(' & ')} failed to guess the word!`}
+          : imposterWon
+          ? `${(imposters||[]).join(' & ')} won!`
+          : `${(imposters||[]).join(' & ')} ${(imposters||[]).length===1?'was':'were'} caught!`}
       </div>
     </div>`;
 
@@ -1063,6 +1063,17 @@ function renderGameOver(data) {
       <div class="word-box-value">${word}</div>
       <div class="text-muted" style="font-size:0.8rem; margin-top:4px">${category}</div>
     </div>`;
+
+  // ── Imposter's word (blind mode) ──
+  if (blindMode && imposterWords && imposterWords.some(iw => iw.word)) {
+    imposterWords.filter(iw => iw.word).forEach(iw => {
+      html += `
+        <div class="word-box fade-in" style="border-color:#a855f7; background:rgba(168,85,247,0.08)">
+          <div class="word-box-label" style="color:#a855f7">${iw.name}'s Word (Blind Imposter)</div>
+          <div class="word-box-value" style="color:#c084fc">${iw.word}</div>
+        </div>`;
+    });
+  }
 
   // ── Who was who ──
   if (allPlayers && allPlayers.length > 0) {
@@ -1088,19 +1099,6 @@ function renderGameOver(data) {
         ${imposters.map(n => `<span class="imposters-chip">🔪 ${n}</span>`).join('')}
       </div>
     </div>`;
-  }
-
-  // ── Imposter guess ──
-  if (guess !== undefined) {
-    html += `
-      <div class="card text-center fade-in" style="border-color:${correct ? 'var(--success)' : 'var(--danger)'}; width:100%">
-        <div style="font-size:1.4rem;margin-bottom:6px">${correct ? '🎯' : '❌'}</div>
-        <div class="text-muted" style="font-size:0.8rem">Imposter's final guess</div>
-        <div style="font-size:1.5rem;font-weight:800;margin:6px 0">"${guess}"</div>
-        <div style="font-weight:700;color:${correct ? 'var(--success)' : 'var(--danger)'}">
-          ${correct ? 'Correct — Imposters win! 😈' : 'Wrong — Players win! 🎉'}
-        </div>
-      </div>`;
   }
 
   // ── Voting history ──

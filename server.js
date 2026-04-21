@@ -431,6 +431,7 @@ io.on('connection', (socket) => {
     room.votingHistory = []; // track every round of votes
 
     // Send each player their private role
+    room.imposterWords = {}; // track each imposter's word (for blind mode reveal at end)
     room.players.forEach(player => {
       const isImposter = room.imposters.includes(player.id);
       let roleData;
@@ -438,14 +439,17 @@ io.on('connection', (socket) => {
       if (isImposter) {
         if (room.settings.blindImposter) {
           // Blind mode: imposter gets a different word, doesn't know they're the imposter
+          const imposterWord = pickDifferentWord(room.settings.selectedCategories, word, categoryKey);
+          room.imposterWords[player.id] = imposterWord;
           roleData = {
             role: 'unknown',
-            word: pickDifferentWord(room.settings.selectedCategories, word, categoryKey),
+            word: imposterWord,
             category,
             blindMode: true
           };
         } else {
           // Normal mode: imposter knows, gets no word
+          room.imposterWords[player.id] = null;
           roleData = { role: 'imposter', word: null, category, blindMode: false };
         }
       } else {
@@ -602,10 +606,18 @@ function buildResultPayload(room, extra = {}) {
     result: room.result,
     word: room.currentWord || '',
     category: room.currentCategory || '',
+    blindMode: !!(room.settings && room.settings.blindImposter),
     imposters: (room.imposters || []).map(id => {
       const p = room.players.find(p => p.id === id);
       return p ? p.name : null;
     }).filter(Boolean),
+    imposterWords: (room.imposters || []).map(id => {
+      const p = room.players.find(p => p.id === id);
+      return {
+        name: p ? p.name : id,
+        word: (room.imposterWords || {})[id] || null
+      };
+    }),
     eliminated: room.lastEliminated || null,
     votingHistory: room.votingHistory || [],
     allPlayers: (room.players || []).map(p => ({
@@ -670,17 +682,11 @@ function resolveVotes(room) {
 
   if (isImposter) {
     if (remainingImposters.length === 0) {
-      // Last imposter found — let them guess
-      room.gameState = 'imposter-guess';
-      io.to(eliminatedId).emit('make-guess', {
-        category: room.currentCategory,
-        hint: `Category: ${room.currentCategory}`
-      });
+      // Last imposter found — players win, go straight to results
+      room.gameState = 'game-over';
+      room.result = 'players-win';
+      io.to(room.code).emit('game-over', buildResultPayload(room));
       io.to(room.code).emit('room-update', sanitizeRoom(room));
-      io.to(room.code).emit('elimination-result', {
-        eliminated: room.lastEliminated,
-        gameState: 'imposter-guess'
-      });
     } else {
       // Still more imposters — game continues
       room.gameState = 'discussion';
@@ -719,6 +725,10 @@ function resolveVotes(room) {
     }
   }
 }
+
+// ─────────────────────────────────────────────
+// EXPORT CATEGORIES FOR CLIENT USE
+// ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
 // EXPORT CATEGORIES FOR CLIENT USE

@@ -548,7 +548,16 @@ function initSocket() {
   });
 
   socket.on('game-over', (data) => {
-    renderGameOver(data);
+    try { renderGameOver(data); } catch(e) {
+      console.error('renderGameOver error:', e);
+      // Fallback: show basic results even if rendering crashes
+      const el = document.getElementById('gameover-content');
+      if (el) el.innerHTML = `
+        <div class="result-banner">
+          <div class="result-title">Game Over</div>
+          <div class="result-sub">The word was: <strong>${data.word || '?'}</strong></div>
+        </div>`;
+    }
     showScreen('gameover');
   });
 

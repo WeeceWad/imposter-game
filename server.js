@@ -510,21 +510,14 @@ io.on('connection', (socket) => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'imposter-guess') return;
 
-    const correct = guess.trim().toLowerCase() === room.currentWord.toLowerCase();
+    const correct = (guess || '').trim().toLowerCase() === (room.currentWord || '').toLowerCase();
     room.gameState = 'game-over';
     room.result = correct ? 'imposters-win-guess' : 'players-win';
 
-    const resultPayload = {
-      result: room.result,
-      word: room.currentWord,
-      category: room.currentCategory,
-      guess: guess.trim(),
-      correct,
-      imposters: room.imposters.map(id => room.players.find(p => p.id === id)?.name).filter(Boolean),
-      eliminated: room.lastEliminated,
-      votingHistory: room.votingHistory || [],
-      allPlayers: room.players.map(p => ({ name: p.name, isImposter: room.imposters.includes(p.id) }))
-    };
+    const resultPayload = buildResultPayload(room, {
+      guess: (guess || '').trim(),
+      correct
+    });
 
     io.to(room.code).emit('game-over', resultPayload);
     io.to(room.code).emit('room-update', sanitizeRoom(room));
@@ -593,6 +586,28 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('player-left', { name: socket.playerName || 'A player' });
   });
 });
+
+// ─────────────────────────────────────────────
+// BUILD GAME-OVER PAYLOAD (shared helper)
+// ─────────────────────────────────────────────
+function buildResultPayload(room, extra = {}) {
+  return {
+    result: room.result,
+    word: room.currentWord || '',
+    category: room.currentCategory || '',
+    imposters: (room.imposters || []).map(id => {
+      const p = room.players.find(p => p.id === id);
+      return p ? p.name : null;
+    }).filter(Boolean),
+    eliminated: room.lastEliminated || null,
+    votingHistory: room.votingHistory || [],
+    allPlayers: (room.players || []).map(p => ({
+      name: p.name,
+      isImposter: (room.imposters || []).includes(p.id)
+    })),
+    ...extra
+  };
+}
 
 // ─────────────────────────────────────────────
 // VOTE RESOLUTION LOGIC
@@ -679,16 +694,7 @@ function resolveVotes(room) {
       // Imposters win by majority
       room.gameState = 'game-over';
       room.result = 'imposters-win';
-      const resultPayload = {
-        result: 'imposters-win',
-        word: room.currentWord,
-        category: room.currentCategory,
-        imposters: room.imposters.map(id => room.players.find(p => p.id === id)?.name).filter(Boolean),
-        eliminated: room.lastEliminated,
-        votingHistory: room.votingHistory || [],
-        allPlayers: room.players.map(p => ({ name: p.name, isImposter: room.imposters.includes(p.id) }))
-      };
-      io.to(room.code).emit('game-over', resultPayload);
+      io.to(room.code).emit('game-over', buildResultPayload(room));
       io.to(room.code).emit('room-update', sanitizeRoom(room));
     } else {
       // Continue game

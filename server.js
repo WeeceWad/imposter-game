@@ -695,12 +695,16 @@ function resolveVotes(room) {
   } else {
     // Wrong person eliminated
     const imposterCount = remainingImposters.length;
-    const playerCount = activePlayers.length;
+    const innocentCount = activePlayers.filter(p => !room.imposters.includes(p.id)).length;
 
-    if (imposterCount >= playerCount) {
-      // Imposters win by majority
+    if (imposterCount >= innocentCount) {
+      // Imposters win by majority — show elimination result THEN game-over
       room.gameState = 'game-over';
       room.result = 'imposters-win';
+      io.to(room.code).emit('elimination-result', {
+        eliminated: room.lastEliminated,
+        gameState: 'game-over'
+      });
       io.to(room.code).emit('game-over', buildResultPayload(room));
       io.to(room.code).emit('room-update', sanitizeRoom(room));
     } else {

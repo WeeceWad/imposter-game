@@ -432,10 +432,13 @@
   <div id="gameover-content" style="width:100%; display:flex; flex-direction:column; gap:16px; align-items:center"></div>
 
   <div id="play-again-btn" style="width:100%; display:none">
-    <button class="btn btn-primary" onclick="playAgain()">🔄 Play Again</button>
+    <button class="btn btn-primary" id="play-again-inner" onclick="playAgain()">🔄 Play Again</button>
   </div>
   <div id="change-pack-btn" style="width:100%; display:none">
-    <button class="btn btn-outline" onclick="changePack()">🗂️ Change Categories</button>
+    <button class="btn btn-outline" id="change-pack-inner" onclick="changePack()">🗂️ Change Categories</button>
+  </div>
+  <div id="waiting-for-host-msg" style="display:none; text-align:center; color:var(--muted); font-size:0.85rem; padding:4px 0">
+    ⏳ Waiting for the host to start a new game...
   </div>
   <button class="btn btn-ghost" onclick="leaveRoom()">← Leave Room</button>
 </div>
@@ -819,6 +822,17 @@ function renderRoleCard(data) {
         <div class="role-hint">⚠️ Blind Mode: someone in this room has a different word. You might be the imposter!</div>
       </div>
     `;
+  } else if (blindMode) {
+    // In blind mode, regular players also just see their word — no "YOU'RE A PLAYER" label
+    html = `
+      <div class="role-card unknown-card reveal-anim">
+        <div class="role-icon">❓</div>
+        <div class="role-title" style="color:#a855f7">YOUR WORD</div>
+        <div class="role-category">${category}</div>
+        <div class="role-word" style="color:#c084fc">${word}</div>
+        <div class="role-hint">⚠️ Blind Mode: someone in this room has a different word. You might be the imposter!</div>
+      </div>
+    `;
   } else {
     html = `
       <div class="role-card player-card reveal-anim">
@@ -826,7 +840,7 @@ function renderRoleCard(data) {
         <div class="role-title" style="color:#60a5fa">YOU'RE A PLAYER</div>
         <div class="role-category">${category}</div>
         <div class="role-word" style="color:#93c5fd">${word}</div>
-        <div class="role-hint">${blindMode ? '⚠️ Blind Mode: one player has a different word. They might not know they\'re the imposter!' : 'Remember this word! Talk about it without saying it directly.'}</div>
+        <div class="role-hint">Remember this word! Talk about it without saying it directly.</div>
       </div>
     `;
   }
@@ -1127,9 +1141,10 @@ function renderGameOver(data) {
 
   document.getElementById('gameover-content').innerHTML = html;
 
-  // ── Host buttons ──
+  // ── Buttons ──
   document.getElementById('play-again-btn').style.display = isHost ? 'block' : 'none';
   document.getElementById('change-pack-btn').style.display = isHost ? 'block' : 'none';
+  document.getElementById('waiting-for-host-msg').style.display = isHost ? 'none' : 'block';
 }
 
 function playAgain() {

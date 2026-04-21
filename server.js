@@ -735,18 +735,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🎮 Imposter game running on http://localhost:${PORT}`);
 });
-th
-  }));
-  res.json(cats);
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🎮 Imposter game running on http://localhost:${PORT}`);
-});
-ART SERVER
-// ─────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🎮 Imposter game running on http://localhost:${PORT}`);
-});

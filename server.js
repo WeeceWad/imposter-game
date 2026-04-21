@@ -501,7 +501,14 @@ io.on('connection', (socket) => {
 
     // All active players voted?
     if (Object.keys(room.votes).length >= activePlayers.length) {
-      resolveVotes(room);
+      try { resolveVotes(room); } catch(e) {
+        console.error('resolveVotes error:', e);
+        // Emergency fallback: end the game so players aren't stuck
+        room.gameState = 'game-over';
+        room.result = 'players-win';
+        io.to(room.code).emit('game-over', buildResultPayload(room));
+        io.to(room.code).emit('room-update', sanitizeRoom(room));
+      }
     }
   });
 
@@ -724,6 +731,15 @@ app.get('/api/categories', (req, res) => {
 // ─────────────────────────────────────────────
 // START SERVER
 // ─────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🎮 Imposter game running on http://localhost:${PORT}`);
+});
+th
+  }));
+  res.json(cats);
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🎮 Imposter game running on http://localhost:${PORT}`);

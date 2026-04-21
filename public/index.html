@@ -457,8 +457,9 @@ let currentRoom = null;
 let isHost = false;
 let categories = [];
 let myCategory = null;
-let pendingRoomUpdate = null; // buffer updates that arrive before myId is set
-let wasHost = false;          // track host changes
+let pendingRoomUpdate = null;
+let wasHost = false;
+let gameIsOver = false; // lock screen transitions once game ends
 
 // ──────────────────────────────────────────
 // SET MY ID — apply any buffered room update
@@ -548,21 +549,28 @@ function initSocket() {
   });
 
   socket.on('game-over', (data) => {
-    try { renderGameOver(data); } catch(e) {
-      console.error('renderGameOver error:', e);
-      // Fallback: show basic results even if rendering crashes
+    console.log('[IMPOSTER] game-over received', JSON.stringify(data).slice(0, 200));
+    gameIsOver = true;
+    // Show screen FIRST so it's never black
+    showScreen('gameover');
+    try {
+      renderGameOver(data);
+    } catch(e) {
+      console.error('[IMPOSTER] renderGameOver crashed:', e);
       const el = document.getElementById('gameover-content');
       if (el) el.innerHTML = `
         <div class="result-banner">
-          <div class="result-title">Game Over</div>
+          <div class="result-title" style="color:${(data.result||'').includes('imposters') ? '#ef4444' : '#22c55e'}">
+            ${(data.result||'').includes('imposters') ? '🔪 Imposters Win!' : '🕵️ Players Win!'}
+          </div>
           <div class="result-sub">The word was: <strong>${data.word || '?'}</strong></div>
         </div>`;
     }
-    showScreen('gameover');
   });
 
   socket.on('reset-game', () => {
     myRole = null; myWord = null; myVote = null; myCategory = null;
+    gameIsOver = false;
     showScreen('lobby');
   });
 
@@ -595,6 +603,13 @@ function applyRoomUpdate(room) {
   currentRoom = room;
   const prevHost = isHost;
   isHost = room.host === myId;
+  // Always update data, but block screen transitions if game just ended
+  if (gameIsOver && room.gameState !== 'lobby') {
+    renderLobbyData(room);
+    renderDiscussionData(room);
+    renderVotingData(room);
+    return;
+  }
 
   // Notify if you just became host
   if (isHost && !prevHost && wasHost === false) {

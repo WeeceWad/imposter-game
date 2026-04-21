@@ -434,6 +434,9 @@
   <div id="play-again-btn" style="width:100%; display:none">
     <button class="btn btn-primary" onclick="playAgain()">🔄 Play Again</button>
   </div>
+  <div id="change-pack-btn" style="width:100%; display:none">
+    <button class="btn btn-outline" onclick="changePack()">🗂️ Change Categories</button>
+  </div>
   <button class="btn btn-ghost" onclick="leaveRoom()">← Leave Room</button>
 </div>
 
@@ -454,44 +457,71 @@ let currentRoom = null;
 let isHost = false;
 let categories = [];
 let myCategory = null;
+let pendingRoomUpdate = null; // buffer updates that arrive before myId is set
+let wasHost = false;          // track host changes
 
 // ──────────────────────────────────────────
-// SOCKET SETUP
+// SET MY ID — apply any buffered room update
+// ──────────────────────────────────────────
+function setMyId(id) {
+  myId = id;
+  if (pendingRoomUpdate) {
+    applyRoomUpdate(pendingRoomUpdate);
+    pendingRoomUpdate = null;
+  }
+}
+
+// ──────────────────────────────────────────
+// SOCKET SETUP — single unified handler, no duplicates
 // ──────────────────────────────────────────
 function initSocket() {
   if (socket) return;
-  socket = io();
+  socket = io({ reconnectionDelay: 1000, reconnectionAttempts: 10 });
 
+  // ── Room events ──
   socket.on('room-created', ({ code, playerId }) => {
-    myId = playerId;
+    setMyId(playerId);
     showScreen('lobby');
     document.getElementById('lobby-code').textContent = code;
   });
 
   socket.on('room-joined', ({ code, playerId }) => {
-    myId = playerId;
+    setMyId(playerId);
     showScreen('lobby');
     document.getElementById('lobby-code').textContent = code;
+    // re-render immediately in case room-update already arrived
+    if (currentRoom) applyRoomUpdate(currentRoom);
   });
 
+  // ── UNIFIED room-update: handles ALL state + screen transitions ──
   socket.on('room-update', (room) => {
-    currentRoom = room;
-    isHost = room.host === myId;
-    updateLobby(room);
-    updateDiscussion(room);
-    updateVoting(room);
+    if (!myId) {
+      // myId not set yet — buffer this and apply once we have it
+      pendingRoomUpdate = room;
+      currentRoom = room;
+      return;
+    }
+    applyRoomUpdate(room);
   });
 
-  socket.on('game-started', () => {
-    myVote = null;
+  socket.on('player-joined', ({ name }) => {
+    showToast(`${name} joined! 👋`, 'success');
+  });
+
+  socket.on('player-left', ({ name }) => {
+    showToast(`${name} left the room`);
   });
 
   socket.on('your-role', (data) => {
     myRole = data.role;
     myWord = data.word;
     myCategory = data.category;
-    showScreen('role');
+    // Reset ready button state
+    document.getElementById('ready-btn').disabled = false;
+    document.getElementById('ready-btn').textContent = "✅ I've seen my role";
+    document.getElementById('ready-status').style.display = 'none';
     renderRoleCard(data);
+    showScreen('role');
   });
 
   socket.on('ready-update', ({ readyCount, totalCount }) => {
@@ -503,14 +533,6 @@ function initSocket() {
   socket.on('vote-update', ({ voteCount, totalCount }) => {
     document.getElementById('vote-bar').style.width = `${(voteCount/totalCount)*100}%`;
     document.getElementById('vote-count-text').textContent = `${voteCount} / ${totalCount} voted`;
-  });
-
-  socket.on('player-joined', ({ name }) => {
-    showToast(`${name} joined!`, 'success');
-  });
-
-  socket.on('player-left', ({ name }) => {
-    showToast(`${name} left the room`);
   });
 
   socket.on('elimination-result', (data) => {
@@ -547,8 +569,79 @@ function initSocket() {
   });
 
   socket.on('disconnect', () => {
-    showToast('Disconnected from server', 'error');
+    showToast('Connection lost — trying to reconnect...', 'error');
   });
+
+  socket.on('reconnect', () => {
+    showToast('Reconnected!', 'success');
+    // Request a sync in case we missed updates
+    if (currentRoom) socket.emit('request-sync', { code: currentRoom.code });
+  });
+}
+
+// ──────────────────────────────────────────
+// APPLY ROOM UPDATE — single source of truth
+// ──────────────────────────────────────────
+function applyRoomUpdate(room) {
+  currentRoom = room;
+  const prevHost = isHost;
+  isHost = room.host === myId;
+
+  // Notify if you just became host
+  if (isHost && !prevHost && wasHost === false) {
+    showToast('You are now the host 👑', 'success');
+  }
+  wasHost = isHost;
+
+  // Always update all screen data (no screen guards)
+  renderLobbyData(room);
+  renderDiscussionData(room);
+  renderVotingData(room);
+
+  // ── Screen state machine ──
+  const active = document.querySelector('.screen.active')?.id;
+
+  if (room.gameState === 'lobby') {
+    // Only navigate to lobby from game-over or elimination (reset-game event handles normal reset)
+    if (active === 'screen-gameover') showScreen('lobby');
+  }
+
+  if (room.gameState === 'role-reveal') {
+    // Players waiting in lobby need to see a "waiting for role" state
+    // (actual role screen shows when 'your-role' event fires)
+    if (active === 'screen-lobby') {
+      // Show a brief waiting message — role card will come via 'your-role' event
+      showWaitingForRole();
+    }
+  }
+
+  if (room.gameState === 'discussion') {
+    const canTransition = ['screen-lobby', 'screen-role', 'screen-elimination', 'screen-voting'].includes(active);
+    if (canTransition) showScreen('discussion');
+  }
+
+  if (room.gameState === 'voting') {
+    if (active !== 'screen-voting') {
+      myVote = null;
+      showScreen('voting');
+    }
+  }
+}
+
+function showWaitingForRole() {
+  // Show a temporary "Game starting..." overlay while waiting for your-role
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const roleScreen = document.getElementById('screen-role');
+  roleScreen.classList.add('active');
+  document.getElementById('role-card-container').innerHTML = `
+    <div class="card text-center" style="padding:40px 20px">
+      <div style="font-size:3rem; margin-bottom:12px" class="pulse">⏳</div>
+      <div style="font-weight:700; font-size:1.1rem">Game is starting...</div>
+      <div class="text-muted" style="margin-top:8px">Your role is being assigned</div>
+    </div>
+  `;
+  document.getElementById('ready-btn').style.display = 'none';
+  document.getElementById('ready-status').style.display = 'none';
 }
 
 // ──────────────────────────────────────────
@@ -627,39 +720,39 @@ function toggleBlind() {
   socket.emit('update-settings', { settings: { blindImposter: !currentRoom.settings.blindImposter } });
 }
 
-function updateLobby(room) {
-  if (document.getElementById('screen-lobby').classList.contains('active')) {
-    document.getElementById('lobby-code').textContent = room.code;
-    document.getElementById('lobby-player-count').textContent = room.players.length;
-    const myPlayerObj = room.players.find(p => p.id === myId);
-    const amHost = room.host === myId;
+function renderLobbyData(room) {
+  document.getElementById('lobby-code').textContent = room.code;
+  document.getElementById('lobby-player-count').textContent = room.players.length;
+  const amHost = room.host === myId;
 
-    // Settings (host only)
-    document.getElementById('host-settings').style.display = amHost ? 'block' : 'none';
-    document.getElementById('host-categories').style.display = amHost ? 'block' : 'none';
-    document.getElementById('host-start-btn').style.display = amHost ? 'block' : 'none';
-    document.getElementById('player-waiting-msg').style.display = amHost ? 'none' : 'block';
+  // Settings (host only)
+  document.getElementById('host-settings').style.display = amHost ? 'block' : 'none';
+  document.getElementById('host-categories').style.display = amHost ? 'block' : 'none';
+  document.getElementById('host-start-btn').style.display = amHost ? 'block' : 'none';
+  document.getElementById('player-waiting-msg').style.display = amHost ? 'none' : 'block';
 
-    if (amHost) {
-      document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
-      const blindToggle = document.getElementById('blind-toggle');
-      blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
-      renderCategoryGrid();
-    }
-
-    // Player list
-    const list = document.getElementById('lobby-player-list');
-    list.innerHTML = room.players.map(p => `
-      <div class="player-item ${p.id === room.host ? 'host-item' : ''}">
-        <div class="player-avatar">${p.name[0].toUpperCase()}</div>
-        <div class="player-name">${p.name}</div>
-        ${p.id === room.host ? '<span class="player-badge badge-host">HOST</span>' : ''}
-        ${p.id === myId ? '<span class="player-badge badge-you">YOU</span>' : ''}
-        ${amHost && p.id !== myId && room.gameState === 'lobby' ? `<button class="kick-btn" onclick="kickPlayer('${p.id}')" title="Remove">✕</button>` : ''}
-      </div>
-    `).join('');
+  if (amHost) {
+    document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
+    const blindToggle = document.getElementById('blind-toggle');
+    blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
+    renderCategoryGrid();
   }
+
+  // Player list — always render
+  const list = document.getElementById('lobby-player-list');
+  list.innerHTML = room.players.map(p => `
+    <div class="player-item ${p.id === room.host ? 'host-item' : ''}">
+      <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+      <div class="player-name">${p.name}</div>
+      ${p.id === room.host ? '<span class="player-badge badge-host">HOST</span>' : ''}
+      ${p.id === myId ? '<span class="player-badge badge-you">YOU</span>' : ''}
+      ${amHost && p.id !== myId && room.gameState === 'lobby' ? `<button class="kick-btn" onclick="kickPlayer('${p.id}')" title="Remove">✕</button>` : ''}
+    </div>
+  `).join('');
 }
+
+// Keep old name as alias so any lingering calls don't break
+function updateLobby(room) { renderLobbyData(room); }
 
 function kickPlayer(id) {
   socket.emit('kick-player', { playerId: id });
@@ -727,8 +820,7 @@ function markReady() {
 // ──────────────────────────────────────────
 // DISCUSSION
 // ──────────────────────────────────────────
-function updateDiscussion(room) {
-  if (!document.getElementById('screen-discussion').classList.contains('active')) return;
+function renderDiscussionData(room) {
   document.getElementById('discussion-room-code').textContent = room.code;
   document.getElementById('host-vote-btn').style.display = isHost ? 'block' : 'none';
 
@@ -763,6 +855,8 @@ function updateDiscussion(room) {
   `).join('');
 }
 
+function updateDiscussion(room) { renderDiscussionData(room); }
+
 function startVoting() {
   socket.emit('start-voting');
 }
@@ -770,8 +864,7 @@ function startVoting() {
 // ──────────────────────────────────────────
 // VOTING
 // ──────────────────────────────────────────
-function updateVoting(room) {
-  if (!document.getElementById('screen-voting').classList.contains('active')) return;
+function renderVotingData(room) {
   document.getElementById('voting-room-code').textContent = room.code;
 
   const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
@@ -810,11 +903,13 @@ function updateVoting(room) {
   }
 }
 
+function updateVoting(room) { renderVotingData(room); }
+
 function castVote(targetId) {
   if (myVote) return; // already voted
   myVote = targetId;
   socket.emit('vote', { targetId });
-  updateVoting(currentRoom);
+  renderVotingData(currentRoom);
 }
 
 // ──────────────────────────────────────────
@@ -903,11 +998,11 @@ function submitGuess() {
 // GAME OVER
 // ──────────────────────────────────────────
 function renderGameOver(data) {
-  const { result, word, category, imposters, guess, correct, eliminated } = data;
+  const { result, word, category, imposters, guess, correct, votingHistory, allPlayers } = data;
+  const imposterWon = result === 'imposters-win' || result === 'imposters-win-guess';
   let html = '';
 
-  const imposterWon = result === 'imposters-win' || result === 'imposters-win-guess';
-
+  // ── Banner ──
   html += `
     <div class="result-banner fade-in">
       <span class="result-emoji">${imposterWon ? '🔪' : '🕵️'}</span>
@@ -915,51 +1010,116 @@ function renderGameOver(data) {
         ${imposterWon ? 'Imposters Win!' : 'Players Win!'}
       </div>
       <div class="result-sub">
-        ${result === 'imposters-win-guess' ? `${(imposters||[]).join(', ')} guessed the word correctly!` :
-          result === 'imposters-win' ? 'The innocent were outnumbered!' :
-          `${(imposters||[]).join(', ')} failed to guess the word!`}
+        ${result === 'imposters-win-guess'
+          ? `${(imposters||[]).join(' & ')} guessed the word correctly!`
+          : result === 'imposters-win'
+          ? 'The innocents were outnumbered!'
+          : `${(imposters||[]).join(' & ')} failed to guess the word!`}
       </div>
-    </div>
-  `;
+    </div>`;
 
+  // ── The Word ──
   html += `
     <div class="word-box fade-in">
       <div class="word-box-label">The Word Was</div>
       <div class="word-box-value">${word}</div>
       <div class="text-muted" style="font-size:0.8rem; margin-top:4px">${category}</div>
-    </div>
-  `;
+    </div>`;
 
-  if (guess) {
-    html += `
-      <div class="card text-center fade-in" style="border-color:${correct ? 'var(--success)' : 'var(--danger)'}">
-        <div style="font-size:1.4rem; margin-bottom:6px">${correct ? '✅' : '❌'}</div>
-        <div class="text-muted" style="font-size:0.8rem">Imposter's guess</div>
-        <div style="font-size:1.4rem; font-weight:800">"${guess}"</div>
-        <div style="margin-top:6px; font-weight:700; color:${correct ? 'var(--success)' : 'var(--danger)'}">
-          ${correct ? 'Correct! Imposters win!' : 'Wrong! Players win!'}
-        </div>
+  // ── Who was who ──
+  if (allPlayers && allPlayers.length > 0) {
+    html += `<div class="card fade-in" style="width:100%">
+      <div class="card-title">Who Was Who</div>`;
+    allPlayers.forEach(p => {
+      html += `
+        <div class="stat-row">
+          <div class="stat-label" style="display:flex;align-items:center;gap:8px">
+            <span>${p.isImposter ? '🔪' : '✅'}</span>
+            <span style="font-weight:${p.isImposter ? '800' : '400'}; color:${p.isImposter ? '#fca5a5' : 'var(--text)'}">${p.name}</span>
+          </div>
+          <div class="stat-val" style="color:${p.isImposter ? '#fca5a5' : '#86efac'}; font-size:0.8rem">
+            ${p.isImposter ? 'IMPOSTER' : 'PLAYER'}
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  } else if (imposters && imposters.length > 0) {
+    html += `<div class="card fade-in" style="width:100%">
+      <div class="card-title">The Imposters</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+        ${imposters.map(n => `<span class="imposters-chip">🔪 ${n}</span>`).join('')}
       </div>
-    `;
+    </div>`;
   }
 
-  if (imposters && imposters.length > 0) {
+  // ── Imposter guess ──
+  if (guess !== undefined) {
     html += `
-      <div class="card fade-in" style="width:100%">
-        <div class="card-title">The Imposters Were</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px">
-          ${imposters.map(name => `<span class="imposters-chip">🔪 ${name}</span>`).join('')}
+      <div class="card text-center fade-in" style="border-color:${correct ? 'var(--success)' : 'var(--danger)'}; width:100%">
+        <div style="font-size:1.4rem;margin-bottom:6px">${correct ? '🎯' : '❌'}</div>
+        <div class="text-muted" style="font-size:0.8rem">Imposter's final guess</div>
+        <div style="font-size:1.5rem;font-weight:800;margin:6px 0">"${guess}"</div>
+        <div style="font-weight:700;color:${correct ? 'var(--success)' : 'var(--danger)'}">
+          ${correct ? 'Correct — Imposters win! 😈' : 'Wrong — Players win! 🎉'}
         </div>
-      </div>
-    `;
+      </div>`;
+  }
+
+  // ── Voting history ──
+  if (votingHistory && votingHistory.length > 0) {
+    html += `<div class="card fade-in" style="width:100%">
+      <div class="card-title">Voting History</div>`;
+
+    votingHistory.forEach((round, i) => {
+      const multiRound = votingHistory.length > 1;
+      if (multiRound) {
+        html += `<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent2);margin:${i>0?'14px':'4px'} 0 8px">Round ${round.round}</div>`;
+      }
+
+      // Individual votes
+      if (round.individualVotes && Object.keys(round.individualVotes).length > 0) {
+        Object.entries(round.individualVotes).forEach(([voter, target]) => {
+          html += `<div class="stat-row">
+            <div class="stat-label">${voter}</div>
+            <div style="color:var(--muted);font-size:0.8rem">→ voted for <strong style="color:var(--text)">${target}</strong></div>
+          </div>`;
+        });
+      }
+
+      // Who got eliminated
+      html += `<div style="margin-top:10px;padding:10px;border-radius:8px;background:${round.eliminated.isImposter ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};border:1px solid ${round.eliminated.isImposter ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}">
+        <span style="font-size:0.82rem;font-weight:700">
+          ${round.eliminated.isImposter ? '🔪' : '😬'} ${round.eliminated.name} was voted out — ${round.eliminated.isImposter ? 'was the imposter!' : 'was innocent'}
+        </span>
+      </div>`;
+
+      if (i < votingHistory.length - 1) {
+        html += `<div style="height:1px;background:var(--border);margin:12px 0"></div>`;
+      }
+    });
+
+    html += `</div>`;
   }
 
   document.getElementById('gameover-content').innerHTML = html;
+
+  // ── Host buttons ──
   document.getElementById('play-again-btn').style.display = isHost ? 'block' : 'none';
+  document.getElementById('change-pack-btn').style.display = isHost ? 'block' : 'none';
 }
 
 function playAgain() {
   socket.emit('play-again');
+}
+
+function changePack() {
+  // Go to lobby with settings panel open — same as play again but scrolls to categories
+  socket.emit('play-again');
+  // After reset-game fires and lobby shows, scroll to categories
+  setTimeout(() => {
+    const catEl = document.getElementById('host-categories');
+    if (catEl) catEl.scrollIntoView({ behavior: 'smooth' });
+  }, 400);
 }
 
 // ──────────────────────────────────────────
@@ -967,37 +1127,25 @@ function playAgain() {
 // ──────────────────────────────────────────
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(`screen-${name}`).classList.add('active');
+  const target = document.getElementById(`screen-${name}`);
+  if (!target) return;
+  target.classList.add('active');
 
-  if (name === 'lobby' && categories.length === 0) loadCategories();
+  if (name === 'lobby') {
+    if (categories.length === 0) loadCategories();
+    if (currentRoom) renderLobbyData(currentRoom);
+  }
   if (name === 'role') {
+    document.getElementById('ready-btn').style.display = 'block';
     document.getElementById('ready-btn').disabled = false;
     document.getElementById('ready-btn').textContent = "✅ I've seen my role";
     document.getElementById('ready-status').style.display = 'none';
   }
-  if (name === 'discussion' && currentRoom) {
-    updateDiscussion(currentRoom);
-  }
-  if (name === 'voting' && currentRoom) {
-    myVote = null;
-    updateVoting(currentRoom);
-  }
-  if (name === 'elimination') {
-    document.getElementById('elim-continue-btn').style.display = 'none';
-  }
+  if (name === 'discussion' && currentRoom) renderDiscussionData(currentRoom);
+  if (name === 'voting' && currentRoom) renderVotingData(currentRoom);
+  if (name === 'elimination') document.getElementById('elim-continue-btn').style.display = 'none';
 }
 
-// Respond to game state changes
-socket && socket.on('room-update', (room) => {
-  const active = document.querySelector('.screen.active')?.id;
-  if (room.gameState === 'discussion' && (active === 'screen-lobby' || active === 'screen-role' || active === 'screen-elimination')) {
-    showScreen('discussion');
-  }
-  if (room.gameState === 'voting' && active !== 'screen-voting') {
-    showScreen('voting');
-    myVote = null;
-  }
-});
 
 // ──────────────────────────────────────────
 // TOAST
@@ -1022,22 +1170,7 @@ document.getElementById('guess-input').addEventListener('keydown', e => { if (e.
 // ──────────────────────────────────────────
 // INIT
 // ──────────────────────────────────────────
-// Re-attach room-update listener after socket creation
-const _initSocket = initSocket;
-window.initSocket = function() {
-  _initSocket();
-  // Re-bind the screen state handler after socket init
-  socket.on('room-update', (room) => {
-    const active = document.querySelector('.screen.active')?.id;
-    if (room.gameState === 'discussion' && (active === 'screen-lobby' || active === 'screen-role' || active === 'screen-elimination')) {
-      showScreen('discussion');
-    }
-    if (room.gameState === 'voting' && active !== 'screen-voting') {
-      showScreen('voting');
-      myVote = null;
-    }
-  });
-};
+// (no extra setup needed — all handled in initSocket above)
 </script>
 </body>
 </html>

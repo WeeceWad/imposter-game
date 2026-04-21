@@ -428,6 +428,7 @@ io.on('connection', (socket) => {
     room.eliminatedPlayers = [];
     room.lastEliminated = null;
     room.result = null;
+    room.votingHistory = []; // track every round of votes
 
     // Send each player their private role
     room.players.forEach(player => {
@@ -520,7 +521,9 @@ io.on('connection', (socket) => {
       guess: guess.trim(),
       correct,
       imposters: room.imposters.map(id => room.players.find(p => p.id === id)?.name).filter(Boolean),
-      eliminated: room.lastEliminated
+      eliminated: room.lastEliminated,
+      votingHistory: room.votingHistory || [],
+      allPlayers: room.players.map(p => ({ name: p.name, isImposter: room.imposters.includes(p.id) }))
     };
 
     io.to(room.code).emit('game-over', resultPayload);
@@ -552,6 +555,12 @@ io.on('connection', (socket) => {
     room.result = null;
     io.to(room.code).emit('reset-game');
     io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Client requests a re-sync (e.g. after reconnect)
+  socket.on('request-sync', ({ code }) => {
+    const room = rooms[(code || '').trim().toUpperCase()];
+    if (room) socket.emit('room-update', sanitizeRoom(room));
   });
 
   // Kick player (host only)
@@ -599,19 +608,40 @@ function resolveVotes(room) {
   const isImposter = room.imposters.includes(eliminatedId);
   room.eliminatedPlayers.push(eliminatedId);
 
+  // Build name-based tally
+  const namedTally = Object.fromEntries(
+    Object.entries(tally).map(([id, count]) => {
+      const p = room.players.find(pl => pl.id === id);
+      return [p?.name || id, count];
+    })
+  );
+
+  // Build individual vote map: voter name → who they voted for
+  const individualVotes = Object.fromEntries(
+    Object.entries(room.votes).map(([voterId, targetId]) => {
+      const voter = room.players.find(p => p.id === voterId);
+      const target = room.players.find(p => p.id === targetId);
+      return [voter?.name || voterId, target?.name || targetId];
+    })
+  );
+
   room.lastEliminated = {
     id: eliminatedId,
     name: eliminatedPlayer?.name || 'Unknown',
     isImposter,
     voteCount: maxVotes,
     totalVotes: Object.keys(room.votes).length,
-    tally: Object.fromEntries(
-      Object.entries(tally).map(([id, count]) => {
-        const p = room.players.find(pl => pl.id === id);
-        return [p?.name || id, count];
-      })
-    )
+    tally: namedTally
   };
+
+  // Save this round to history
+  if (!room.votingHistory) room.votingHistory = [];
+  room.votingHistory.push({
+    round: room.votingHistory.length + 1,
+    individualVotes,
+    tally: namedTally,
+    eliminated: { name: eliminatedPlayer?.name || 'Unknown', isImposter }
+  });
 
   const remainingImposters = room.imposters.filter(id => !room.eliminatedPlayers.includes(id));
   const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
@@ -654,7 +684,9 @@ function resolveVotes(room) {
         word: room.currentWord,
         category: room.currentCategory,
         imposters: room.imposters.map(id => room.players.find(p => p.id === id)?.name).filter(Boolean),
-        eliminated: room.lastEliminated
+        eliminated: room.lastEliminated,
+        votingHistory: room.votingHistory || [],
+        allPlayers: room.players.map(p => ({ name: p.name, isImposter: room.imposters.includes(p.id) }))
       };
       io.to(room.code).emit('game-over', resultPayload);
       io.to(room.code).emit('room-update', sanitizeRoom(room));
@@ -664,6 +696,58 @@ function resolveVotes(room) {
       room.votes = {};
       io.to(room.code).emit('room-update', sanitizeRoom(room));
       io.to(room.code).emit('elimination-result', {
+        eliminated: room.lastEliminated,
+        gameState: 'elimination'
+      });
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// EXPORT CATEGORIES FOR CLIENT USE
+// ─────────────────────────────────────────────
+app.get('/api/categories', (req, res) => {
+  const cats = Object.entries(CATEGORIES).map(([key, val]) => ({
+    key,
+    name: val.name,
+    count: val.items.length
+  }));
+  res.json(cats);
+});
+
+// ─────────────────────────────────────────────
+// START SERVER
+// ─────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🎮 Imposter game running on http://localhost:${PORT}`);
+});
+        gameState: 'elimination'
+      });
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// EXPORT CATEGORIES FOR CLIENT USE
+// ─────────────────────────────────────────────
+app.get('/api/categories', (req, res) => {
+  const cats = Object.entries(CATEGORIES).map(([key, val]) => ({
+    key,
+    name: val.name,
+    count: val.items.length
+  }));
+  res.json(cats);
+});
+
+// ─────────────────────────────────────────────
+// START SERVER
+// ─────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🎮 Imposter game running on http://localhost:${PORT}`);
+});
+.emit('elimination-result', {
         eliminated: room.lastEliminated,
         gameState: 'elimination'
       });

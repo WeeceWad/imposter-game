@@ -457,7 +457,8 @@ function sanitizeRoom(room) {
     lastEliminated: room.lastEliminated || null,
     readyCount: room.readyPlayers ? room.readyPlayers.size : 0,
     voteCount: Object.keys(room.votes || {}).length,
-    result: room.result || null
+    result: room.result || null,
+    speakingOrder: room.speakingOrder || []
   };
 }
 
@@ -573,7 +574,9 @@ io.on('connection', (socket) => {
     room.eliminatedPlayers = [];
     room.lastEliminated = null;
     room.result = null;
-    room.votingHistory = []; // track every round of votes
+    room.votingHistory = [];
+    // Randomise speaking order each game
+    room.speakingOrder = [...room.players].sort(() => Math.random() - 0.5).map(p => p.id);
 
     // Send each player their private role
     room.imposterWords = {}; // track each imposter's word (for blind mode reveal at end)

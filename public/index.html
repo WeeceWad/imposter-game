@@ -881,12 +881,23 @@ function renderDiscussionData(room) {
     wordDisplay.textContent = myWord || '---';
   }
 
+  // Use randomised speaking order if available, otherwise fall back to join order
   const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+  let orderedPlayers = activePlayers;
+  if (room.speakingOrder && room.speakingOrder.length > 0) {
+    orderedPlayers = room.speakingOrder
+      .map(id => activePlayers.find(p => p.id === id))
+      .filter(Boolean);
+    // Add any active players not in speakingOrder (e.g. joined late)
+    activePlayers.forEach(p => { if (!orderedPlayers.includes(p)) orderedPlayers.push(p); });
+  }
   const list = document.getElementById('discussion-player-list');
-  list.innerHTML = activePlayers.map(p => `
-    <div class="player-item ${room.eliminatedPlayers.includes(p.id) ? 'eliminated' : ''}">
+  list.innerHTML = orderedPlayers.map((p, i) => `
+    <div class="player-item ${i === 0 ? 'speaking-first' : ''}">
       <div class="player-avatar">${p.name[0].toUpperCase()}</div>
-      <div class="player-name">${p.name}</div>
+      <div style="flex:1">
+        <div class="player-name">${p.name}${i === 0 ? ' <span style="font-size:0.75rem;color:var(--accent2);font-weight:700">GOES FIRST</span>' : ''}</div>
+      </div>
       ${p.id === room.host ? '<span class="player-badge badge-host">HOST</span>' : ''}
       ${p.id === myId ? '<span class="player-badge badge-you">YOU</span>' : ''}
     </div>

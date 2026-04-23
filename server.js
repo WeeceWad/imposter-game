@@ -410,6 +410,57 @@ const CATEGORIES = {
   }
 };
 
+
+// ─────────────────────────────────────────────
+// VIDEO CATEGORIES
+// ─────────────────────────────────────────────
+const VIDEO_CATEGORIES = {
+  funny:      { name: "😂 Funny",         queries: ["funny viral shorts", "hilarious shorts comedy"] },
+  animals:    { name: "🐾 Animals",        queries: ["funny animals shorts", "cute animals viral shorts"] },
+  fails:      { name: "💥 Fails",          queries: ["epic fail shorts", "fail compilation shorts"] },
+  sports:     { name: "⚽ Sports",         queries: ["amazing sports moments shorts", "sports highlights shorts"] },
+  food:       { name: "🍔 Food",           queries: ["satisfying food shorts", "cooking viral shorts"] },
+  satisfying: { name: "✨ Satisfying",     queries: ["oddly satisfying shorts", "satisfying video shorts"] },
+  gaming:     { name: "🎮 Gaming",         queries: ["funny gaming shorts", "gaming moments shorts"] },
+  dance:      { name: "💃 Dance",          queries: ["viral dance shorts", "dance challenge shorts"] },
+  pranks:     { name: "😈 Pranks",         queries: ["prank shorts funny", "prank reaction shorts"] },
+  nature:     { name: "🌿 Nature",         queries: ["nature shorts beautiful", "wildlife shorts amazing"] }
+};
+
+// Cache YouTube results to preserve API quota
+const _videoCache = {};
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+async function fetchYouTubeVideos(query) {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) throw new Error('YOUTUBE_API_KEY not set');
+  if (_videoCache[query] && Date.now() - _videoCache[query].ts < CACHE_TTL) {
+    return _videoCache[query].videos;
+  }
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=short&maxResults=30&key=${apiKey}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data.items) throw new Error('YouTube API error: ' + JSON.stringify(data.error || data));
+  const videos = data.items
+    .filter(i => i.id && i.id.videoId)
+    .map(i => ({
+      id: i.id.videoId,
+      title: i.snippet.title,
+      thumbnail: i.snippet.thumbnails.medium ? i.snippet.thumbnails.medium.url : ''
+    }));
+  _videoCache[query] = { videos, ts: Date.now() };
+  return videos;
+}
+
+async function pickTwoVideos(categoryKey) {
+  const cat = VIDEO_CATEGORIES[categoryKey] || VIDEO_CATEGORIES.funny;
+  const query = cat.queries[Math.floor(Math.random() * cat.queries.length)];
+  const videos = await fetchYouTubeVideos(query);
+  if (videos.length < 2) throw new Error('Not enough videos returned');
+  const shuffled = [...videos].sort(() => Math.random() - 0.5);
+  return { playerVideo: shuffled[0], imposterVideo: shuffled[1] };
+}
+
 // ─────────────────────────────────────────────
 // HELPER FUNCTIONS
 // ─────────────────────────────────────────────
@@ -458,7 +509,8 @@ function sanitizeRoom(room) {
     readyCount: room.readyPlayers ? room.readyPlayers.size : 0,
     voteCount: Object.keys(room.votes || {}).length,
     result: room.result || null,
-    speakingOrder: room.speakingOrder || []
+    speakingOrder: room.speakingOrder || [],
+    gameMode: room.settings ? room.settings.gameMode : 'word'
   };
 }
 
@@ -494,6 +546,8 @@ io.on('connection', (socket) => {
       settings: {
         imposterCount: 1,
         blindImposter: false,
+        gameMode: 'word',
+        videoCategory: 'funny',
         selectedCategories: ['movies', 'tvShows', 'videoGames', 'gameCharacters']
       },
       currentWord: null,
@@ -548,7 +602,7 @@ io.on('connection', (socket) => {
   });
 
   // Start game (host only)
-  socket.on('start-game', () => {
+  socket.on('start-game', async () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
@@ -557,11 +611,29 @@ io.on('connection', (socket) => {
       return socket.emit('error', { message: `Too many imposters for ${room.players.length} players. Max is ${maxImposters}.` });
     }
 
-    // Pick word from selected categories
-    const { word, category, categoryKey } = pickWordFromCategories(room.settings.selectedCategories);
-    room.currentWord = word;
-    room.currentCategory = category;
-    room.currentCategoryKey = categoryKey;
+    const isVideoMode = room.settings.gameMode === 'video';
+
+    if (isVideoMode) {
+      // ── VIDEO MODE ──
+      try {
+        const { playerVideo, imposterVideo } = await pickTwoVideos(room.settings.videoCategory || 'funny');
+        room.currentWord = null;
+        room.currentCategory = (VIDEO_CATEGORIES[room.settings.videoCategory] || VIDEO_CATEGORIES.funny).name;
+        room.currentPlayerVideo = playerVideo;   // { id, title, thumbnail }
+        room.currentImposterVideo = imposterVideo;
+      } catch (e) {
+        console.error('Video fetch error:', e.message);
+        return socket.emit('error', { message: 'Could not fetch videos. Check the API key is set on Render, then try again.' });
+      }
+    } else {
+      // ── WORD MODE ──
+      const { word, category, categoryKey } = pickWordFromCategories(room.settings.selectedCategories);
+      room.currentWord = word;
+      room.currentCategory = category;
+      room.currentCategoryKey = categoryKey;
+      room.currentPlayerVideo = null;
+      room.currentImposterVideo = null;
+    }
 
     // Assign imposters
     const shuffled = [...room.players].sort(() => Math.random() - 0.5);
@@ -575,33 +647,37 @@ io.on('connection', (socket) => {
     room.lastEliminated = null;
     room.result = null;
     room.votingHistory = [];
-    // Randomise speaking order each game
     room.speakingOrder = [...room.players].sort(() => Math.random() - 0.5).map(p => p.id);
 
     // Send each player their private role
-    room.imposterWords = {}; // track each imposter's word (for blind mode reveal at end)
+    room.imposterWords = {};
     room.players.forEach(player => {
       const isImposter = room.imposters.includes(player.id);
       let roleData;
 
-      if (isImposter) {
+      if (isVideoMode) {
+        // Video mode: everyone gets a video — imposter silently gets a different one
+        const video = isImposter ? room.currentImposterVideo : room.currentPlayerVideo;
+        room.imposterWords[player.id] = isImposter ? (room.currentImposterVideo ? room.currentImposterVideo.title : null) : null;
+        roleData = {
+          role: isImposter ? 'imposter' : 'player',
+          gameMode: 'video',
+          videoId: video.id,
+          videoTitle: video.title,
+          category: room.currentCategory,
+          blindMode: false
+        };
+      } else if (isImposter) {
         if (room.settings.blindImposter) {
-          // Blind mode: imposter gets a different word, doesn't know they're the imposter
-          const imposterWord = pickDifferentWord(room.settings.selectedCategories, word, categoryKey);
+          const imposterWord = pickDifferentWord(room.settings.selectedCategories, room.currentWord, room.currentCategoryKey);
           room.imposterWords[player.id] = imposterWord;
-          roleData = {
-            role: 'unknown',
-            word: imposterWord,
-            category,
-            blindMode: true
-          };
+          roleData = { role: 'unknown', word: imposterWord, category: room.currentCategory, blindMode: true, gameMode: 'word' };
         } else {
-          // Normal mode: imposter knows, gets no word
           room.imposterWords[player.id] = null;
-          roleData = { role: 'imposter', word: null, category, blindMode: false };
+          roleData = { role: 'imposter', word: null, category: room.currentCategory, blindMode: false, gameMode: 'word' };
         }
       } else {
-        roleData = { role: 'player', word, category, blindMode: room.settings.blindImposter };
+        roleData = { role: 'player', word: room.currentWord, category: room.currentCategory, blindMode: room.settings.blindImposter, gameMode: 'word' };
       }
 
       io.to(player.id).emit('your-role', roleData);
@@ -755,6 +831,9 @@ function buildResultPayload(room, extra = {}) {
     word: room.currentWord || '',
     category: room.currentCategory || '',
     blindMode: !!(room.settings && room.settings.blindImposter),
+    gameMode: room.settings ? room.settings.gameMode : 'word',
+    playerVideo: room.currentPlayerVideo || null,
+    imposterVideo: room.currentImposterVideo || null,
     imposters: (room.imposters || []).map(id => {
       const p = room.players.find(p => p.id === id);
       return p ? p.name : null;
@@ -850,8 +929,4 @@ app.get('/api/categories', (req, res) => {
 
 // ─────────────────────────────────────────────
 // START SERVER
-// ─────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🎮 Imposter game running on http://localhost:${PORT}`);
-});
+// ────────────────────────────────────────────

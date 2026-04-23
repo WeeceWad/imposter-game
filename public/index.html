@@ -269,6 +269,18 @@
   <div id="host-settings" class="card" style="width:100%; display:none">
     <div class="card-title">Game Settings</div>
 
+    <!-- GAME MODE -->
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Game Mode</div>
+        <div class="setting-desc">Word or Video round</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm" id="mode-word-btn" onclick="setGameMode('word')">📝 Word</button>
+        <button class="btn btn-sm" id="mode-video-btn" onclick="setGameMode('video')">🎬 Video</button>
+      </div>
+    </div>
+
     <div class="setting-row">
       <div>
         <div class="setting-label">Imposters</div>
@@ -281,7 +293,7 @@
       </div>
     </div>
 
-    <div class="setting-row">
+    <div class="setting-row" id="blind-row">
       <div>
         <div class="setting-label">Blind Imposter 🕵️</div>
         <div class="setting-desc">Imposter gets a wrong word — doesn't know they're fake</div>
@@ -292,10 +304,16 @@
     </div>
   </div>
 
-  <!-- CATEGORIES -->
+  <!-- WORD CATEGORIES -->
   <div id="host-categories" class="card" style="width:100%; display:none">
-    <div class="card-title">Categories <small>(select at least one)</small></div>
+    <div class="card-title">Word Categories <small>(select at least one)</small></div>
     <div class="category-grid" id="category-grid"></div>
+  </div>
+
+  <!-- VIDEO CATEGORIES -->
+  <div id="host-video-categories" class="card" style="width:100%; display:none">
+    <div class="card-title">Video Category</div>
+    <div class="category-grid" id="video-category-grid"></div>
   </div>
 
   <div id="host-start-btn" style="width:100%; display:none">
@@ -747,6 +765,16 @@ function toggleBlind() {
   socket.emit('update-settings', { settings: { blindImposter: !currentRoom.settings.blindImposter } });
 }
 
+function setGameMode(mode) {
+  if (!currentRoom || !isHost) return;
+  socket.emit('update-settings', { settings: { gameMode: mode } });
+}
+
+function setVideoCategory(key) {
+  if (!currentRoom || !isHost) return;
+  socket.emit('update-settings', { settings: { videoCategory: key } });
+}
+
 function renderLobbyData(room) {
   document.getElementById('lobby-code').textContent = room.code;
   document.getElementById('lobby-player-count').textContent = room.players.length;
@@ -762,6 +790,45 @@ function renderLobbyData(room) {
     document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
     const blindToggle = document.getElementById('blind-toggle');
     blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
+
+    // Game mode buttons
+    const isVideo = room.settings.gameMode === 'video';
+    const wordBtn = document.getElementById('mode-word-btn');
+    const videoBtn = document.getElementById('mode-video-btn');
+    if (wordBtn) {
+      wordBtn.className = 'btn btn-sm' + (!isVideo ? ' btn-primary' : ' btn-outline');
+      videoBtn.className = 'btn btn-sm' + (isVideo ? ' btn-primary' : ' btn-outline');
+    }
+    // Show/hide word vs video category sections
+    const wordCats = document.getElementById('host-categories');
+    const videoCats = document.getElementById('host-video-categories');
+    const blindRow = document.getElementById('blind-row');
+    if (wordCats) wordCats.style.display = isHost && !isVideo ? 'block' : 'none';
+    if (videoCats) videoCats.style.display = isHost && isVideo ? 'block' : 'none';
+    if (blindRow) blindRow.style.display = isVideo ? 'none' : 'flex';
+
+    // Populate video category grid
+    const videoGrid = document.getElementById('video-category-grid');
+    if (videoGrid && isHost) {
+      const videoCategoryDefs = [
+        { key: 'funny',      label: '😂 Funny' },
+        { key: 'animals',    label: '🐾 Animals' },
+        { key: 'fails',      label: '💥 Fails' },
+        { key: 'sports',     label: '⚽ Sports' },
+        { key: 'food',       label: '🍔 Food' },
+        { key: 'satisfying', label: '✨ Satisfying' },
+        { key: 'gaming',     label: '🎮 Gaming' },
+        { key: 'dance',      label: '💃 Dance' },
+        { key: 'pranks',     label: '😈 Pranks' },
+        { key: 'nature',     label: '🌿 Nature' }
+      ];
+      const selVid = room.settings.videoCategory || 'funny';
+      videoGrid.innerHTML = videoCategoryDefs.map(c => `
+        <div class="cat-chip ${selVid === c.key ? 'selected' : ''}" onclick="setVideoCategory('${c.key}')" id="vcat-${c.key}">
+          ${c.label}
+        </div>
+      `).join('');
+    }
     renderCategoryGrid();
   }
 
@@ -798,10 +865,28 @@ function startGame() {
 // ROLE REVEAL
 // ──────────────────────────────────────────
 function renderRoleCard(data) {
-  const { role, word, category, blindMode } = data;
+  const { role, word, category, blindMode, gameMode, videoId } = data;
   let html = '';
 
-  if (role === 'imposter') {
+  if (gameMode === 'video' && videoId) {
+    // ── VIDEO MODE: everyone just sees their video ──
+    html = `
+      <div class="role-card player-card reveal-anim" style="padding:16px">
+        <div class="role-icon">🎬</div>
+        <div class="role-title" style="color:#60a5fa">YOUR VIDEO</div>
+        <div class="role-category">${category}</div>
+        <div style="margin:12px 0; border-radius:10px; overflow:hidden; position:relative; padding-bottom:56.25%; height:0;">
+          <iframe
+            src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1"
+            style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:10px"
+            allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+          </iframe>
+        </div>
+        <div class="role-hint">Watch your video then click ready. Describe what you saw — without giving it away!</div>
+      </div>
+    `;
+    document.getElementById('ready-btn').textContent = '✅ I\'ve watched my video';
+  } else if (role === 'imposter') {
     html = `
       <div class="role-card imposter-card reveal-anim">
         <div class="role-icon">🔪</div>
@@ -812,18 +897,7 @@ function renderRoleCard(data) {
         </div>
       </div>
     `;
-  } else if (role === 'unknown') {
-    html = `
-      <div class="role-card unknown-card reveal-anim">
-        <div class="role-icon">❓</div>
-        <div class="role-title" style="color:#a855f7">YOUR WORD</div>
-        <div class="role-category">${category}</div>
-        <div class="role-word" style="color:#c084fc">${word}</div>
-        <div class="role-hint">⚠️ Blind Mode: someone in this room has a different word. You might be the imposter!</div>
-      </div>
-    `;
-  } else if (blindMode) {
-    // In blind mode, regular players also just see their word — no "YOU'RE A PLAYER" label
+  } else if (role === 'unknown' || blindMode) {
     html = `
       <div class="role-card unknown-card reveal-anim">
         <div class="role-icon">❓</div>
@@ -1067,23 +1141,44 @@ function renderGameOver(data) {
       </div>
     </div>`;
 
-  // ── The Word ──
-  html += `
-    <div class="word-box fade-in">
-      <div class="word-box-label">The Word Was</div>
-      <div class="word-box-value">${word}</div>
-      <div class="text-muted" style="font-size:0.8rem; margin-top:4px">${category}</div>
-    </div>`;
-
-  // ── Imposter's word (blind mode) ──
-  if (blindMode && imposterWords && imposterWords.some(iw => iw.word)) {
-    imposterWords.filter(iw => iw.word).forEach(iw => {
+  // ── The Word / Videos ──
+  if (data.gameMode === 'video') {
+    // Video mode: show both video thumbnails
+    if (data.playerVideo) {
       html += `
-        <div class="word-box fade-in" style="border-color:#a855f7; background:rgba(168,85,247,0.08)">
-          <div class="word-box-label" style="color:#a855f7">${iw.name}'s Word (Blind Imposter)</div>
-          <div class="word-box-value" style="color:#c084fc">${iw.word}</div>
+        <div class="word-box fade-in">
+          <div class="word-box-label">Everyone's Video</div>
+          ${data.playerVideo.thumbnail ? `<img src="${data.playerVideo.thumbnail}" style="width:100%;border-radius:8px;margin:8px 0" />` : ''}
+          <div style="font-size:0.9rem;font-weight:600;margin-bottom:6px">${data.playerVideo.title}</div>
+          <a href="https://www.youtube.com/watch?v=${data.playerVideo.id}" target="_blank" class="btn btn-outline btn-sm" style="display:inline-block;width:auto;padding:8px 16px">▶ Watch</a>
         </div>`;
-    });
+    }
+    if (data.imposterVideo) {
+      html += `
+        <div class="word-box fade-in" style="border-color:#ef4444; background:rgba(239,68,68,0.06)">
+          <div class="word-box-label" style="color:#ef4444">🔪 Imposter's Video</div>
+          ${data.imposterVideo.thumbnail ? `<img src="${data.imposterVideo.thumbnail}" style="width:100%;border-radius:8px;margin:8px 0" />` : ''}
+          <div style="font-size:0.9rem;font-weight:600;margin-bottom:6px">${data.imposterVideo.title}</div>
+          <a href="https://www.youtube.com/watch?v=${data.imposterVideo.id}" target="_blank" class="btn btn-outline btn-sm" style="display:inline-block;width:auto;padding:8px 16px">▶ Watch</a>
+        </div>`;
+    }
+  } else {
+    html += `
+      <div class="word-box fade-in">
+        <div class="word-box-label">The Word Was</div>
+        <div class="word-box-value">${word}</div>
+        <div class="text-muted" style="font-size:0.8rem; margin-top:4px">${category}</div>
+      </div>`;
+    // Blind mode imposter word
+    if (blindMode && imposterWords && imposterWords.some(iw => iw.word)) {
+      imposterWords.filter(iw => iw.word).forEach(iw => {
+        html += `
+          <div class="word-box fade-in" style="border-color:#a855f7; background:rgba(168,85,247,0.08)">
+            <div class="word-box-label" style="color:#a855f7">${iw.name}'s Word (Blind Imposter)</div>
+            <div class="word-box-value" style="color:#c084fc">${iw.word}</div>
+          </div>`;
+      });
+    }
   }
 
   // ── Who was who ──
@@ -1211,14 +1306,4 @@ function showToast(msg, type = '') {
 // KEYBOARD
 // ──────────────────────────────────────────
 document.getElementById('home-name').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(); });
-document.getElementById('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
-document.getElementById('home-code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
-document.getElementById('guess-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitGuess(); });
-
-// ──────────────────────────────────────────
-// INIT
-// ──────────────────────────────────────────
-// (no extra setup needed — all handled in initSocket above)
-</script>
-</body>
-</html>
+document.getElementById('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); }

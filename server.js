@@ -677,53 +677,11 @@ function resolveVotes(room) {
     eliminated: { name: eliminatedPlayer?.name || 'Unknown', isImposter }
   });
 
-  const remainingImposters = room.imposters.filter(id => !room.eliminatedPlayers.includes(id));
-  const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
-
-  if (isImposter) {
-    if (remainingImposters.length === 0) {
-      // Last imposter found — players win, go straight to results
-      room.gameState = 'game-over';
-      room.result = 'players-win';
-      io.to(room.code).emit('game-over', buildResultPayload(room));
-      io.to(room.code).emit('room-update', sanitizeRoom(room));
-    } else {
-      // Still more imposters — game continues
-      room.gameState = 'discussion';
-      room.votes = {};
-      io.to(room.code).emit('room-update', sanitizeRoom(room));
-      io.to(room.code).emit('elimination-result', {
-        eliminated: room.lastEliminated,
-        gameState: 'discussion',
-        remainingImposters: remainingImposters.length
-      });
-    }
-  } else {
-    // Wrong person eliminated
-    const imposterCount = remainingImposters.length;
-    const innocentCount = activePlayers.filter(p => !room.imposters.includes(p.id)).length;
-
-    if (imposterCount >= innocentCount) {
-      // Imposters win by majority — show elimination result THEN game-over
-      room.gameState = 'game-over';
-      room.result = 'imposters-win';
-      io.to(room.code).emit('elimination-result', {
-        eliminated: room.lastEliminated,
-        gameState: 'game-over'
-      });
-      io.to(room.code).emit('game-over', buildResultPayload(room));
-      io.to(room.code).emit('room-update', sanitizeRoom(room));
-    } else {
-      // Continue game
-      room.gameState = 'elimination';
-      room.votes = {};
-      io.to(room.code).emit('room-update', sanitizeRoom(room));
-      io.to(room.code).emit('elimination-result', {
-        eliminated: room.lastEliminated,
-        gameState: 'elimination'
-      });
-    }
-  }
+  // Always end the game after every vote — go straight to results no matter what
+  room.gameState = 'game-over';
+  room.result = isImposter ? 'players-win' : 'imposters-win';
+  io.to(room.code).emit('game-over', buildResultPayload(room));
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
 // ─────────────────────────────────────────────

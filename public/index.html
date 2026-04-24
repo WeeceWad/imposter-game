@@ -1028,15 +1028,10 @@ function renderLobbyData(room) {
       const whoamiGrid = document.getElementById('whoami-category-grid');
       if (whoamiGrid) {
         const WHOAMI_CAT_DEFS = [
-          { key: 'celebrities',  label: '⭐ Celebrities' },
-          { key: 'fictional',    label: '🦸 Fictional Characters' },
-          { key: 'athletes',     label: '⚽ Athletes' },
-          { key: 'historical',   label: '🏛️ Historical Figures' },
-          { key: 'musicians',    label: '🎵 Musicians' },
-          { key: 'politicians',  label: '🗳️ Politicians' },
-          { key: 'youtubers',    label: '📹 YouTubers' }
+          { key: 'famous',    label: '🌟 Famous People' },
+          { key: 'fictional', label: '🦸 Fictional Characters' }
         ];
-        const selWam = room.settings.whoamiCategory || 'celebrities';
+        const selWam = room.settings.whoamiCategory || 'famous';
         whoamiGrid.innerHTML = WHOAMI_CAT_DEFS.map(c => `
           <div class="cat-chip ${selWam === c.key ? 'selected' : ''}" onclick="setWhoamiCategory('${c.key}')">
             ${c.label}

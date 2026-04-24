@@ -586,13 +586,142 @@ const rooms = {};
 // WHO AM I — CATEGORIES
 // ─────────────────────────────────────────────
 const WHOAMI_CATS = {
-  celebrities:    { name: "Celebrities",       items: ["Taylor Swift","Beyonce","Drake","Rihanna","Ed Sheeran","Adele","Justin Bieber","Ariana Grande","Harry Styles","Billie Eilish","Post Malone","The Weeknd","Doja Cat","Olivia Rodrigo","Dua Lipa","Cardi B","Nicki Minaj","Travis Scott","Kendrick Lamar","Bad Bunny","Shakira","Lady Gaga","Bruno Mars","Eminem","Kanye West","Jay-Z","Sam Smith","Miley Cyrus","Selena Gomez","Zendaya","Timothee Chalamet","Tom Holland","Ryan Reynolds","Dwayne Johnson","Leonardo DiCaprio","Brad Pitt","Margot Robbie","Scarlett Johansson","Chris Hemsworth","Robert Downey Jr","Will Smith","Keanu Reeves","Tom Hanks","Florence Pugh","Pedro Pascal","Austin Butler","Sabrina Carpenter","Chappell Roan","Charli XCX","SZA"] },
-  movieCharacters:{ name: "Movie Characters",  items: ["Darth Vader","Luke Skywalker","Hermione Granger","Harry Potter","Frodo Baggins","Gandalf","Jack Sparrow","Katniss Everdeen","Thanos","Iron Man","Batman","Superman","Wonder Woman","The Joker","Hannibal Lecter","James Bond","Indiana Jones","Forrest Gump","The Terminator","Shrek","Buzz Lightyear","Woody","Simba","Elsa","Moana","Jack Skellington","Gollum","Voldemort","Dumbledore","Aragorn","Neo","Tyler Durden","Don Corleone","John Wick","Captain America","Black Widow","Thor","Spider-Man","Deadpool","Wolverine","Magneto","Paddington Bear","Jason Bourne","Ethan Hunt"] },
-  tvCharacters:   { name: "TV Characters",     items: ["Walter White","Jesse Pinkman","Jon Snow","Daenerys Targaryen","Tyrion Lannister","Sherlock Holmes","Ted Lasso","Eleven","Jim Halpert","Dwight Schrute","Michael Scott","Joey Tribbiani","Chandler Bing","Ross Geller","Rachel Green","Sheldon Cooper","George Costanza","Kramer","Tony Soprano","Saul Goodman","Cersei Lannister","Arya Stark","Joffrey Baratheon","Harvey Specter","Don Draper","Dexter Morgan","Carrie Bradshaw","Eric Cartman","Homer Simpson","Bart Simpson","Rick Sanchez","Morty Smith","Patrick Star","SpongeBob SquarePants","Peter Griffin","Stewie Griffin","Bojack Horseman","Barney Stinson","Leslie Knope","Ron Swanson"] },
-  sportStars:     { name: "Sports Stars",      items: ["Lionel Messi","Cristiano Ronaldo","Kylian Mbappe","Neymar","LeBron James","Michael Jordan","Kobe Bryant","Stephen Curry","Giannis Antetokounmpo","Serena Williams","Roger Federer","Rafael Nadal","Novak Djokovic","Tiger Woods","Usain Bolt","Tom Brady","Michael Phelps","Simone Biles","Lewis Hamilton","Max Verstappen","Floyd Mayweather","Muhammad Ali","Mike Tyson","Pele","Maradona","Zinedine Zidane","Ronaldinho","David Beckham","Wayne Rooney","Harry Kane","Mohamed Salah","Erling Haaland","Vinicius Jr","Jude Bellingham","Caitlin Clark","Naomi Osaka","Ben Stokes","Virat Kohli","Anthony Joshua"] },
-  historical:     { name: "Historical Figures",items: ["Napoleon Bonaparte","Julius Caesar","Cleopatra","Alexander the Great","Genghis Khan","Leonardo da Vinci","Michelangelo","Isaac Newton","Albert Einstein","Charles Darwin","Marie Curie","Nikola Tesla","Thomas Edison","Abraham Lincoln","George Washington","Winston Churchill","Gandhi","Martin Luther King Jr","Nelson Mandela","Queen Elizabeth I","Henry VIII","William Shakespeare","Beethoven","Mozart","Picasso","Vincent van Gogh","Frida Kahlo","Christopher Columbus","Galileo Galilei","Sigmund Freud","Karl Marx","Plato","Aristotle","Socrates","Joan of Arc","Ada Lovelace","Alan Turing","Anne Frank"] },
-  animals:        { name: "Animals",            items: ["Lion","Tiger","Elephant","Giraffe","Penguin","Koala","Kangaroo","Panda","Polar Bear","Gorilla","Chimpanzee","Dolphin","Whale","Shark","Octopus","Eagle","Owl","Flamingo","Parrot","Peacock","Crocodile","Chameleon","Komodo Dragon","Meerkat","Sloth","Platypus","Narwhal","Axolotl","Capybara","Red Panda","Snow Leopard","Cheetah","Hyena","Manta Ray","Jellyfish","Seahorse","Sea Turtle","Otter","Armadillo","Quokka","Fennec Fox","Wombat","Tapir","Okapi","Numbat"] },
-  objects:        { name: "Objects",            items: ["Toothbrush","Refrigerator","Television","Bicycle","Umbrella","Scissors","Mirror","Pillow","Lamp","Clock","Calculator","Keyboard","Headphones","Camera","Telescope","Microscope","Thermometer","Compass","Backpack","Wallet","Sunglasses","Bottle","Fork","Spoon","Blender","Toaster","Microwave","Washing Machine","Vacuum Cleaner","Hairdryer","Trampoline","Skateboard","Lawnmower","Fire Extinguisher","Traffic Light","Mailbox","Stapler","Escalator","Elevator","Parking Meter"] }
+  famous: { name: "Famous People", items: [
+    // Musicians
+    "Taylor Swift","Beyonce","Drake","Rihanna","Ed Sheeran","Adele","Justin Bieber","Ariana Grande",
+    "Harry Styles","Billie Eilish","Post Malone","The Weeknd","Doja Cat","Olivia Rodrigo","Dua Lipa",
+    "Cardi B","Nicki Minaj","Travis Scott","Kendrick Lamar","Bad Bunny","Shakira","Lady Gaga",
+    "Bruno Mars","Eminem","Kanye West","Jay-Z","Miley Cyrus","Selena Gomez","Sam Smith",
+    "Sabrina Carpenter","Chappell Roan","Charli XCX","SZA","Michael Jackson","Elvis Presley",
+    "Freddie Mercury","David Bowie","Madonna","Prince","Amy Winehouse","Bob Marley","Tupac",
+    "Notorious B.I.G.","Lil Wayne","Snoop Dogg","Elton John","Whitney Houston","Frank Sinatra",
+    "Kurt Cobain","Jimi Hendrix","John Lennon","Paul McCartney","Lana Del Rey","Stormzy","Dave",
+    "Central Cee","21 Savage","Lil Baby","Future","Tyler the Creator","Childish Gambino","J. Cole",
+    "Lizzo","Meghan Thee Stallion","Ice Spice","Gracie Abrams","Benson Boone","Noah Kahan",
+    "Morgan Wallen","Luke Combs","Zach Bryan","ABBA","The Beatles","The Rolling Stones",
+    "Led Zeppelin","Radiohead","Coldplay","Oasis","Arctic Monkeys","Linkin Park","Green Day",
+    // Actors
+    "Zendaya","Timothee Chalamet","Tom Holland","Ryan Reynolds","Dwayne Johnson","Leonardo DiCaprio",
+    "Brad Pitt","Margot Robbie","Scarlett Johansson","Chris Hemsworth","Robert Downey Jr",
+    "Will Smith","Keanu Reeves","Tom Hanks","Florence Pugh","Pedro Pascal","Austin Butler",
+    "Meryl Streep","Angelina Jolie","Jennifer Lawrence","Cate Blanchett","Natalie Portman",
+    "Johnny Depp","Jim Carrey","Eddie Murphy","Samuel L. Jackson","Morgan Freeman",
+    "Denzel Washington","Al Pacino","Robert De Niro","Jack Nicholson","Cillian Murphy",
+    "Paul Mescal","Barry Keoghan","Andrew Garfield","Jacob Elordi","Sydney Sweeney",
+    "Anya Taylor-Joy","Ana de Armas","Emma Stone","Emma Watson","Daniel Radcliffe",
+    "Chris Pratt","Chris Evans","Mark Ruffalo","Jeremy Renner","Benedict Cumberbatch",
+    "Matt Damon","Ben Affleck","George Clooney","Adam Sandler","Will Ferrell","Seth Rogen",
+    // Footballers
+    "Lionel Messi","Cristiano Ronaldo","Kylian Mbappe","Neymar","Harry Kane","Mohamed Salah",
+    "Erling Haaland","Vinicius Jr","Jude Bellingham","Luka Modric","Kevin De Bruyne",
+    "Phil Foden","Pedri","Bukayo Saka","Marcus Rashford","Jack Grealish","Wayne Rooney",
+    "David Beckham","Zinedine Zidane","Ronaldinho","Thierry Henry","Didier Drogba",
+    "Zlatan Ibrahimovic","Son Heung-min","Virgil van Dijk","Trent Alexander-Arnold",
+    "Andres Iniesta","Xavi","Pele","Maradona","Roberto Carlos","Ronaldo R9",
+    "Gareth Bale","Roberto Firmino","Paul Pogba","Raheem Sterling","Jamie Vardy",
+    // Boxers
+    "Muhammad Ali","Mike Tyson","Floyd Mayweather","Anthony Joshua","Tyson Fury",
+    "Canelo Alvarez","Manny Pacquiao","Lennox Lewis","George Foreman","Oleksandr Usyk",
+    "Ryan Garcia","Deontay Wilder","Oscar De La Hoya","Sugar Ray Leonard","Joe Frazier",
+    "KSI","Jake Paul","Logan Paul",
+    // Other athletes
+    "LeBron James","Michael Jordan","Kobe Bryant","Stephen Curry","Giannis Antetokounmpo",
+    "Serena Williams","Roger Federer","Rafael Nadal","Novak Djokovic","Tiger Woods",
+    "Usain Bolt","Tom Brady","Michael Phelps","Simone Biles","Lewis Hamilton","Max Verstappen",
+    "Caitlin Clark","Naomi Osaka","Ben Stokes","Virat Kohli","Conor McGregor","Ronda Rousey",
+    "Alex Ovechkin","Wayne Gretzky","Andy Murray","Ronnie O'Sullivan","Carl Lewis",
+    "Venus Williams","Maria Sharapova","Neymar Jr","Kevin Durant","Shaquille O'Neal",
+    "Patrick Mahomes","Lionel Hamilton","Michael Schumacher","Ayrton Senna",
+    // Youtubers / internet
+    "MrBeast","PewDiePie","Markiplier","Jacksepticeye","Ninja","Pokimane","David Dobrik",
+    "James Charles","Dude Perfect","KSI","Sidemen","Miniminter","Wroetoshaw","Behzinga",
+    "Calfreezy","Vikk","Tobi","Ethan Payne","W2S","Charli D'Amelio","Addison Rae",
+    // Politicians / leaders
+    "Barack Obama","Donald Trump","Joe Biden","Emmanuel Macron","Boris Johnson",
+    "Vladimir Putin","Xi Jinping","Angela Merkel","Volodymyr Zelensky","Justin Trudeau",
+    "Jacinda Ardern","Narendra Modi","Kim Jong-un","Keir Starmer","Rishi Sunak",
+    "Tony Blair","George W Bush","Bill Clinton","George H W Bush","Richard Nixon",
+    "JFK","Margaret Thatcher","Ronald Reagan","Adolf Hitler","Joseph Stalin",
+    "Winston Churchill","Abraham Lincoln","Nelson Mandela","Mahatma Gandhi",
+    "Martin Luther King Jr","Malcolm X","Fidel Castro","Che Guevara","Mao Zedong",
+    "Napoleon Bonaparte","Julius Caesar","Cleopatra","Alexander the Great","Genghis Khan",
+    // Scientists / inventors / historical
+    "Albert Einstein","Isaac Newton","Charles Darwin","Marie Curie","Nikola Tesla",
+    "Thomas Edison","Leonardo da Vinci","Galileo Galilei","Stephen Hawking","Alan Turing",
+    "Ada Lovelace","Sigmund Freud","Karl Marx","Charles Dickens","William Shakespeare",
+    "Mozart","Beethoven","Michelangelo","Picasso","Vincent van Gogh","Frida Kahlo",
+    "Anne Frank","Joan of Arc","Henry VIII","Queen Elizabeth I","Christopher Columbus",
+    // Business / tech
+    "Elon Musk","Jeff Bezos","Bill Gates","Mark Zuckerberg","Steve Jobs","Oprah Winfrey",
+    "Kim Kardashian","Kylie Jenner","Kanye West","Cristiano Ronaldo"
+  ]},
+  fictional: { name: "Fictional Characters", items: [
+    // Movies
+    "Darth Vader","Luke Skywalker","Princess Leia","Yoda","Han Solo","Obi-Wan Kenobi",
+    "Hermione Granger","Harry Potter","Ron Weasley","Voldemort","Dumbledore","Snape",
+    "Frodo Baggins","Gandalf","Aragorn","Legolas","Gimli","Gollum","Samwise Gamgee",
+    "Jack Sparrow","Katniss Everdeen","Thanos","Iron Man","Batman","Superman","Wonder Woman",
+    "The Joker","Hannibal Lecter","James Bond","Indiana Jones","Forrest Gump","The Terminator",
+    "Shrek","Donkey","Buzz Lightyear","Woody","Simba","Elsa","Anna","Moana","Mulan","Rapunzel",
+    "Jack Skellington","Neo","Tyler Durden","Don Corleone","John Wick","Captain America",
+    "Black Widow","Thor","Spider-Man","Deadpool","Wolverine","Magneto","Jason Bourne",
+    "Ethan Hunt","Patrick Bateman","Amy Dunne","Elle Woods","WALL-E","Nemo","Dory",
+    "Mike Wazowski","Sulley","Remy the Rat","Merida","Pinocchio","Paddington Bear",
+    "Edward Scissorhands","Ace Ventura","Austin Powers","Borat","The Mask","Beetlejuice",
+    "Freddy Krueger","Jason Voorhees","Michael Myers","Pennywise","Chucky","Ghostface",
+    "Optimus Prime","Bumblebee","Megatron","Godzilla","King Kong",
+    // TV
+    "Walter White","Jesse Pinkman","Jon Snow","Daenerys Targaryen","Tyrion Lannister",
+    "Cersei Lannister","Arya Stark","Joffrey Baratheon","Ned Stark","Jaime Lannister",
+    "Sherlock Holmes","Watson","Ted Lasso","Eleven","Jim Halpert","Dwight Schrute",
+    "Michael Scott","Joey Tribbiani","Chandler Bing","Ross Geller","Rachel Green","Phoebe Buffay",
+    "Sheldon Cooper","George Costanza","Cosmo Kramer","Tony Soprano","Saul Goodman",
+    "Harvey Specter","Mike Ross","Don Draper","Dexter Morgan","Carrie Bradshaw",
+    "Eric Cartman","Homer Simpson","Bart Simpson","Marge Simpson","Lisa Simpson",
+    "Rick Sanchez","Morty Smith","Patrick Star","SpongeBob SquarePants","Sandy Cheeks",
+    "Peter Griffin","Stewie Griffin","Brian Griffin","Meg Griffin","Bojack Horseman",
+    "Barney Stinson","Ted Mosby","Marshall Eriksen","Lily Aldrin","Robin Scherbatsky",
+    "Leslie Knope","Ron Swanson","Andy Dwyer","April Ludgate","Ben Wyatt",
+    "Wednesday Addams","Morticia Addams","Gomez Addams","Cousin Itt",
+    "Aang","Zuko","Katara","Sokka","Toph","Azula","Iroh",
+    "Daffy Duck","Bugs Bunny","Tom Cat","Jerry Mouse","Tweety Bird","Sylvester",
+    "Scooby-Doo","Shaggy","Fred Flintstone","Barney Rubble","George Jetson",
+    "Jack Bauer","Frank Underwood","Raymond Reddington","Fleabag","Will Graham",
+    "The Mandalorian","Grogu (Baby Yoda)",
+    // Video games
+    "Mario","Luigi","Princess Peach","Bowser","Yoshi","Donkey Kong","Wario","Waluigi",
+    "Link","Zelda","Ganondorf","Sonic the Hedgehog","Tails","Knuckles","Shadow",
+    "Pikachu","Mewtwo","Charizard","Master Chief","Cortana","Kratos","Atreus",
+    "Arthur Morgan","Dutch van der Linde","Geralt of Rivia","Ciri","Yennefer",
+    "Lara Croft","Nathan Drake","Joel","Ellie","Abby","Aloy","Cloud Strife",
+    "Sephiroth","Tifa Lockhart","Aerith","Kirby","Samus Aran","Mega Man","Pac-Man",
+    "Ryu","Chun-Li","Sub-Zero","Scorpion","Liu Kang","Agent 47","Ezio Auditore",
+    "Altair","Niko Bellic","Trevor Philips","Michael De Santa","Franklin Clinton",
+    "Gordon Freeman","Chell","GLaDOS","The Dragonborn","Commander Shepard",
+    "Steve (Minecraft)","Creeper","Enderman","Tom Nook","Isabelle","Villager",
+    "V (Cyberpunk 2077)","Solid Snake","Raiden","Crash Bandicoot","Spyro",
+    // Anime
+    "Naruto Uzumaki","Sasuke Uchiha","Sakura Haruno","Kakashi Hatake","Itachi Uchiha",
+    "Madara Uchiha","Minato Namikaze","Goku","Vegeta","Gohan","Piccolo","Frieza","Cell",
+    "Luffy","Zoro","Nami","Sanji","Chopper","Ace","Whitebeard",
+    "Ichigo Kurosaki","Rukia Kuchiki","Byakuya Kuchiki","Aizen",
+    "Eren Yeager","Mikasa Ackerman","Levi Ackerman","Armin Arlert","Zeke Yeager",
+    "Tanjiro Kamado","Nezuko Kamado","Zenitsu Agatsuma","Inosuke Hashibira",
+    "Deku (Izuku Midoriya)","All Might","Bakugo","Todoroki","Endeavor",
+    "Gon Freecss","Killua Zoldyck","Hisoka","Kurapika","Leorio",
+    "Light Yagami","L Lawliet","Ryuk","Near","Mello",
+    "Edward Elric","Alphonse Elric","Roy Mustang","Riza Hawkeye",
+    "Spike Spiegel","Jet Black","Faye Valentine","Ein","Radical Ed",
+    "Saitama","Genos","Speed-o'-Sound Sonic","Boros",
+    "Sailor Moon","Tuxedo Mask","Sailor Venus","Sailor Mars",
+    "Ash Ketchum","Misty","Brock","Team Rocket Jesse","Team Rocket James",
+    // Books / classic fiction
+    "Sherlock Holmes","Dracula","Frankenstein","Elizabeth Bennet","Mr Darcy",
+    "Jay Gatsby","Ebenezer Scrooge","Long John Silver","Bilbo Baggins","Robinson Crusoe",
+    "Count of Monte Cristo","Huckleberry Finn","Tom Sawyer","Atticus Finch","Scout Finch",
+    "Holden Caulfield","Big Brother","Winston Smith","Alex DeLarge","Patrick Bateman",
+    "Dorian Gray","Captain Ahab","Heathcliff","Jane Eyre","Mr Rochester"
+  ]}
 };
 
 // ─────────────────────────────────────────────
@@ -633,7 +762,7 @@ io.on('connection', (socket) => {
         gameMode: 'word',
         videoCategory: 'funny',
         selectedCategories: ['movies', 'tvShows', 'videoGames', 'gameCharacters'],
-        whoamiCategory: 'celebrities'
+        whoamiCategory: 'famous'
       },
       currentWord: null,
       currentCategory: null,
@@ -1006,31 +1135,21 @@ io.on('connection', (socket) => {
     socket.whoamiCode = code;
     socket.playerName = name.trim();
     socket.emit('room-created', { code, playerId: socket.id });
-    io.to(code).emit('room-update', sanitizeWhoamiRoom(whoamiRooms[code]));
+    socket.emit('room-created', { code, playerId: socket.id });
+    io.to(code).emit('room-update', sanitizeWhoamiRoom(room));
   });
 
   socket.on('whoami-join-room', ({ name, code }) => {
     const room = whoamiRooms[(code || '').toUpperCase()];
     if (!room) return socket.emit('error', { message: 'Room not found.' });
-    if (room.gameState !== 'lobby') return socket.emit('error', { message: 'Game already in progress.' });
-    if (!name || !name.trim()) return socket.emit('error', { message: 'Enter your name' });
-    const cleanName = name.trim();
-    if (room.players.find(p => p.name.toLowerCase() === cleanName.toLowerCase())) {
-      return socket.emit('error', { message: 'That name is taken.' });
-    }
-    room.players.push({ id: socket.id, name: cleanName, isHost: false });
+    if (room.gameState !== 'lobby') return socket.emit('error', { message: 'Game already started.' });
+    const trimmed = (name || '').trim();
+    if (!trimmed) return socket.emit('error', { message: 'Name required.' });
+    room.players.push({ id: socket.id, name: trimmed, isHost: false });
     socket.join(room.code);
     socket.whoamiCode = room.code;
-    socket.playerName = cleanName;
+    socket.playerName = trimmed;
     socket.emit('room-joined', { code: room.code, playerId: socket.id });
-    io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
-    io.to(room.code).emit('player-joined', { name: cleanName });
-  });
-
-  socket.on('whoami-update-settings', ({ category }) => {
-    const room = whoamiRooms[socket.whoamiCode];
-    if (!room || room.host !== socket.id) return;
-    if (category) room.settings.category = category;
     io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
   });
 
@@ -1039,14 +1158,13 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players.' });
 
-    const cat = WHOAMI_CATS[room.settings.category] || WHOAMI_CATS.celebrities;
+    const cat = WHOAMI_CATS[room.settings.category] || WHOAMI_CATS.famous;
     const pool = [...cat.items].sort(() => Math.random() - 0.5);
 
     room.assignments = {};
     room.players.forEach((p, i) => { room.assignments[p.id] = pool[i % pool.length]; });
     room.gameState = 'playing';
 
-    // Send each player everyone else's word (not their own)
     room.players.forEach(player => {
       const others = room.players
         .filter(p => p.id !== player.id)
@@ -1099,10 +1217,9 @@ io.on('connection', (socket) => {
     // Imposter room
     const room = rooms[socket.roomCode];
     if (room) {
-      // Always use a grace period — 60s in-game, 30s in lobby
-    if (!room._dcTimers) room._dcTimers = {};
-    const delay = room.gameState !== 'lobby' ? 60000 : 30000;
-    room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, delay);
+      if (!room._dcTimers) room._dcTimers = {};
+      const delay = room.gameState !== 'lobby' ? 60000 : 30000;
+      room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, delay);
     }
 
     // Who Am I room
@@ -1118,9 +1235,6 @@ io.on('connection', (socket) => {
 });
 
 function _removePlayer(room, socketId, name) {
-  if (!room) return;
-  room.players = room.players.filter(p => p.id !== socketId);
-  if (room.readyPlayers) room.readyPlayers.delete(socketId);
   if (!room) return;
   room.players = room.players.filter(p => p.id !== socketId);
   if (room.readyPlayers) room.readyPlayers.delete(socketId);

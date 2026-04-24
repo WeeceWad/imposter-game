@@ -561,10 +561,10 @@ function showLocalGameScreen() {
 function initSocket() {
   if (socket) return;
   socket = io({
-    transports: ["websocket"],
+    transports: ["websocket", "polling"],
     reconnectionAttempts: Infinity,
     reconnectionDelay: 500,
-    reconnectionDelayMax: 4000
+    reconnectionDelayMax: 5000
   });
 
   socket.on("connect", () => {
@@ -763,6 +763,8 @@ function showToast(msg, type = "") {
 // ─────────────────────────────────────────────
 // KEYBOARD
 // ─────────────────────────────────────────────
+setInterval(() => fetch('/ping').catch(() => {}), 4 * 60 * 1000);
+
 document.getElementById("online-name").addEventListener("keydown", e => { if (e.key === "Enter") createRoom(); });
 document.getElementById("online-code").addEventListener("keydown", e => { if (e.key === "Enter") joinRoom(); });
 document.getElementById("new-player-input").addEventListener("keydown", e => { if (e.key === "Enter") addPlayer(); });

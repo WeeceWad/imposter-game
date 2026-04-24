@@ -1113,6 +1113,8 @@ function buildResultPayload(room, extra = {}) {
   };
 }
 
+app.get('/ping', (req, res) => res.send('ok'));
+
 app.get('/api/categories', (req, res) => {
   const cats = Object.entries(CATEGORIES).map(([key, val]) => ({
     key,
@@ -1124,5 +1126,5 @@ app.get('/api/categories', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log("Server running on port " + PORT);
 });

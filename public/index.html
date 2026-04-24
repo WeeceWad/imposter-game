@@ -500,10 +500,10 @@ function setMyId(id) {
 function initSocket() {
   if (socket) return;
   socket = io({
-    transports: ['websocket'],       // skip long-polling entirely — much more stable
-    reconnectionAttempts: Infinity,  // never give up
+    transports: ['websocket', 'polling'], // websocket first, polling as fallback
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 500,
-    reconnectionDelayMax: 4000
+    reconnectionDelayMax: 5000
   });
 
   // On every (re)connect — if we're mid-session, rejoin the room
@@ -1333,6 +1333,9 @@ function showToast(msg, type = '') {
 // ──────────────────────────────────────────
 document.getElementById('home-name').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(); });
 document.getElementById('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+
+// Keep Render server awake — ping every 4 minutes
+setInterval(() => fetch('/ping').catch(() => {}), 4 * 60 * 1000);
 </script>
 </body>
 </html>

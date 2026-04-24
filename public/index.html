@@ -337,11 +337,7 @@
   <div id="role-card-container" style="width:100%"></div>
 
   <div id="ready-status" class="card text-center" style="width:100%; display:none">
-    <div class="text-muted" style="margin-bottom:10px">Waiting for everyone...</div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar" id="ready-bar" style="width:0%"></div>
-    </div>
-    <div style="margin-top:8px; font-size:0.85rem" id="ready-count-text">0 / 0 ready</div>
+    <div id="ready-count-text" class="text-muted">Waiting for everyone...</div>
   </div>
 
   <button id="ready-btn" class="btn btn-primary" onclick="markReady()">✅ I've seen my role</button>
@@ -478,6 +474,7 @@ let currentRoom = null;
 let isHost = false;
 let categories = [];
 let myCategory = null;
+let myPlayerName = null;  // persists across reconnects
 let pendingRoomUpdate = null;
 let wasHost = false;
 let gameIsOver = false; // lock screen transitions once game ends
@@ -498,7 +495,25 @@ function setMyId(id) {
 // ──────────────────────────────────────────
 function initSocket() {
   if (socket) return;
-  socket = io({ reconnectionDelay: 1000, reconnectionAttempts: 10 });
+  socket = io({
+    transports: ['websocket'],       // skip long-polling entirely — much more stable
+    reconnectionAttempts: Infinity,  // never give up
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 4000
+  });
+
+  // On every (re)connect — if we're mid-session, rejoin the room
+  socket.on('connect', () => {
+    if (currentRoom && myPlayerName) {
+      socket.emit('rejoin-room', { code: currentRoom.code, name: myPlayerName });
+    }
+  });
+
+  socket.on('rejoin-ack', ({ code, playerId }) => {
+    myId = playerId;
+    document.getElementById('lobby-code').textContent = code;
+    showToast('Reconnected ✓', 'success');
+  });
 
   // ── Room events ──
   socket.on('room-created', ({ code, playerId }) => {
@@ -547,9 +562,11 @@ function initSocket() {
   });
 
   socket.on('ready-update', ({ readyCount, totalCount }) => {
-    document.getElementById('ready-status').style.display = 'block';
-    document.getElementById('ready-bar').style.width = `${(readyCount/totalCount)*100}%`;
-    document.getElementById('ready-count-text').textContent = `${readyCount} / ${totalCount} ready`;
+    if (readyCount >= totalCount) {
+      document.getElementById('ready-count-text').textContent = '🚀 Everyone\'s ready! Starting...';
+      document.getElementById('ready-status').style.display = 'block';
+    }
+    // No progress bar or count shown — just wait silently
   });
 
   socket.on('vote-update', ({ voteCount, totalCount }) => {
@@ -606,8 +623,10 @@ function initSocket() {
     showToast(message, 'error');
   });
 
-  socket.on('disconnect', () => {
-    showToast('Connection lost — trying to reconnect...', 'error');
+  socket.on('disconnect', (reason) => {
+    if (reason !== 'io client disconnect') {
+      showToast('Connection lost — reconnecting...', 'error');
+    }
   });
 
   socket.on('reconnect', () => {
@@ -695,6 +714,7 @@ function showWaitingForRole() {
 function createRoom() {
   const name = document.getElementById('home-name').value.trim();
   if (!name) return showToast('Enter your name first!', 'error');
+  myPlayerName = name;
   initSocket();
   socket.emit('create-room', { name });
 }
@@ -704,13 +724,14 @@ function joinRoom() {
   const code = document.getElementById('home-code').value.trim().toUpperCase();
   if (!name) return showToast('Enter your name first!', 'error');
   if (!code || code.length !== 6) return showToast('Enter a 6-character room code', 'error');
+  myPlayerName = name;
   initSocket();
   socket.emit('join-room', { name, code });
 }
 
 function leaveRoom() {
   if (socket) { socket.disconnect(); socket = null; }
-  myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null;
+  myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myPlayerName = null;
   showScreen('home');
 }
 
@@ -924,7 +945,8 @@ function renderRoleCard(data) {
 
 function markReady() {
   document.getElementById('ready-btn').disabled = true;
-  document.getElementById('ready-btn').textContent = '⏳ Waiting for others...';
+  document.getElementById('ready-btn').style.display = 'none';
+  document.getElementById('ready-count-text').textContent = 'Waiting for everyone...';
   document.getElementById('ready-status').style.display = 'block';
   socket.emit('player-ready');
 }

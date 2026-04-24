@@ -7,8 +7,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' },
-  pingTimeout: 60000,
-  pingInterval: 25000
+  pingTimeout: 90000,
+  pingInterval: 20000,
+  transports: ['websocket', 'polling'] // websocket first, polling fallback
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -266,7 +267,7 @@ const CATEGORIES = {
       "Olivia Rodrigo", "Doja Cat", "SZA", "Kendrick Lamar", "J. Cole",
       "Lil Wayne", "Snoop Dogg", "Dr. Dre", "Ice Cube", "Tupac Shakur",
       "The Notorious B.I.G.", "Nas", "Wu-Tang Clan", "Run-DMC", "LL Cool J",
-      "BTS", "BLACKPINK", "EXO", "Stray Kids", "NCT", "TWICE",
+      "BTS", "BLACKPINK", "EXO", "Stray Kids", "TWICE",
       "Metallica", "Nirvana", "Pearl Jam", "Soundgarden", "Alice in Chains",
       "Red Hot Chili Peppers", "Foo Fighters", "Linkin Park", "Green Day",
       "Blink-182", "Fall Out Boy", "Panic! at the Disco", "My Chemical Romance",
@@ -431,33 +432,87 @@ const VIDEO_CATEGORIES = {
 const _videoCache = {};
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+function parseISO8601Duration(d) {
+  const m = (d || '').match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return 0;
+  return (parseInt(m[1] || 0) * 3600) + (parseInt(m[2] || 0) * 60) + parseInt(m[3] || 0);
+}
+
 async function fetchYouTubeVideos(query) {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) throw new Error('YOUTUBE_API_KEY not set');
   if (_videoCache[query] && Date.now() - _videoCache[query].ts < CACHE_TTL) {
     return _videoCache[query].videos;
   }
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=short&maxResults=30&key=${apiKey}`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!data.items) throw new Error('YouTube API error: ' + JSON.stringify(data.error || data));
-  const videos = data.items
-    .filter(i => i.id && i.id.videoId)
-    .map(i => ({
-      id: i.id.videoId,
-      title: i.snippet.title,
-      thumbnail: i.snippet.thumbnails.medium ? i.snippet.thumbnails.medium.url : ''
+  // Step 1: search for short videos
+  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=short&maxResults=30&key=${apiKey}`;
+  const searchRes = await fetch(searchUrl);
+  const searchData = await searchRes.json();
+  if (!searchData.items) throw new Error('YouTube API error: ' + JSON.stringify(searchData.error || searchData));
+
+  const ids = searchData.items.filter(i => i.id && i.id.videoId).map(i => i.id.videoId);
+  if (!ids.length) throw new Error('No videos found');
+
+  // Step 2: fetch durations so we can filter to a consistent length (20–90 seconds)
+  const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${ids.join(',')}&key=${apiKey}`;
+  const detailRes = await fetch(detailUrl);
+  const detailData = await detailRes.json();
+
+  let videos = (detailData.items || [])
+    .filter(item => {
+      const secs = parseISO8601Duration(item.contentDetails.duration);
+      return secs >= 20 && secs <= 90;
+    })
+    .map(item => ({
+      id: item.id,
+      title: item.snippet.title,
+      thumbnail: item.snippet.thumbnails.medium ? item.snippet.thumbnails.medium.url : ''
     }));
+
+  // If strict filter yields too few, relax to anything under 3 minutes
+  if (videos.length < 4) {
+    videos = (detailData.items || [])
+      .filter(item => parseISO8601Duration(item.contentDetails.duration) <= 180)
+      .map(item => ({
+        id: item.id,
+        title: item.snippet.title,
+        thumbnail: item.snippet.thumbnails.medium ? item.snippet.thumbnails.medium.url : ''
+      }));
+  }
+
   _videoCache[query] = { videos, ts: Date.now() };
   return videos;
 }
 
-async function pickTwoVideos(categoryKey) {
+async function pickTwoVideos(categoryKey, usedIds = new Set()) {
   const cat = VIDEO_CATEGORIES[categoryKey] || VIDEO_CATEGORIES.funny;
-  const query = cat.queries[Math.floor(Math.random() * cat.queries.length)];
-  const videos = await fetchYouTubeVideos(query);
-  if (videos.length < 2) throw new Error('Not enough videos returned');
-  const shuffled = [...videos].sort(() => Math.random() - 0.5);
+
+  // Fetch from ALL queries for this category and merge/deduplicate
+  const allVideos = [];
+  const seenIds = new Set();
+  for (const query of cat.queries) {
+    try {
+      const vids = await fetchYouTubeVideos(query);
+      for (const v of vids) {
+        if (!seenIds.has(v.id)) { seenIds.add(v.id); allVideos.push(v); }
+      }
+    } catch (e) {
+      console.error('fetchYouTubeVideos error for query:', query, e.message);
+    }
+  }
+
+  if (allVideos.length < 2) throw new Error('Not enough videos returned');
+
+  // Prefer videos that haven't been shown in this room yet
+  const fresh = allVideos.filter(v => !usedIds.has(v.id));
+  const pool = fresh.length >= 2 ? fresh : allVideos;
+
+  // Proper Fisher-Yates shuffle
+  const shuffled = [...pool];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return { playerVideo: shuffled[0], imposterVideo: shuffled[1] };
 }
 
@@ -616,7 +671,10 @@ io.on('connection', (socket) => {
     if (isVideoMode) {
       // ── VIDEO MODE ──
       try {
-        const { playerVideo, imposterVideo } = await pickTwoVideos(room.settings.videoCategory || 'funny');
+        if (!room.usedVideoIds) room.usedVideoIds = new Set();
+        const { playerVideo, imposterVideo } = await pickTwoVideos(room.settings.videoCategory || 'funny', room.usedVideoIds);
+        room.usedVideoIds.add(playerVideo.id);
+        room.usedVideoIds.add(imposterVideo.id);
         room.currentWord = null;
         room.currentCategory = (VIDEO_CATEGORIES[room.settings.videoCategory] || VIDEO_CATEGORIES.funny).name;
         room.currentPlayerVideo = playerVideo;   // { id, title, thumbnail }
@@ -635,9 +693,13 @@ io.on('connection', (socket) => {
       room.currentImposterVideo = null;
     }
 
-    // Assign imposters
-    const shuffled = [...room.players].sort(() => Math.random() - 0.5);
-    room.imposters = shuffled.slice(0, room.settings.imposterCount).map(p => p.id);
+    // Assign imposters — proper Fisher-Yates shuffle for fair distribution
+    const shuffledPlayers = [...room.players];
+    for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+    }
+    room.imposters = shuffledPlayers.slice(0, room.settings.imposterCount).map(p => p.id);
 
     // Reset state
     room.gameState = 'role-reveal';
@@ -803,24 +865,81 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  // Disconnect
+  // Rejoin after reconnect (client sends this on every reconnect)
+  socket.on('rejoin-room', ({ code, name }) => {
+    const room = rooms[(code || '').toUpperCase()];
+    if (!room) return socket.emit('error', { message: 'Room no longer exists.' });
+
+    const player = room.players.find(p => p.name === name);
+    if (!player) return socket.emit('error', { message: 'You are no longer in this room.' });
+
+    // Cancel any pending removal timer
+    if (room._dcTimers && room._dcTimers[player.id]) {
+      clearTimeout(room._dcTimers[player.id]);
+      delete room._dcTimers[player.id];
+    }
+
+    const oldId = player.id;
+    player.id = socket.id;
+    socket.join(room.code);
+    socket.roomCode = room.code;
+    socket.playerName = name;
+
+    // Remap all ID references to the new socket ID
+    if (room.host === oldId) { room.host = socket.id; player.isHost = true; }
+    if (room.imposters) room.imposters = room.imposters.map(id => id === oldId ? socket.id : id);
+    if (room.eliminatedPlayers) room.eliminatedPlayers = room.eliminatedPlayers.map(id => id === oldId ? socket.id : id);
+    if (room.speakingOrder) room.speakingOrder = room.speakingOrder.map(id => id === oldId ? socket.id : id);
+    if (room.readyPlayers && room.readyPlayers.has(oldId)) { room.readyPlayers.delete(oldId); room.readyPlayers.add(socket.id); }
+    if (room.votes) {
+      const newVotes = {};
+      Object.entries(room.votes).forEach(([k, v]) => {
+        newVotes[k === oldId ? socket.id : k] = v === oldId ? socket.id : v;
+      });
+      room.votes = newVotes;
+    }
+    if (room.imposterWords && room.imposterWords[oldId] !== undefined) {
+      room.imposterWords[socket.id] = room.imposterWords[oldId];
+      delete room.imposterWords[oldId];
+    }
+
+    socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
+    socket.emit('room-update', sanitizeRoom(room));
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Disconnect — use a grace period so brief network blips don't destroy the room
   socket.on('disconnect', () => {
     const room = rooms[socket.roomCode];
     if (!room) return;
-    room.players = room.players.filter(p => p.id !== socket.id);
-    if (room.readyPlayers) room.readyPlayers.delete(socket.id);
-    if (room.players.length === 0) {
-      delete rooms[room.code];
+
+    const name = socket.playerName || 'A player';
+
+    // In-game: give player 10 seconds to reconnect before removing them
+    if (room.gameState !== 'lobby') {
+      if (!room._dcTimers) room._dcTimers = {};
+      room._dcTimers[socket.id] = setTimeout(() => {
+        _removePlayer(room, socket.id, name);
+      }, 10000);
       return;
     }
-    if (room.host === socket.id) {
-      room.host = room.players[0].id;
-      room.players[0].isHost = true;
-    }
-    io.to(room.code).emit('room-update', sanitizeRoom(room));
-    io.to(room.code).emit('player-left', { name: socket.playerName || 'A player' });
+
+    _removePlayer(room, socket.id, name);
   });
 });
+
+function _removePlayer(room, socketId, name) {
+  if (!room) return;
+  room.players = room.players.filter(p => p.id !== socketId);
+  if (room.readyPlayers) room.readyPlayers.delete(socketId);
+  if (room.players.length === 0) { delete rooms[room.code]; return; }
+  if (room.host === socketId) {
+    room.host = room.players[0].id;
+    room.players[0].isHost = true;
+  }
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+  io.to(room.code).emit('player-left', { name });
+}
 
 // ─────────────────────────────────────────────
 // BUILD GAME-OVER PAYLOAD (shared helper)
@@ -855,69 +974,6 @@ function buildResultPayload(room, extra = {}) {
   };
 }
 
-// ─────────────────────────────────────────────
-// VOTE RESOLUTION LOGIC
-// ─────────────────────────────────────────────
-function resolveVotes(room) {
-  const tally = tallyVotes(room.votes);
-  let maxVotes = 0;
-  Object.values(tally).forEach(c => { if (c > maxVotes) maxVotes = c; });
-  const topCandidates = Object.entries(tally).filter(([, c]) => c === maxVotes).map(([id]) => id);
-  const eliminatedId = pickRandom(topCandidates);
-
-  const eliminatedPlayer = room.players.find(p => p.id === eliminatedId);
-  const isImposter = room.imposters.includes(eliminatedId);
-  room.eliminatedPlayers.push(eliminatedId);
-
-  // Build name-based tally
-  const namedTally = Object.fromEntries(
-    Object.entries(tally).map(([id, count]) => {
-      const p = room.players.find(pl => pl.id === id);
-      return [p?.name || id, count];
-    })
-  );
-
-  // Build individual vote map: voter name → who they voted for
-  const individualVotes = Object.fromEntries(
-    Object.entries(room.votes).map(([voterId, targetId]) => {
-      const voter = room.players.find(p => p.id === voterId);
-      const target = room.players.find(p => p.id === targetId);
-      return [voter?.name || voterId, target?.name || targetId];
-    })
-  );
-
-  room.lastEliminated = {
-    id: eliminatedId,
-    name: eliminatedPlayer?.name || 'Unknown',
-    isImposter,
-    voteCount: maxVotes,
-    totalVotes: Object.keys(room.votes).length,
-    tally: namedTally
-  };
-
-  // Save this round to history
-  if (!room.votingHistory) room.votingHistory = [];
-  room.votingHistory.push({
-    round: room.votingHistory.length + 1,
-    individualVotes,
-    tally: namedTally,
-    eliminated: { name: eliminatedPlayer?.name || 'Unknown', isImposter }
-  });
-
-  // Always end the game after every vote — go straight to results no matter what
-  room.gameState = 'game-over';
-  room.result = isImposter ? 'players-win' : 'imposters-win';
-  io.to(room.code).emit('game-over', buildResultPayload(room));
-  io.to(room.code).emit('room-update', sanitizeRoom(room));
-}
-
-// ─────────────────────────────────────────────
-// EXPORT CATEGORIES FOR CLIENT USE
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-// EXPORT CATEGORIES FOR CLIENT USE
-// ─────────────────────────────────────────────
 app.get('/api/categories', (req, res) => {
   const cats = Object.entries(CATEGORIES).map(([key, val]) => ({
     key,
@@ -927,9 +983,6 @@ app.get('/api/categories', (req, res) => {
   res.json(cats);
 });
 
-// ─────────────────────────────────────────────
-// START SERVER
-// ────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

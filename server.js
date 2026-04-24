@@ -627,11 +627,13 @@ io.on('connection', (socket) => {
       players: [{ id: socket.id, name: name.trim(), isHost: true }],
       gameState: 'lobby',
       settings: {
+        gameType: 'imposter',
         imposterCount: 1,
         blindImposter: false,
         gameMode: 'word',
         videoCategory: 'funny',
-        selectedCategories: ['movies', 'tvShows', 'videoGames', 'gameCharacters']
+        selectedCategories: ['movies', 'tvShows', 'videoGames', 'gameCharacters'],
+        whoamiCategory: 'celebrities'
       },
       currentWord: null,
       currentCategory: null,
@@ -688,6 +690,30 @@ io.on('connection', (socket) => {
   socket.on('start-game', async () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
+
+    // ── WHO AM I MODE ──
+    if (room.settings.gameType === 'whoami') {
+      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players.' });
+      const cat = WHOAMI_CATS[room.settings.whoamiCategory || 'celebrities'] || WHOAMI_CATS.celebrities;
+      const pool = [...cat.items];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      room.whoamiAssignments = {};
+      room.players.forEach((p, i) => { room.whoamiAssignments[p.id] = pool[i % pool.length]; });
+      room.gameState = 'whoami-playing';
+      room.players.forEach(player => {
+        const others = room.players
+          .filter(p => p.id !== player.id)
+          .map(p => ({ name: p.name, word: room.whoamiAssignments[p.id] }));
+        io.to(player.id).emit('whoami-game-started', { others, categoryName: cat.name });
+      });
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
+    // ── IMPOSTER MODE ──
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
     const maxImposters = Math.floor((room.players.length - 1) / 2);
     if (room.settings.imposterCount > maxImposters) {
@@ -857,6 +883,30 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
+  // Store a player's Who Am I guess
+  socket.on('whoami-guess', ({ guess }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'whoami-playing') return;
+    if (!room.whoamiGuesses) room.whoamiGuesses = {};
+    room.whoamiGuesses[socket.id] = (guess || '').trim();
+  });
+
+  // End Who Am I game (host only)
+  socket.on('whoami-end-game', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    const guesses = room.whoamiGuesses || {};
+    const all = room.players.map(p => {
+      const word = (room.whoamiAssignments || {})[p.id] || '?';
+      const guess = guesses[p.id] || null;
+      const correct = guess ? guess.toLowerCase().trim() === word.toLowerCase().trim() : false;
+      return { name: p.name, word, guess, correct };
+    });
+    room.gameState = 'whoami-ended';
+    io.to(room.code).emit('whoami-game-ended', { all });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
   // Play again
   socket.on('play-again', () => {
     const room = rooms[socket.roomCode];
@@ -865,6 +915,8 @@ io.on('connection', (socket) => {
     room.currentWord = null;
     room.currentCategory = null;
     room.currentCategoryKey = null;
+    room.whoamiAssignments = {};
+    room.whoamiGuesses = {};
     room.imposters = [];
     room.votes = {};
     room.readyPlayers = new Set();
@@ -1047,12 +1099,10 @@ io.on('connection', (socket) => {
     // Imposter room
     const room = rooms[socket.roomCode];
     if (room) {
-      if (room.gameState !== 'lobby') {
-        if (!room._dcTimers) room._dcTimers = {};
-        room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, 10000);
-      } else {
-        _removePlayer(room, socket.id, name);
-      }
+      // Always use a grace period — 60s in-game, 30s in lobby
+    if (!room._dcTimers) room._dcTimers = {};
+    const delay = room.gameState !== 'lobby' ? 60000 : 30000;
+    room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, delay);
     }
 
     // Who Am I room
@@ -1071,6 +1121,9 @@ function _removePlayer(room, socketId, name) {
   if (!room) return;
   room.players = room.players.filter(p => p.id !== socketId);
   if (room.readyPlayers) room.readyPlayers.delete(socketId);
+  if (!room) return;
+  room.players = room.players.filter(p => p.id !== socketId);
+  if (room.readyPlayers) room.readyPlayers.delete(socketId);
   if (room.players.length === 0) { delete rooms[room.code]; return; }
   if (room.host === socketId) {
     room.host = room.players[0].id;
@@ -1080,46 +1133,11 @@ function _removePlayer(room, socketId, name) {
   io.to(room.code).emit('player-left', { name });
 }
 
-// ─────────────────────────────────────────────
-// BUILD GAME-OVER PAYLOAD (shared helper)
-// ─────────────────────────────────────────────
-function buildResultPayload(room, extra = {}) {
-  return {
-    result: room.result,
-    word: room.currentWord || '',
-    category: room.currentCategory || '',
-    blindMode: !!(room.settings && room.settings.blindImposter),
-    gameMode: room.settings ? room.settings.gameMode : 'word',
-    playerVideo: room.currentPlayerVideo || null,
-    imposterVideo: room.currentImposterVideo || null,
-    imposters: (room.imposters || []).map(id => {
-      const p = room.players.find(p => p.id === id);
-      return p ? p.name : null;
-    }).filter(Boolean),
-    imposterWords: (room.imposters || []).map(id => {
-      const p = room.players.find(p => p.id === id);
-      return {
-        name: p ? p.name : id,
-        word: (room.imposterWords || {})[id] || null
-      };
-    }),
-    eliminated: room.lastEliminated || null,
-    votingHistory: room.votingHistory || [],
-    allPlayers: (room.players || []).map(p => ({
-      name: p.name,
-      isImposter: (room.imposters || []).includes(p.id)
-    })),
-    ...extra
-  };
-}
-
 app.get('/ping', (req, res) => res.send('ok'));
 
 app.get('/api/categories', (req, res) => {
   const cats = Object.entries(CATEGORIES).map(([key, val]) => ({
-    key,
-    name: val.name,
-    count: val.items.length
+    key, name: val.name, count: val.items.length
   }));
   res.json(cats);
 });

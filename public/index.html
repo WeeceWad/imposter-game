@@ -269,9 +269,18 @@
     <div id="lobby-player-list" class="player-list"></div>
   </div>
 
-  <!-- HOST SETTINGS -->
+  <!-- GAME TYPE SELECTOR (host only) -->
+  <div id="host-game-type" class="card" style="width:100%; display:none">
+    <div class="card-title">Game</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" id="gametype-imposter-btn" onclick="setGameType('imposter')" style="flex:1">🕵️ Imposter</button>
+      <button class="btn btn-sm" id="gametype-whoami-btn" onclick="setGameType('whoami')" style="flex:1">🤔 Who Am I?</button>
+    </div>
+  </div>
+
+  <!-- HOST SETTINGS (imposter only) -->
   <div id="host-settings" class="card" style="width:100%; display:none">
-    <div class="card-title">Game Settings</div>
+    <div class="card-title">Imposter Settings</div>
 
     <!-- GAME MODE -->
     <div class="setting-row">
@@ -320,9 +329,15 @@
     <div class="category-grid" id="video-category-grid"></div>
   </div>
 
+  <!-- WHO AM I CATEGORIES (whoami only) -->
+  <div id="host-whoami-categories" class="card" style="width:100%; display:none">
+    <div class="card-title">Who Am I? — Category</div>
+    <div class="category-grid" id="whoami-category-grid"></div>
+  </div>
+
   <div id="host-start-btn" style="width:100%; display:none">
     <button class="btn btn-primary" onclick="startGame()" id="start-btn">🚀 Start Game</button>
-    <div class="text-muted text-center" style="margin-top:8px; font-size:0.8rem">Need at least 3 players</div>
+    <div class="text-muted text-center" id="start-hint" style="margin-top:8px; font-size:0.8rem">Need at least 3 players</div>
   </div>
 
   <div id="player-waiting-msg" class="text-muted text-center" style="width:100%">
@@ -461,6 +476,85 @@
   <button class="btn btn-ghost" onclick="leaveRoom()">← Leave Room</button>
 </div>
 
+<!-- ══════════════════════════════════════════ -->
+<!-- WHO AM I — ROLE SCREEN (see everyone else) -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-whoami-role" class="screen" style="justify-content:flex-start; padding-top:32px">
+  <div style="text-align:center; width:100%">
+    <div style="font-size:2.5rem; filter:drop-shadow(0 0 16px #38bdf8)">🤔</div>
+    <div style="font-size:1.4rem; font-weight:900; background:linear-gradient(135deg,#38bdf8,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-top:8px">Who Am I?</div>
+  </div>
+
+  <div style="background:linear-gradient(135deg,rgba(14,165,233,.15),rgba(99,102,241,.15)); border:2px solid #0ea5e9; border-radius:14px; padding:28px 20px; text-align:center; width:100%">
+    <div style="color:var(--muted); font-size:0.85rem; margin-bottom:6px">You are...</div>
+    <div style="font-size:3.5rem; font-weight:900; color:#38bdf8; letter-spacing:-2px">???</div>
+    <div style="color:var(--muted); font-size:0.82rem; margin-top:10px">Ask yes/no questions to figure it out!</div>
+  </div>
+
+  <div class="card" style="width:100%">
+    <div class="card-title">Everyone else is...</div>
+    <div id="whoami-role-list" style="display:flex; flex-direction:column; gap:10px"></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="showScreen('whoami-game')">✅ Got it — let's play!</button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WHO AM I — GAME SCREEN                    -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-whoami-game" class="screen" style="justify-content:flex-start; padding-top:32px">
+  <div style="width:100%; display:flex; justify-content:space-between; align-items:center">
+    <div>
+      <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted)">You are</div>
+      <div style="font-size:2rem; font-weight:900; color:#38bdf8">???</div>
+    </div>
+    <div id="whoami-game-code" style="font-family:monospace; color:var(--muted); font-size:0.85rem"></div>
+  </div>
+
+  <div class="card" style="width:100%">
+    <div class="card-title">Others are...</div>
+    <div id="whoami-game-list" style="display:flex; flex-direction:column; gap:10px"></div>
+  </div>
+
+  <button class="btn btn-outline" onclick="showScreen('whoami-guess')">🤔 I think I know who I am!</button>
+
+  <div id="whoami-end-wrap" style="display:none; width:100%">
+    <button class="btn btn-danger" onclick="endWhoamiGame()">🏁 End Game & Reveal All</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WHO AM I — GUESS SCREEN                   -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-whoami-guess" class="screen">
+  <button class="btn-ghost" onclick="showScreen('whoami-game')" style="align-self:flex-start">← Back</button>
+
+  <div style="background:linear-gradient(135deg,rgba(14,165,233,.15),rgba(99,102,241,.15)); border:2px solid #0ea5e9; border-radius:14px; padding:28px 20px; text-align:center; width:100%">
+    <div style="color:var(--muted); font-size:0.85rem; margin-bottom:4px">Category:</div>
+    <div id="whoami-guess-cat" style="font-weight:700; color:#38bdf8; margin-bottom:12px">---</div>
+    <div style="color:var(--muted)">Who do you think you are?</div>
+  </div>
+
+  <div class="card" style="width:100%">
+    <input type="text" id="whoami-guess-input" placeholder="Type your guess..." autocomplete="off" />
+  </div>
+
+  <button class="btn btn-success" onclick="submitWhoamiGuess()">🎯 That's my final answer!</button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WHO AM I — REVEAL SCREEN                  -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-whoami-reveal" class="screen">
+  <div style="font-size:2rem; font-weight:900; text-align:center">🎉 Revealed!</div>
+  <div class="text-muted text-center">Here's who everyone was</div>
+
+  <div id="whoami-reveal-list" style="display:flex; flex-direction:column; gap:10px; width:100%"></div>
+
+  <button class="btn btn-primary" onclick="playAgain()">🔄 Play Again</button>
+  <button class="btn btn-ghost" onclick="leaveRoom()">← Leave Room</button>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -475,6 +569,7 @@ let myRole = null;
 let myWord = null;
 let myVote = null;
 let currentRoom = null;
+let myWhoamiCategoryName = null;
 let isHost = false;
 let categories = [];
 let myCategory = null;
@@ -612,6 +707,7 @@ function initSocket() {
 
   socket.on('reset-game', () => {
     myRole = null; myWord = null; myVote = null; myCategory = null;
+    myWhoamiCategoryName = null;
     gameIsOver = false;
     showScreen('lobby');
   });
@@ -638,6 +734,65 @@ function initSocket() {
     // Request a sync in case we missed updates
     if (currentRoom) socket.emit('request-sync', { code: currentRoom.code });
   });
+
+  // ── WHO AM I events ──
+  socket.on('whoami-game-started', (data) => {
+    // data: { others: [{name, word}], categoryName }
+    myWhoamiCategoryName = data.categoryName;
+
+    const makePlayerHtml = (p) => `
+      <div class="player-item">
+        <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+        <div>
+          <div class="player-name">${p.name}</div>
+          <div style="font-size:0.82rem; color:#38bdf8; font-weight:700">${p.word}</div>
+        </div>
+      </div>`;
+
+    // Role screen
+    const roleList = document.getElementById('whoami-role-list');
+    if (roleList) roleList.innerHTML = data.others.map(makePlayerHtml).join('');
+
+    // Game screen
+    const gameList = document.getElementById('whoami-game-list');
+    if (gameList) gameList.innerHTML = data.others.map(makePlayerHtml).join('');
+
+    const gameCode = document.getElementById('whoami-game-code');
+    if (gameCode && currentRoom) gameCode.textContent = 'Room: ' + currentRoom.code;
+
+    const endWrap = document.getElementById('whoami-end-wrap');
+    if (endWrap) endWrap.style.display = isHost ? 'block' : 'none';
+
+    // Guess screen: set category
+    const guessCat = document.getElementById('whoami-guess-cat');
+    if (guessCat) guessCat.textContent = data.categoryName;
+
+    showScreen('whoami-role');
+  });
+
+  socket.on('whoami-game-ended', (data) => {
+    // data: { all: [{name, word, guess, correct}] }
+    const revealList = document.getElementById('whoami-reveal-list');
+    if (revealList) {
+      revealList.innerHTML = (data.all || []).map(p => `
+        <div class="card" style="width:100%; padding:16px">
+          <div style="display:flex; align-items:center; gap:12px">
+            <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+            <div style="flex:1">
+              <div class="player-name">${p.name}</div>
+              <div style="font-size:0.82rem; color:#38bdf8; font-weight:700; margin-top:2px">They were: ${p.word}</div>
+              ${p.guess
+                ? `<div style="font-size:0.8rem; color:${p.correct ? '#22c55e' : '#f87171'}; margin-top:4px">
+                    ${p.correct ? '✅' : '❌'} Guessed: "${p.guess}"
+                   </div>`
+                : `<div style="font-size:0.8rem; color:var(--muted); margin-top:4px">Didn't guess</div>`}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+    showScreen('whoami-reveal');
+  });
 }
 
 // ──────────────────────────────────────────
@@ -647,8 +802,9 @@ function applyRoomUpdate(room) {
   currentRoom = room;
   const prevHost = isHost;
   isHost = room.host === myId;
-  // Always update data, but block screen transitions if game just ended
-  if (gameIsOver && room.gameState !== 'lobby') {
+  // Always update data, but block screen transitions if imposter game just ended
+  const whoamiActive = room.gameState === 'whoami-playing' || room.gameState === 'whoami-ended';
+  if (gameIsOver && room.gameState !== 'lobby' && !whoamiActive) {
     renderLobbyData(room);
     renderDiscussionData(room);
     renderVotingData(room);
@@ -693,6 +849,17 @@ function applyRoomUpdate(room) {
       myVote = null;
       showScreen('voting');
     }
+  }
+
+  if (room.gameState === 'whoami-playing') {
+    // whoami-game-started event handles the initial screen transition.
+    // But if someone rejoins mid-game they need to land somewhere sensible.
+    const whoamiScreens = ['screen-whoami-role', 'screen-whoami-game', 'screen-whoami-guess'];
+    if (!whoamiScreens.includes(active)) showScreen('whoami-game');
+  }
+
+  if (room.gameState === 'whoami-ended') {
+    if (active !== 'screen-whoami-reveal') showScreen('whoami-reveal');
   }
 }
 
@@ -800,61 +967,136 @@ function setVideoCategory(key) {
   socket.emit('update-settings', { settings: { videoCategory: key } });
 }
 
+function setGameType(type) {
+  if (!currentRoom || !isHost) return;
+  socket.emit('update-settings', { settings: { gameType: type } });
+}
+
+function setWhoamiCategory(key) {
+  if (!currentRoom || !isHost) return;
+  socket.emit('update-settings', { settings: { whoamiCategory: key } });
+}
+
+function endWhoamiGame() {
+  if (!isHost || !currentRoom) return;
+  socket.emit('whoami-end-game');
+}
+
+function submitWhoamiGuess() {
+  const input = document.getElementById('whoami-guess-input');
+  const guess = input ? input.value.trim() : '';
+  if (!guess) return showToast('Type your guess first!', 'error');
+  socket.emit('whoami-guess', { guess });
+  showToast('Guess submitted! ✓', 'success');
+  if (input) input.value = '';
+  showScreen('whoami-game');
+}
+
 function renderLobbyData(room) {
   document.getElementById('lobby-code').textContent = room.code;
   document.getElementById('lobby-player-count').textContent = room.players.length;
   const amHost = room.host === myId;
+  const gameType = (room.settings && room.settings.gameType) || 'imposter';
+  const isWhoami = gameType === 'whoami';
 
-  // Settings (host only)
-  document.getElementById('host-settings').style.display = amHost ? 'block' : 'none';
-  document.getElementById('host-categories').style.display = amHost ? 'block' : 'none';
+  // Host-only top-level visibility
+  document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
   document.getElementById('host-start-btn').style.display = amHost ? 'block' : 'none';
   document.getElementById('player-waiting-msg').style.display = amHost ? 'none' : 'block';
 
   if (amHost) {
-    document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
-    const blindToggle = document.getElementById('blind-toggle');
-    blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
+    // Game type toggle buttons
+    const impBtn = document.getElementById('gametype-imposter-btn');
+    const wamBtn = document.getElementById('gametype-whoami-btn');
+    if (impBtn) impBtn.className = 'btn btn-sm' + (!isWhoami ? ' btn-primary' : ' btn-outline');
+    if (wamBtn) wamBtn.className = 'btn btn-sm' + (isWhoami ? ' btn-primary' : ' btn-outline');
 
-    // Game mode buttons
     const isVideo = room.settings.gameMode === 'video';
-    const wordBtn = document.getElementById('mode-word-btn');
-    const videoBtn = document.getElementById('mode-video-btn');
-    if (wordBtn) {
-      wordBtn.className = 'btn btn-sm' + (!isVideo ? ' btn-primary' : ' btn-outline');
-      videoBtn.className = 'btn btn-sm' + (isVideo ? ' btn-primary' : ' btn-outline');
-    }
-    // Show/hide word vs video category sections
     const wordCats = document.getElementById('host-categories');
     const videoCats = document.getElementById('host-video-categories');
+    const whoamiCats = document.getElementById('host-whoami-categories');
     const blindRow = document.getElementById('blind-row');
-    if (wordCats) wordCats.style.display = isHost && !isVideo ? 'block' : 'none';
-    if (videoCats) videoCats.style.display = isHost && isVideo ? 'block' : 'none';
-    if (blindRow) blindRow.style.display = isVideo ? 'none' : 'flex';
+    const hostSettings = document.getElementById('host-settings');
 
-    // Populate video category grid
-    const videoGrid = document.getElementById('video-category-grid');
-    if (videoGrid && isHost) {
-      const videoCategoryDefs = [
-        { key: 'funny',      label: '😂 Funny' },
-        { key: 'animals',    label: '🐾 Animals' },
-        { key: 'fails',      label: '💥 Fails' },
-        { key: 'sports',     label: '⚽ Sports' },
-        { key: 'food',       label: '🍔 Food' },
-        { key: 'satisfying', label: '✨ Satisfying' },
-        { key: 'gaming',     label: '🎮 Gaming' },
-        { key: 'dance',      label: '💃 Dance' },
-        { key: 'pranks',     label: '😈 Pranks' },
-        { key: 'nature',     label: '🌿 Nature' }
-      ];
-      const selVid = room.settings.videoCategory || 'funny';
-      videoGrid.innerHTML = videoCategoryDefs.map(c => `
-        <div class="cat-chip ${selVid === c.key ? 'selected' : ''}" onclick="setVideoCategory('${c.key}')" id="vcat-${c.key}">
-          ${c.label}
-        </div>
-      `).join('');
+    if (isWhoami) {
+      // Who Am I? mode — hide all imposter sections
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats) wordCats.style.display = 'none';
+      if (videoCats) videoCats.style.display = 'none';
+      if (whoamiCats) whoamiCats.style.display = 'block';
+
+      // Populate Who Am I? category grid
+      const whoamiGrid = document.getElementById('whoami-category-grid');
+      if (whoamiGrid) {
+        const WHOAMI_CAT_DEFS = [
+          { key: 'celebrities',  label: '⭐ Celebrities' },
+          { key: 'fictional',    label: '🦸 Fictional Characters' },
+          { key: 'athletes',     label: '⚽ Athletes' },
+          { key: 'historical',   label: '🏛️ Historical Figures' },
+          { key: 'musicians',    label: '🎵 Musicians' },
+          { key: 'politicians',  label: '🗳️ Politicians' },
+          { key: 'youtubers',    label: '📹 YouTubers' }
+        ];
+        const selWam = room.settings.whoamiCategory || 'celebrities';
+        whoamiGrid.innerHTML = WHOAMI_CAT_DEFS.map(c => `
+          <div class="cat-chip ${selWam === c.key ? 'selected' : ''}" onclick="setWhoamiCategory('${c.key}')">
+            ${c.label}
+          </div>
+        `).join('');
+      }
+
+      // Start hint
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 2 players';
+
+    } else {
+      // Imposter mode
+      if (hostSettings) hostSettings.style.display = 'block';
+      if (whoamiCats) whoamiCats.style.display = 'none';
+      if (wordCats) wordCats.style.display = !isVideo ? 'block' : 'none';
+      if (videoCats) videoCats.style.display = isVideo ? 'block' : 'none';
+      if (blindRow) blindRow.style.display = isVideo ? 'none' : 'flex';
+
+      document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
+      const blindToggle = document.getElementById('blind-toggle');
+      blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
+
+      // Game mode buttons
+      const wordBtn = document.getElementById('mode-word-btn');
+      const videoBtn = document.getElementById('mode-video-btn');
+      if (wordBtn) {
+        wordBtn.className = 'btn btn-sm' + (!isVideo ? ' btn-primary' : ' btn-outline');
+        videoBtn.className = 'btn btn-sm' + (isVideo ? ' btn-primary' : ' btn-outline');
+      }
+
+      // Populate video category grid
+      const videoGrid = document.getElementById('video-category-grid');
+      if (videoGrid) {
+        const videoCategoryDefs = [
+          { key: 'funny',      label: '😂 Funny' },
+          { key: 'animals',    label: '🐾 Animals' },
+          { key: 'fails',      label: '💥 Fails' },
+          { key: 'sports',     label: '⚽ Sports' },
+          { key: 'food',       label: '🍔 Food' },
+          { key: 'satisfying', label: '✨ Satisfying' },
+          { key: 'gaming',     label: '🎮 Gaming' },
+          { key: 'dance',      label: '💃 Dance' },
+          { key: 'pranks',     label: '😈 Pranks' },
+          { key: 'nature',     label: '🌿 Nature' }
+        ];
+        const selVid = room.settings.videoCategory || 'funny';
+        videoGrid.innerHTML = videoCategoryDefs.map(c => `
+          <div class="cat-chip ${selVid === c.key ? 'selected' : ''}" onclick="setVideoCategory('${c.key}')" id="vcat-${c.key}">
+            ${c.label}
+          </div>
+        `).join('');
+      }
+      renderCategoryGrid();
+
+      // Start hint
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 3 players';
     }
-    renderCategoryGrid();
   }
 
   // Player list — always render
@@ -1085,25 +1327,18 @@ function renderElimination(data) {
       <div style="font-size:2rem; margin-bottom:8px">${isElimImposter ? '🔪' : '✅'}</div>
       <div style="font-size:1.2rem; font-weight:800; color:${isElimImposter ? '#fca5a5' : '#86efac'}">
         ${eliminated.name} was ${isElimImposter ? 'the imposter! 🎉' : 'innocent 😬'}
-      </div>
-      ${!isElimImposter ? '<div class="text-muted" style="margin-top:6px; font-size:0.85rem">The imposters are still among you...</div>' : ''}
-      ${isElimImposter && remainingImposters > 0 ? `<div class="text-muted" style="margin-top:6px; font-size:0.85rem">${remainingImposters} imposter${remainingImposters>1?'s':''} still at large!</div>` : ''}
     </div>
   `;
 
-  // Vote breakdown
-  if (eliminated.tally && Object.keys(eliminated.tally).length > 0) {
-    const sorted = Object.entries(eliminated.tally).sort(([,a],[,b]) => b-a);
-    html += `<div class="card fade-in" style="width:100%">
-      <div class="card-title">Vote Breakdown</div>
-      ${sorted.map(([name, count]) => `<div class="stat-row"><div class="stat-label">${name}</div><div class="stat-val">${count} vote${count!==1?'s':''}</div></div>`).join('')}
-    </div>`;
-  }
-
-  // If imposter → waiting for guess
-  if (isElimImposter && gameState === 'imposter-guess') {
-    showGuessWaitingScreen(eliminated.name);
-    return;
+  // If imposter was caught, show remaining
+  if (isElimImposter && remainingImposters !== undefined) {
+    if (remainingImposters > 0) {
+      html += `
+        <div class="card fade-in" style="width:100%; border-color:var(--warning); background:rgba(251,191,36,0.08)">
+          <div style="font-weight:700; color:#fbbf24; margin-bottom:4px">⚠️ ${remainingImposters} imposter${remainingImposters>1?'s':''} still hiding!</div>
+          <div class="text-muted" style="font-size:0.85rem">Keep voting — the game continues</div>
+        </div>`;
+    }
   }
 
   document.getElementById('elim-content').innerHTML = html;
@@ -1169,7 +1404,6 @@ function renderGameOver(data) {
 
   // ── The Word / Videos ──
   if (data.gameMode === 'video') {
-    // Video mode: show both video thumbnails
     if (data.playerVideo) {
       html += `
         <div class="word-box fade-in">
@@ -1195,7 +1429,6 @@ function renderGameOver(data) {
         <div class="word-box-value">${word}</div>
         <div class="text-muted" style="font-size:0.8rem; margin-top:4px">${category}</div>
       </div>`;
-    // Blind mode imposter word
     if (blindMode && imposterWords && imposterWords.some(iw => iw.word)) {
       imposterWords.filter(iw => iw.word).forEach(iw => {
         html += `
@@ -1244,7 +1477,6 @@ function renderGameOver(data) {
         html += `<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent2);margin:${i>0?'14px':'4px'} 0 8px">Round ${round.round}</div>`;
       }
 
-      // Individual votes
       if (round.individualVotes && Object.keys(round.individualVotes).length > 0) {
         Object.entries(round.individualVotes).forEach(([voter, target]) => {
           html += `<div class="stat-row">
@@ -1254,7 +1486,6 @@ function renderGameOver(data) {
         });
       }
 
-      // Who got eliminated
       html += `<div style="margin-top:10px;padding:10px;border-radius:8px;background:${round.eliminated.isImposter ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};border:1px solid ${round.eliminated.isImposter ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}">
         <span style="font-size:0.82rem;font-weight:700">
           ${round.eliminated.isImposter ? '🔪' : '😬'} ${round.eliminated.name} was voted out — ${round.eliminated.isImposter ? 'was the imposter!' : 'was innocent'}
@@ -1282,9 +1513,7 @@ function playAgain() {
 }
 
 function changePack() {
-  // Go to lobby with settings panel open — same as play again but scrolls to categories
   socket.emit('play-again');
-  // After reset-game fires and lobby shows, scroll to categories
   setTimeout(() => {
     const catEl = document.getElementById('host-categories');
     if (catEl) catEl.scrollIntoView({ behavior: 'smooth' });
@@ -1315,7 +1544,6 @@ function showScreen(name) {
   if (name === 'elimination') document.getElementById('elim-continue-btn').style.display = 'none';
 }
 
-
 // ──────────────────────────────────────────
 // TOAST
 // ──────────────────────────────────────────
@@ -1333,6 +1561,7 @@ function showToast(msg, type = '') {
 // ──────────────────────────────────────────
 document.getElementById('home-name').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(); });
 document.getElementById('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+document.getElementById('whoami-guess-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitWhoamiGuess(); });
 
 // Keep Render server awake — ping every 4 minutes
 setInterval(() => fetch('/ping').catch(() => {}), 4 * 60 * 1000);

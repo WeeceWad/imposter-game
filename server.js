@@ -583,6 +583,34 @@ function tallyVotes(votes) {
 const rooms = {};
 
 // ─────────────────────────────────────────────
+// WHO AM I — CATEGORIES
+// ─────────────────────────────────────────────
+const WHOAMI_CATS = {
+  celebrities:    { name: "Celebrities",       items: ["Taylor Swift","Beyonce","Drake","Rihanna","Ed Sheeran","Adele","Justin Bieber","Ariana Grande","Harry Styles","Billie Eilish","Post Malone","The Weeknd","Doja Cat","Olivia Rodrigo","Dua Lipa","Cardi B","Nicki Minaj","Travis Scott","Kendrick Lamar","Bad Bunny","Shakira","Lady Gaga","Bruno Mars","Eminem","Kanye West","Jay-Z","Sam Smith","Miley Cyrus","Selena Gomez","Zendaya","Timothee Chalamet","Tom Holland","Ryan Reynolds","Dwayne Johnson","Leonardo DiCaprio","Brad Pitt","Margot Robbie","Scarlett Johansson","Chris Hemsworth","Robert Downey Jr","Will Smith","Keanu Reeves","Tom Hanks","Florence Pugh","Pedro Pascal","Austin Butler","Sabrina Carpenter","Chappell Roan","Charli XCX","SZA"] },
+  movieCharacters:{ name: "Movie Characters",  items: ["Darth Vader","Luke Skywalker","Hermione Granger","Harry Potter","Frodo Baggins","Gandalf","Jack Sparrow","Katniss Everdeen","Thanos","Iron Man","Batman","Superman","Wonder Woman","The Joker","Hannibal Lecter","James Bond","Indiana Jones","Forrest Gump","The Terminator","Shrek","Buzz Lightyear","Woody","Simba","Elsa","Moana","Jack Skellington","Gollum","Voldemort","Dumbledore","Aragorn","Neo","Tyler Durden","Don Corleone","John Wick","Captain America","Black Widow","Thor","Spider-Man","Deadpool","Wolverine","Magneto","Paddington Bear","Jason Bourne","Ethan Hunt"] },
+  tvCharacters:   { name: "TV Characters",     items: ["Walter White","Jesse Pinkman","Jon Snow","Daenerys Targaryen","Tyrion Lannister","Sherlock Holmes","Ted Lasso","Eleven","Jim Halpert","Dwight Schrute","Michael Scott","Joey Tribbiani","Chandler Bing","Ross Geller","Rachel Green","Sheldon Cooper","George Costanza","Kramer","Tony Soprano","Saul Goodman","Cersei Lannister","Arya Stark","Joffrey Baratheon","Harvey Specter","Don Draper","Dexter Morgan","Carrie Bradshaw","Eric Cartman","Homer Simpson","Bart Simpson","Rick Sanchez","Morty Smith","Patrick Star","SpongeBob SquarePants","Peter Griffin","Stewie Griffin","Bojack Horseman","Barney Stinson","Leslie Knope","Ron Swanson"] },
+  sportStars:     { name: "Sports Stars",      items: ["Lionel Messi","Cristiano Ronaldo","Kylian Mbappe","Neymar","LeBron James","Michael Jordan","Kobe Bryant","Stephen Curry","Giannis Antetokounmpo","Serena Williams","Roger Federer","Rafael Nadal","Novak Djokovic","Tiger Woods","Usain Bolt","Tom Brady","Michael Phelps","Simone Biles","Lewis Hamilton","Max Verstappen","Floyd Mayweather","Muhammad Ali","Mike Tyson","Pele","Maradona","Zinedine Zidane","Ronaldinho","David Beckham","Wayne Rooney","Harry Kane","Mohamed Salah","Erling Haaland","Vinicius Jr","Jude Bellingham","Caitlin Clark","Naomi Osaka","Ben Stokes","Virat Kohli","Anthony Joshua"] },
+  historical:     { name: "Historical Figures",items: ["Napoleon Bonaparte","Julius Caesar","Cleopatra","Alexander the Great","Genghis Khan","Leonardo da Vinci","Michelangelo","Isaac Newton","Albert Einstein","Charles Darwin","Marie Curie","Nikola Tesla","Thomas Edison","Abraham Lincoln","George Washington","Winston Churchill","Gandhi","Martin Luther King Jr","Nelson Mandela","Queen Elizabeth I","Henry VIII","William Shakespeare","Beethoven","Mozart","Picasso","Vincent van Gogh","Frida Kahlo","Christopher Columbus","Galileo Galilei","Sigmund Freud","Karl Marx","Plato","Aristotle","Socrates","Joan of Arc","Ada Lovelace","Alan Turing","Anne Frank"] },
+  animals:        { name: "Animals",            items: ["Lion","Tiger","Elephant","Giraffe","Penguin","Koala","Kangaroo","Panda","Polar Bear","Gorilla","Chimpanzee","Dolphin","Whale","Shark","Octopus","Eagle","Owl","Flamingo","Parrot","Peacock","Crocodile","Chameleon","Komodo Dragon","Meerkat","Sloth","Platypus","Narwhal","Axolotl","Capybara","Red Panda","Snow Leopard","Cheetah","Hyena","Manta Ray","Jellyfish","Seahorse","Sea Turtle","Otter","Armadillo","Quokka","Fennec Fox","Wombat","Tapir","Okapi","Numbat"] },
+  objects:        { name: "Objects",            items: ["Toothbrush","Refrigerator","Television","Bicycle","Umbrella","Scissors","Mirror","Pillow","Lamp","Clock","Calculator","Keyboard","Headphones","Camera","Telescope","Microscope","Thermometer","Compass","Backpack","Wallet","Sunglasses","Bottle","Fork","Spoon","Blender","Toaster","Microwave","Washing Machine","Vacuum Cleaner","Hairdryer","Trampoline","Skateboard","Lawnmower","Fire Extinguisher","Traffic Light","Mailbox","Stapler","Escalator","Elevator","Parking Meter"] }
+};
+
+// ─────────────────────────────────────────────
+// WHO AM I — ROOMS
+// ─────────────────────────────────────────────
+const whoamiRooms = {};
+
+function sanitizeWhoamiRoom(room) {
+  return {
+    code: room.code,
+    host: room.host,
+    gameState: room.gameState,
+    settings: room.settings,
+    players: room.players.map(p => ({ id: p.id, name: p.name, isHost: p.isHost }))
+  };
+}
+
+// ─────────────────────────────────────────────
 // SOCKET.IO
 // ─────────────────────────────────────────────
 io.on('connection', (socket) => {
@@ -908,23 +936,134 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
+  // ─────────────────────────────────────────────
+  // WHO AM I — SOCKET HANDLERS
+  // ─────────────────────────────────────────────
+
+  socket.on('whoami-create-room', ({ name }) => {
+    if (!name || !name.trim()) return socket.emit('error', { message: 'Enter your name' });
+    let code, attempts = 0;
+    do { code = generateCode(); attempts++; } while (whoamiRooms[code] && attempts < 100);
+    whoamiRooms[code] = {
+      code, host: socket.id, gameState: 'lobby',
+      settings: { category: 'celebrities' },
+      players: [{ id: socket.id, name: name.trim(), isHost: true }],
+      assignments: {}
+    };
+    socket.join(code);
+    socket.whoamiCode = code;
+    socket.playerName = name.trim();
+    socket.emit('room-created', { code, playerId: socket.id });
+    io.to(code).emit('room-update', sanitizeWhoamiRoom(whoamiRooms[code]));
+  });
+
+  socket.on('whoami-join-room', ({ name, code }) => {
+    const room = whoamiRooms[(code || '').toUpperCase()];
+    if (!room) return socket.emit('error', { message: 'Room not found.' });
+    if (room.gameState !== 'lobby') return socket.emit('error', { message: 'Game already in progress.' });
+    if (!name || !name.trim()) return socket.emit('error', { message: 'Enter your name' });
+    const cleanName = name.trim();
+    if (room.players.find(p => p.name.toLowerCase() === cleanName.toLowerCase())) {
+      return socket.emit('error', { message: 'That name is taken.' });
+    }
+    room.players.push({ id: socket.id, name: cleanName, isHost: false });
+    socket.join(room.code);
+    socket.whoamiCode = room.code;
+    socket.playerName = cleanName;
+    socket.emit('room-joined', { code: room.code, playerId: socket.id });
+    io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
+    io.to(room.code).emit('player-joined', { name: cleanName });
+  });
+
+  socket.on('whoami-update-settings', ({ category }) => {
+    const room = whoamiRooms[socket.whoamiCode];
+    if (!room || room.host !== socket.id) return;
+    if (category) room.settings.category = category;
+    io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
+  });
+
+  socket.on('whoami-start-game', () => {
+    const room = whoamiRooms[socket.whoamiCode];
+    if (!room || room.host !== socket.id) return;
+    if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players.' });
+
+    const cat = WHOAMI_CATS[room.settings.category] || WHOAMI_CATS.celebrities;
+    const pool = [...cat.items].sort(() => Math.random() - 0.5);
+
+    room.assignments = {};
+    room.players.forEach((p, i) => { room.assignments[p.id] = pool[i % pool.length]; });
+    room.gameState = 'playing';
+
+    // Send each player everyone else's word (not their own)
+    room.players.forEach(player => {
+      const others = room.players
+        .filter(p => p.id !== player.id)
+        .map(p => ({ name: p.name, word: room.assignments[p.id] }));
+      io.to(player.id).emit('whoami-game-started', { others, categoryName: cat.name });
+    });
+  });
+
+  socket.on('whoami-end-game', () => {
+    const room = whoamiRooms[socket.whoamiCode];
+    if (!room || room.host !== socket.id) return;
+    const all = room.players.map(p => ({ name: p.name, word: room.assignments[p.id] || '?' }));
+    room.gameState = 'ended';
+    io.to(room.code).emit('whoami-game-ended', { all });
+  });
+
+  socket.on('whoami-play-again', () => {
+    const room = whoamiRooms[socket.whoamiCode];
+    if (!room || room.host !== socket.id) return;
+    room.gameState = 'lobby';
+    room.assignments = {};
+    io.to(room.code).emit('whoami-reset');
+    io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
+  });
+
+  socket.on('whoami-rejoin', ({ code, name }) => {
+    const room = whoamiRooms[(code || '').toUpperCase()];
+    if (!room) return socket.emit('error', { message: 'Room no longer exists.' });
+    const player = room.players.find(p => p.name === name);
+    if (!player) return socket.emit('error', { message: 'You are no longer in this room.' });
+    const oldId = player.id;
+    player.id = socket.id;
+    socket.join(room.code);
+    socket.whoamiCode = room.code;
+    socket.playerName = name;
+    if (room.host === oldId) { room.host = socket.id; player.isHost = true; }
+    if (room.assignments && room.assignments[oldId] !== undefined) {
+      room.assignments[socket.id] = room.assignments[oldId];
+      delete room.assignments[oldId];
+    }
+    socket.emit('whoami-rejoin-ack', { code: room.code, playerId: socket.id });
+    socket.emit('room-update', sanitizeWhoamiRoom(room));
+    io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
+  });
+
   // Disconnect — use a grace period so brief network blips don't destroy the room
   socket.on('disconnect', () => {
-    const room = rooms[socket.roomCode];
-    if (!room) return;
-
     const name = socket.playerName || 'A player';
 
-    // In-game: give player 10 seconds to reconnect before removing them
-    if (room.gameState !== 'lobby') {
-      if (!room._dcTimers) room._dcTimers = {};
-      room._dcTimers[socket.id] = setTimeout(() => {
+    // Imposter room
+    const room = rooms[socket.roomCode];
+    if (room) {
+      if (room.gameState !== 'lobby') {
+        if (!room._dcTimers) room._dcTimers = {};
+        room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, 10000);
+      } else {
         _removePlayer(room, socket.id, name);
-      }, 10000);
-      return;
+      }
     }
 
-    _removePlayer(room, socket.id, name);
+    // Who Am I room
+    const wroom = whoamiRooms[socket.whoamiCode];
+    if (wroom) {
+      wroom.players = wroom.players.filter(p => p.id !== socket.id);
+      if (wroom.players.length === 0) { delete whoamiRooms[wroom.code]; return; }
+      if (wroom.host === socket.id) { wroom.host = wroom.players[0].id; wroom.players[0].isHost = true; }
+      io.to(wroom.code).emit('room-update', sanitizeWhoamiRoom(wroom));
+      io.to(wroom.code).emit('player-left', { name });
+    }
   });
 });
 

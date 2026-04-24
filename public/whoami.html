@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Who Am I?</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d14; --surface: #16162a; --card: #1e1e38;
+      --border: #2a2a50; --accent: #0ea5e9; --accent2: #38bdf8;
+      --danger: #ef4444; --success: #22c55e; --warn: #f59e0b;
+      --text: #f1f1ff; --muted: #888aaa; --radius: 14px;
+    }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    body { display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+    .screen { display: none; width: 100%; max-width: 480px; padding: 24px 20px; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; justify-content: center; }
+    .screen.active { display: flex; }
+
+    .logo { font-size: 2.4rem; font-weight: 900; letter-spacing: -1px; background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .logo-sub { color: var(--muted); font-size: 0.9rem; margin-top: -8px; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; width: 100%; }
+    .card-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+
+    input[type="text"] { width: 100%; padding: 14px 16px; background: var(--surface); border: 2px solid var(--border); border-radius: 10px; color: var(--text); font-size: 1rem; outline: none; transition: border-color .2s; }
+    input[type="text"]:focus { border-color: var(--accent2); }
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    .btn { padding: 14px 24px; border-radius: 10px; border: none; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .15s; width: 100%; }
+    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+    .btn-outline { background: transparent; color: var(--text); border: 2px solid var(--border); }
+    .btn-outline:hover:not(:disabled) { border-color: var(--accent2); }
+    .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
+    .btn-sm { padding: 8px 14px; font-size: 0.85rem; width: auto; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+    .mode-card { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 28px 12px; cursor: pointer; text-align: center; transition: all .2s; }
+    .mode-card:hover { border-color: var(--accent2); transform: translateY(-2px); }
+    .mode-icon { font-size: 2.6rem; margin-bottom: 8px; }
+    .mode-label { font-weight: 800; font-size: 1rem; }
+    .mode-sub { color: var(--muted); font-size: 0.75rem; margin-top: 4px; line-height: 1.3; }
+
+    .player-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .player-item:last-child { border-bottom: none; }
+    .player-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #6366f1); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .player-name { flex: 1; font-weight: 600; }
+    .player-badge { font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; }
+    .badge-host { background: rgba(251,191,36,.2); color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+    .badge-you { background: rgba(14,165,233,.2); color: #38bdf8; border: 1px solid rgba(14,165,233,.3); }
+
+    .cat-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cat-chip { padding: 8px 14px; background: var(--surface); border: 2px solid var(--border); border-radius: 99px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .cat-chip.selected { border-color: var(--accent2); background: rgba(14,165,233,.15); color: var(--accent2); }
+
+    .assignment-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .assignment-item { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .assignment-item.is-me { border-color: var(--accent); background: rgba(14,165,233,.08); }
+    .a-player { flex: 1; font-weight: 600; }
+    .a-word { font-weight: 700; color: var(--accent2); text-align: right; }
+    .a-word.hidden { color: var(--muted); font-style: italic; }
+
+    .mystery-card { background: linear-gradient(135deg, rgba(14,165,233,.15), rgba(99,102,241,.15)); border: 2px solid var(--accent); border-radius: var(--radius); padding: 32px 20px; text-align: center; width: 100%; }
+    .mystery-text { font-size: 3.5rem; font-weight: 900; color: var(--accent2); letter-spacing: -2px; }
+
+    .lobby-top { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .code-badge { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; font-family: monospace; font-size: 1.1rem; font-weight: 700; letter-spacing: 2px; cursor: pointer; }
+
+    .section-title { font-size: 1.25rem; font-weight: 800; }
+    .text-center { text-align: center; }
+    .text-muted { color: var(--muted); font-size: 0.9rem; }
+
+    .divider { width: 100%; display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.8rem; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .back-btn { align-self: flex-start; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; padding: 0; }
+    .back-btn:hover { color: var(--text); }
+
+    .player-row { display: flex; gap: 8px; }
+    .player-row input { flex: 1; }
+    .remove-btn { background: none; border: 1px solid var(--danger); color: var(--danger); border-radius: 8px; padding: 0 12px; cursor: pointer; font-size: 1rem; flex-shrink: 0; }
+
+    .cover-card { background: var(--card); border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; text-align: center; width: 100%; }
+
+    .pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px; font-size: 0.9rem; font-weight: 600; transition: transform .3s; z-index: 999; white-space: nowrap; }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { border-color: var(--danger); color: var(--danger); }
+    #toast.success { border-color: var(--success); color: var(--success); }
+  </style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="screen-home" class="screen active">
+  <div style="font-size:3rem; filter:drop-shadow(0 0 20px #38bdf8)">🤔</div>
+  <div class="logo">Who Am I?</div>
+  <div class="logo-sub">Guess your secret identity</div>
+
+  <div class="mode-grid">
+    <div class="mode-card" onclick="chooseMode('online')">
+      <div class="mode-icon">🌐</div>
+      <div class="mode-label">Online</div>
+      <div class="mode-sub">Each player on their own device</div>
+    </div>
+    <div class="mode-card" onclick="chooseMode('device')">
+      <div class="mode-icon">📱</div>
+      <div class="mode-label">Same Device</div>
+      <div class="mode-sub">Pass the phone around</div>
+    </div>
+  </div>
+
+  <a href="/" style="color:var(--muted); font-size:0.85rem; text-decoration:none">← Back to Imposter</a>
+</div>
+
+<!-- ONLINE SETUP -->
+<div id="screen-online-setup" class="screen">
+  <button class="back-btn" onclick="showScreen('home')">← Back</button>
+  <div style="font-size:2.5rem">🌐</div>
+  <div class="section-title">Online Mode</div>
+
+  <div class="card">
+    <div class="card-title">Your Name</div>
+    <input type="text" id="online-name" placeholder="Enter your name..." maxlength="20" autocomplete="off" />
+  </div>
+
+  <button class="btn btn-primary" onclick="createRoom()">✨ Create Room</button>
+  <div class="divider">or join existing</div>
+
+  <div class="card">
+    <div class="card-title">Room Code</div>
+    <input type="text" id="online-code" placeholder="e.g. ABC123" maxlength="6" style="text-transform:uppercase; letter-spacing:3px" autocomplete="off" />
+  </div>
+  <button class="btn btn-outline" onclick="joinRoom()">🚪 Join Room</button>
+</div>
+
+<!-- ONLINE LOBBY -->
+<div id="screen-lobby" class="screen" style="justify-content:flex-start; padding-top:32px">
+  <div class="lobby-top">
+    <span style="color:var(--muted); font-size:0.85rem">Who Am I?</span>
+    <span class="code-badge" id="lobby-code" onclick="copyCode()" title="Tap to copy">------</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Players (<span id="lobby-count">1</span>)</div>
+    <div id="lobby-player-list"></div>
+  </div>
+
+  <div id="host-controls" style="display:none; width:100%; display:none; flex-direction:column; gap:16px">
+    <div class="card">
+      <div class="card-title">Category</div>
+      <div class="cat-grid" id="lobby-cat-grid"></div>
+    </div>
+    <button class="btn btn-primary" onclick="startGame()">🎭 Start Game</button>
+  </div>
+
+  <div id="guest-waiting" style="display:none; text-align:center; color:var(--muted); font-size:0.9rem">
+    Waiting for the host to start...
+  </div>
+</div>
+
+<!-- SAME DEVICE SETUP -->
+<div id="screen-device-setup" class="screen" style="justify-content:flex-start; padding-top:32px">
+  <button class="back-btn" onclick="showScreen('home')">← Back</button>
+  <div class="section-title text-center">Same Device Setup</div>
+  <div class="text-muted text-center">Add all players, then pick a category</div>
+
+  <div class="card">
+    <div class="card-title">Players</div>
+    <div id="device-player-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px"></div>
+    <div class="player-row">
+      <input type="text" id="new-player-input" placeholder="Player name..." maxlength="20" autocomplete="off" />
+      <button class="btn btn-sm btn-primary" onclick="addPlayer()">+ Add</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Category</div>
+    <div class="cat-grid" id="device-cat-grid"></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="startLocalGame()">🎭 Start Game</button>
+</div>
+
+<!-- PEEK INTRO: pass to player -->
+<div id="screen-peek-intro" class="screen">
+  <div class="text-center" style="width:100%">
+    <div style="font-size:0.9rem; color:var(--muted); margin-bottom:6px">Pass the phone to</div>
+    <div id="peek-name" style="font-size:2rem; font-weight:900; color:var(--accent2)">---</div>
+    <div style="color:var(--muted); font-size:0.85rem; margin-top:6px">Cover the screen until you're holding it</div>
+  </div>
+
+  <div class="cover-card">
+    <div style="font-size:3rem" class="pulse">🙈</div>
+    <div style="font-weight:700; margin-top:12px">Don't peek yet!</div>
+    <div style="color:var(--muted); font-size:0.83rem; margin-top:6px">Tap when you have the phone</div>
+  </div>
+
+  <button class="btn btn-primary" onclick="showPeekReveal()">👁️ I've got the phone — show me!</button>
+</div>
+
+<!-- PEEK REVEAL: player sees other people's words (not their own) -->
+<div id="screen-peek-reveal" class="screen" style="justify-content:flex-start; padding-top:32px">
+  <div class="text-center" style="width:100%">
+    <div style="font-size:0.85rem; color:var(--muted)">Everyone's identity except yours</div>
+    <div style="font-size:1.1rem; font-weight:800; margin-top:4px">Memorise these! 🧠</div>
+  </div>
+
+  <div class="assignment-list" id="peek-list"></div>
+
+  <button class="btn btn-primary" onclick="nextPeek()">✅ Memorised — pass to next player</button>
+</div>
+
+<!-- ONLINE ROLE SCREEN: you see others' words, not your own -->
+<div id="screen-role" class="screen" style="justify-content:flex-start; padding-top:32px">
+  <div class="mystery-card">
+    <div style="color:var(--muted); font-size:0.85rem; margin-bottom:8px">You are...</div>
+    <div class="mystery-text">???</div>
+    <div style="color:var(--muted); font-size:0.82rem; margin-top:12px">Ask yes/no questions to figure it out!</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Everyone else is...</div>
+    <div class="assignment-list" id="role-list"></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="confirmReady()">✅ Got it — I'm ready to play!</button>
+</div>
+
+<!-- GAME SCREEN: main discussion -->
+<div id="screen-game" class="screen" style="justify-content:flex-start; padding-top:32px">
+  <div class="lobby-top">
+    <div>
+      <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted)">You are</div>
+      <div style="font-size:2rem; font-weight:900; color:var(--accent2)">???</div>
+    </div>
+    <div id="game-code" style="font-family:monospace; color:var(--muted); font-size:0.85rem"></div>
+  </div>
+
+  <!-- Online: reference of others' words -->
+  <div id="game-reference" style="display:none; width:100%">
+    <div class="card">
+      <div class="card-title">Others are...</div>
+      <div class="assignment-list" id="game-list"></div>
+    </div>
+  </div>
+
+  <!-- Same device: player list only (rely on memory) -->
+  <div id="game-players" style="display:none; width:100%">
+    <div class="card">
+      <div class="card-title">Players</div>
+      <div id="game-player-list"></div>
+    </div>
+    <div class="text-muted text-center" style="font-size:0.82rem; margin-top:4px">
+      Ask yes/no questions to figure out who you are!
+    </div>
+  </div>
+
+  <button class="btn btn-outline" onclick="showScreen('guess')">🤔 I think I know who I am!</button>
+  <div id="end-game-wrap" style="display:none; width:100%">
+    <button class="btn btn-danger" onclick="endGame()">🏁 End Game & Reveal All</button>
+  </div>
+</div>
+
+<!-- GUESS SCREEN -->
+<div id="screen-guess" class="screen">
+  <button class="back-btn" onclick="showScreen('game')">← Back</button>
+
+  <div class="mystery-card">
+    <div style="color:var(--muted); font-size:0.85rem; margin-bottom:4px">Category:</div>
+    <div id="guess-category" style="font-weight:700; color:var(--accent2); margin-bottom:16px; font-size:1rem">---</div>
+    <div style="color:var(--muted)">Who do you think you are?</div>
+  </div>
+
+  <div class="card">
+    <input type="text" id="guess-input" placeholder="Type your guess..." autocomplete="off" />
+  </div>
+
+  <button class="btn btn-success" onclick="submitGuess()">🎯 That's my final answer!</button>
+</div>
+
+<!-- REVEAL SCREEN -->
+<div id="screen-reveal" class="screen">
+  <div class="section-title text-center">🎉 Revealed!</div>
+  <div class="text-muted text-center">Here's who everyone was</div>
+
+  <div class="assignment-list" id="reveal-list"></div>
+
+  <button class="btn btn-primary" onclick="playAgain()">🔄 Play Again</button>
+  <a href="/" style="color:var(--muted); font-size:0.85rem; text-decoration:none; margin-top:-8px">← Back to Imposter</a>
+</div>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ─────────────────────────────────────────────
+// CATEGORIES (used by both modes)
+// ─────────────────────────────────────────────
+const WHOAMI_CATS = {
+  celebrities: {
+    name: "🌟 Celebrities",
+    items: [
+      "Taylor Swift", "Beyonce", "Drake", "Rihanna", "Ed Sheeran",
+      "Adele", "Justin Bieber", "Ariana Grande", "Harry Styles", "Billie Eilish",
+      "Post Malone", "The Weeknd", "Doja Cat", "Olivia Rodrigo", "Dua Lipa",
+      "Cardi B", "Nicki Minaj", "Travis Scott", "Kendrick Lamar", "Bad Bunny",
+      "Shakira", "Lady Gaga", "Bruno Mars", "Eminem", "Kanye West",
+      "Jay-Z", "Sam Smith", "Miley Cyrus", "Selena Gomez", "Zendaya",
+      "Timothee Chalamet", "Tom Holland", "Ryan Reynolds", "Dwayne Johnson",
+      "Leonardo DiCaprio", "Brad Pitt", "Margot Robbie", "Scarlett Johansson",
+      "Chris Hemsworth", "Robert Downey Jr", "Will Smith", "Keanu Reeves",
+      "Tom Hanks", "Florence Pugh", "Pedro Pascal", "Austin Butler",
+      "Sabrina Carpenter", "Chappell Roan", "Charli XCX", "SZA"
+    ]
+  },
+  movieCharacters: {
+    name: "🎬 Movie Characters",
+    items: [
+      "Darth Vader", "Luke Skywalker", "Hermione Granger", "Harry Potter", "Frodo Baggins",
+      "Gandalf", "Jack Sparrow", "Katniss Everdeen", "Thanos", "Iron Man",
+      "Batman", "Superman", "Wonder Woman", "The Joker", "Hannibal Lecter",
+      "James Bond", "Indiana Jones", "Forrest Gump", "The Terminator", "Shrek",
+      "Buzz Lightyear", "Woody", "Simba", "Elsa", "Moana",
+      "Jack Skellington", "Gollum", "Voldemort", "Dumbledore", "Aragorn",
+      "Neo", "Tyler Durden", "Don Corleone", "John Wick",
+      "Captain America", "Black Widow", "Thor", "Spider-Man", "Deadpool",
+      "Wolverine", "Magneto", "Paddington Bear", "Jason Bourne", "Ethan Hunt"
+    ]
+  },
+  tvCharacters: {
+    name: "📺 TV Characters",
+    items: [
+      "Walter White", "Jesse Pinkman", "Jon Snow", "Daenerys Targaryen", "Tyrion Lannister",
+      "Sherlock Holmes", "Ted Lasso", "Eleven", "Jim Halpert", "Dwight Schrute",
+      "Michael Scott", "Joey Tribbiani", "Chandler Bing", "Ross Geller", "Rachel Green",
+      "Sheldon Cooper", "George Costanza", "Kramer", "Tony Soprano", "Saul Goodman",
+      "Cersei Lannister", "Arya Stark", "Joffrey Baratheon", "Harvey Specter",
+      "Don Draper", "Dexter Morgan", "Carrie Bradshaw", "Eric Cartman",
+      "Homer Simpson", "Bart Simpson", "Rick Sanchez", "Morty Smith",
+      "Patrick Star", "SpongeBob SquarePants", "Peter Griffin", "Stewie Griffin",
+      "Bojack Horseman", "Barney Stinson", "Leslie Knope", "Ron Swanson"
+    ]
+  },
+  sportStars: {
+    name: "⚽ Sports Stars",
+    items: [
+      "Lionel Messi", "Cristiano Ronaldo", "Kylian Mbappe", "Neymar", "LeBron James",
+      "Michael Jordan", "Kobe Bryant", "Stephen Curry", "Giannis Antetokounmpo",
+      "Serena Williams", "Roger Federer", "Rafael Nadal", "Novak Djokovic",
+      "Tiger Woods", "Usain Bolt", "Tom Brady", "Michael Phelps", "Simone Biles",
+      "Lewis Hamilton", "Max Verstappen", "Floyd Mayweather", "Muhammad Ali",
+      "Mike Tyson", "Pele", "Maradona", "Zinedine Zidane", "Ronaldinho",
+      "David Beckham", "Wayne Rooney", "Harry Kane", "Mohamed Salah",
+      "Erling Haaland", "Vinicius Jr", "Jude Bellingham", "Caitlin Clark",
+      "Naomi Osaka", "Ben Stokes", "Virat Kohli", "Anthony Joshua"
+    ]
+  },
+  historical: {
+    name: "🏛️ Historical Figures",
+    items: [
+      "Napoleon Bonaparte", "Julius Caesar", "Cleopatra", "Alexander the Great", "Genghis Khan",
+      "Leonardo da Vinci", "Michelangelo", "Isaac Newton", "Albert Einstein", "Charles Darwin",
+      "Marie Curie", "Nikola Tesla", "Thomas Edison", "Abraham Lincoln", "George Washington",
+      "Winston Churchill", "Gandhi", "Martin Luther King Jr", "Nelson Mandela",
+      "Queen Elizabeth I", "Henry VIII", "William Shakespeare", "Beethoven", "Mozart",
+      "Picasso", "Vincent van Gogh", "Frida Kahlo", "Christopher Columbus",
+      "Galileo Galilei", "Sigmund Freud", "Karl Marx", "Plato", "Aristotle",
+      "Socrates", "Joan of Arc", "Ada Lovelace", "Alan Turing", "Anne Frank"
+    ]
+  },
+  animals: {
+    name: "🐾 Animals",
+    items: [
+      "Lion", "Tiger", "Elephant", "Giraffe", "Penguin", "Koala", "Kangaroo",
+      "Panda", "Polar Bear", "Gorilla", "Chimpanzee", "Dolphin", "Whale",
+      "Shark", "Octopus", "Eagle", "Owl", "Flamingo", "Parrot", "Peacock",
+      "Crocodile", "Chameleon", "Komodo Dragon", "Meerkat", "Sloth",
+      "Platypus", "Narwhal", "Axolotl", "Capybara", "Red Panda",
+      "Snow Leopard", "Cheetah", "Hyena", "Manta Ray", "Jellyfish",
+      "Seahorse", "Sea Turtle", "Otter", "Armadillo", "Quokka",
+      "Fennec Fox", "Wombat", "Tapir", "Okapi", "Numbat"
+    ]
+  },
+  objects: {
+    name: "🧩 Objects",
+    items: [
+      "Toothbrush", "Refrigerator", "Television", "Bicycle", "Umbrella",
+      "Scissors", "Mirror", "Pillow", "Lamp", "Clock", "Calculator",
+      "Keyboard", "Headphones", "Camera", "Telescope", "Microscope",
+      "Thermometer", "Compass", "Backpack", "Wallet", "Sunglasses",
+      "Bottle", "Fork", "Spoon", "Blender", "Toaster", "Microwave",
+      "Washing Machine", "Vacuum Cleaner", "Hairdryer", "Trampoline",
+      "Skateboard", "Lawnmower", "Fire Extinguisher", "Traffic Light",
+      "Mailbox", "Stapler", "Escalator", "Elevator", "Parking Meter"
+    ]
+  }
+};
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let socket = null;
+let myId = null;
+let myPlayerName = null;
+let currentRoom = null;
+let isHost = false;
+let gameMode = null;
+let selectedCat = "celebrities";
+
+// Same-device state
+let localPlayers = [];
+let localAssignments = {};
+let peekIndex = 0;
+
+// Online state
+let myOthers = []; // other players' assignments I can see
+
+// ─────────────────────────────────────────────
+// SCREENS
+// ─────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const el = document.getElementById("screen-" + id);
+  if (el) { el.classList.add("active"); window.scrollTo(0, 0); }
+}
+
+// ─────────────────────────────────────────────
+// HOME
+// ─────────────────────────────────────────────
+function chooseMode(mode) {
+  gameMode = mode;
+  if (mode === "online") {
+    showScreen("online-setup");
+  } else {
+    localPlayers = [];
+    renderDevicePlayerList();
+    renderCatGrid("device-cat-grid", selectedCat, "selectDeviceCat");
+    showScreen("device-setup");
+  }
+}
+
+// ─────────────────────────────────────────────
+// CATEGORY GRIDS
+// ─────────────────────────────────────────────
+function renderCatGrid(containerId, sel, fn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = Object.entries(WHOAMI_CATS).map(([key, cat]) =>
+    `<div class="cat-chip ${sel === key ? "selected" : ""}" onclick="${fn}('${key}')">${cat.name}</div>`
+  ).join("");
+}
+
+function selectDeviceCat(key) {
+  selectedCat = key;
+  renderCatGrid("device-cat-grid", selectedCat, "selectDeviceCat");
+}
+
+function selectLobbyCat(key) {
+  selectedCat = key;
+  renderCatGrid("lobby-cat-grid", selectedCat, "selectLobbyCat");
+  if (socket) socket.emit("whoami-update-settings", { category: key });
+}
+
+// ─────────────────────────────────────────────
+// SAME DEVICE MODE
+// ─────────────────────────────────────────────
+function renderDevicePlayerList() {
+  document.getElementById("device-player-list").innerHTML = localPlayers.map((p, i) =>
+    `<div class="player-row">
+      <div style="flex:1;padding:12px 16px;background:var(--surface);border:2px solid var(--border);border-radius:10px;font-weight:600">${p}</div>
+      <button class="remove-btn" onclick="removePlayer(${i})">✕</button>
+    </div>`
+  ).join("");
+}
+
+function addPlayer() {
+  const inp = document.getElementById("new-player-input");
+  const name = inp.value.trim();
+  if (!name) return showToast("Enter a name", "error");
+  if (localPlayers.find(p => p.toLowerCase() === name.toLowerCase())) return showToast("Name already added", "error");
+  localPlayers.push(name);
+  inp.value = "";
+  renderDevicePlayerList();
+}
+
+function removePlayer(i) {
+  localPlayers.splice(i, 1);
+  renderDevicePlayerList();
+}
+
+function startLocalGame() {
+  if (localPlayers.length < 2) return showToast("Add at least 2 players", "error");
+  const cat = WHOAMI_CATS[selectedCat];
+  if (!cat) return showToast("Select a category", "error");
+
+  // Assign random unique words
+  const pool = [...cat.items].sort(() => Math.random() - 0.5);
+  localAssignments = {};
+  localPlayers.forEach((name, i) => { localAssignments[name] = pool[i % pool.length]; });
+
+  document.getElementById("guess-category").textContent = cat.name;
+
+  peekIndex = 0;
+  showPeekIntro();
+}
+
+function showPeekIntro() {
+  document.getElementById("peek-name").textContent = localPlayers[peekIndex];
+  showScreen("peek-intro");
+}
+
+function showPeekReveal() {
+  const me = localPlayers[peekIndex];
+  document.getElementById("peek-list").innerHTML = localPlayers.map(name => {
+    const isMe = name === me;
+    return `<div class="assignment-item ${isMe ? "is-me" : ""}">
+      <div class="player-avatar">${name[0].toUpperCase()}</div>
+      <div class="a-player">${name}${isMe ? " (You)" : ""}</div>
+      <div class="a-word ${isMe ? "hidden" : ""}">${isMe ? "???" : localAssignments[name]}</div>
+    </div>`;
+  }).join("");
+  showScreen("peek-reveal");
+}
+
+function nextPeek() {
+  peekIndex++;
+  if (peekIndex >= localPlayers.length) {
+    showLocalGameScreen();
+  } else {
+    showPeekIntro();
+  }
+}
+
+function showLocalGameScreen() {
+  // Game screen: show player list only — no words (players rely on memory from peek phase)
+  document.getElementById("game-players").style.display = "block";
+  document.getElementById("game-reference").style.display = "none";
+  document.getElementById("game-code").textContent = "";
+  document.getElementById("end-game-wrap").style.display = "block";
+
+  document.getElementById("game-player-list").innerHTML = localPlayers.map(name =>
+    `<div class="player-item">
+      <div class="player-avatar">${name[0].toUpperCase()}</div>
+      <div class="player-name">${name}</div>
+    </div>`
+  ).join("");
+
+  showScreen("game");
+}
+
+// ─────────────────────────────────────────────
+// ONLINE MODE — SOCKET
+// ─────────────────────────────────────────────
+function initSocket() {
+  if (socket) return;
+  socket = io({
+    transports: ["websocket"],
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 4000
+  });
+
+  socket.on("connect", () => {
+    if (currentRoom && myPlayerName) {
+      socket.emit("whoami-rejoin", { code: currentRoom.code, name: myPlayerName });
+    }
+  });
+
+  socket.on("whoami-rejoin-ack", ({ code, playerId }) => {
+    myId = playerId;
+    document.getElementById("lobby-code").textContent = code;
+    showToast("Reconnected ✓", "success");
+  });
+
+  socket.on("room-created", ({ code, playerId }) => {
+    myId = playerId;
+    document.getElementById("lobby-code").textContent = code;
+    showScreen("lobby");
+  });
+
+  socket.on("room-joined", ({ code, playerId }) => {
+    myId = playerId;
+    document.getElementById("lobby-code").textContent = code;
+    showScreen("lobby");
+  });
+
+  socket.on("room-update", (room) => {
+    currentRoom = room;
+    isHost = room.host === myId;
+    renderLobby(room);
+  });
+
+  socket.on("player-joined", ({ name }) => showToast(`${name} joined! 👋`, "success"));
+  socket.on("player-left",   ({ name }) => showToast(`${name} left`));
+
+  socket.on("whoami-game-started", ({ others, categoryName }) => {
+    myOthers = others;
+
+    // Role screen: see others
+    document.getElementById("role-list").innerHTML = others.map(a =>
+      `<div class="assignment-item">
+        <div class="player-avatar">${a.name[0].toUpperCase()}</div>
+        <div class="a-player">${a.name}</div>
+        <div class="a-word">${a.word}</div>
+      </div>`
+    ).join("");
+
+    // Game screen reference
+    document.getElementById("game-list").innerHTML = others.map(a =>
+      `<div class="assignment-item">
+        <div class="player-avatar">${a.name[0].toUpperCase()}</div>
+        <div class="a-player">${a.name}</div>
+        <div class="a-word">${a.word}</div>
+      </div>`
+    ).join("");
+
+    document.getElementById("game-reference").style.display = "block";
+    document.getElementById("game-players").style.display = "none";
+    document.getElementById("game-code").textContent = currentRoom ? currentRoom.code : "";
+    document.getElementById("end-game-wrap").style.display = isHost ? "block" : "none";
+    document.getElementById("guess-category").textContent = categoryName;
+
+    showScreen("role");
+  });
+
+  socket.on("whoami-game-ended", ({ all }) => {
+    document.getElementById("reveal-list").innerHTML = all.map(a =>
+      `<div class="assignment-item">
+        <div class="player-avatar">${a.name[0].toUpperCase()}</div>
+        <div class="a-player">${a.name}</div>
+        <div class="a-word">${a.word}</div>
+      </div>`
+    ).join("");
+    showScreen("reveal");
+  });
+
+  socket.on("whoami-reset", () => {
+    myOthers = [];
+    showScreen("lobby");
+  });
+
+  socket.on("error", ({ message }) => showToast(message, "error"));
+  socket.on("disconnect", (reason) => {
+    if (reason !== "io client disconnect") showToast("Connection lost — reconnecting...", "error");
+  });
+}
+
+function createRoom() {
+  const name = document.getElementById("online-name").value.trim();
+  if (!name) return showToast("Enter your name", "error");
+  myPlayerName = name;
+  initSocket();
+  socket.emit("whoami-create-room", { name });
+}
+
+function joinRoom() {
+  const name = document.getElementById("online-name").value.trim();
+  const code = document.getElementById("online-code").value.trim().toUpperCase();
+  if (!name) return showToast("Enter your name", "error");
+  if (code.length !== 6) return showToast("Enter a 6-character code", "error");
+  myPlayerName = name;
+  initSocket();
+  socket.emit("whoami-join-room", { name, code });
+}
+
+function startGame() {
+  if (!socket) return;
+  socket.emit("whoami-start-game");
+}
+
+function confirmReady() {
+  showScreen("game");
+}
+
+function endGame() {
+  if (gameMode === "device") {
+    document.getElementById("reveal-list").innerHTML = localPlayers.map(name =>
+      `<div class="assignment-item">
+        <div class="player-avatar">${name[0].toUpperCase()}</div>
+        <div class="a-player">${name}</div>
+        <div class="a-word">${localAssignments[name]}</div>
+      </div>`
+    ).join("");
+    showScreen("reveal");
+  } else {
+    if (socket) socket.emit("whoami-end-game");
+  }
+}
+
+function submitGuess() {
+  const guess = document.getElementById("guess-input").value.trim();
+  if (!guess) return showToast("Type your guess first", "error");
+  showToast(`You guessed: ${guess}! Ask the group if you're right.`, "success");
+  document.getElementById("guess-input").value = "";
+  setTimeout(() => showScreen("game"), 2500);
+}
+
+function playAgain() {
+  if (gameMode === "device") {
+    localAssignments = {};
+    peekIndex = 0;
+    renderCatGrid("device-cat-grid", selectedCat, "selectDeviceCat");
+    renderDevicePlayerList();
+    showScreen("device-setup");
+  } else {
+    if (socket) socket.emit("whoami-play-again");
+    showScreen("lobby");
+  }
+}
+
+// ─────────────────────────────────────────────
+// LOBBY RENDER
+// ─────────────────────────────────────────────
+function renderLobby(room) {
+  document.getElementById("lobby-code").textContent = room.code;
+  document.getElementById("lobby-count").textContent = room.players.length;
+
+  const amHost = room.host === myId;
+  const hc = document.getElementById("host-controls");
+  const gw = document.getElementById("guest-waiting");
+  hc.style.display = amHost ? "flex" : "none";
+  gw.style.display = amHost ? "none" : "block";
+
+  if (amHost) {
+    const cat = room.settings && room.settings.category ? room.settings.category : selectedCat;
+    renderCatGrid("lobby-cat-grid", cat, "selectLobbyCat");
+  }
+
+  document.getElementById("lobby-player-list").innerHTML = room.players.map(p =>
+    `<div class="player-item">
+      <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+      <div class="player-name">${p.name}</div>
+      ${p.id === room.host ? '<span class="player-badge badge-host">HOST</span>' : ""}
+      ${p.id === myId    ? '<span class="player-badge badge-you">YOU</span>' : ""}
+    </div>`
+  ).join("");
+}
+
+function copyCode() {
+  const code = document.getElementById("lobby-code").textContent;
+  navigator.clipboard.writeText(code).then(() => showToast("Code copied! ✓", "success")).catch(() => showToast(code));
+}
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, type = "") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ""; }, 3000);
+}
+
+// ─────────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────────
+document.getElementById("online-name").addEventListener("keydown", e => { if (e.key === "Enter") createRoom(); });
+document.getElementById("online-code").addEventListener("keydown", e => { if (e.key === "Enter") joinRoom(); });
+document.getElementById("new-player-input").addEventListener("keydown", e => { if (e.key === "Enter") addPlayer(); });
+document.getElementById("guess-input").addEventListener("keydown", e => { if (e.key === "Enter") submitGuess(); });
+</script>
+</body>
+</html>

@@ -647,10 +647,11 @@
     <div class="text-muted" style="margin-top:6px; font-size:0.9rem" id="spyfall-spy-guess-sub">You were caught! One last chance to win...</div>
   </div>
 
-  <div id="spyfall-spy-input-wrap" class="card" style="width:100%">
-    <div class="card-title">What was the location?</div>
-    <input type="text" id="spyfall-guess-input" placeholder="e.g. Hospital, Casino..." autocomplete="off" />
-    <button class="btn btn-primary" style="width:100%; margin-top:12px" onclick="submitSpyfallGuess()">🎯 That's my guess!</button>
+  <div id="spyfall-spy-input-wrap" style="width:100%">
+    <div class="card" style="width:100%; margin-bottom:12px">
+      <div class="card-title">Pick the location</div>
+      <div id="spyfall-loc-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px"></div>
+    </div>
   </div>
 
   <div id="spyfall-spy-wait" class="card" style="display:none; width:100%; text-align:center; padding:24px">
@@ -849,6 +850,7 @@ function initSocket() {
       if (subEl)   subEl.textContent   = 'One last chance...';
       if (inputW)  inputW.style.display = 'block';
       if (waitEl)  waitEl.style.display = 'none';
+      renderSpyfallLocGrid();
     } else {
       if (titleEl) titleEl.textContent = data.spyName + ' was caught!';
       if (subEl)   subEl.textContent   = 'Waiting for them to guess the location...';
@@ -1858,13 +1860,22 @@ function renderSpyfallVoteScreen() {
   if (!currentRoom) return;
   const el = document.getElementById('spyfall-vote-list');
   if (!el) return;
-  el.innerHTML = currentRoom.players.map(p => `
-    <button class="btn ${mySfVote === p.id ? 'btn-danger' : 'btn-outline'}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; text-align:left"
-      onclick="castSpyfallVote('${p.id}')" ${mySfVote ? 'disabled' : ''}>
-      <div class="player-avatar">${p.name[0].toUpperCase()}</div>
-      <div style="flex:1">${p.name}${p.id === myId ? ' (You)' : ''}</div>
-      ${mySfVote === p.id ? '<span style="color:#ef4444">✓ Your vote</span>' : ''}
-    </button>`).join('');
+  el.innerHTML = currentRoom.players.map(p => {
+    const isSelf = p.id === myId;
+    if (isSelf) return `
+      <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; border:2px solid var(--border); border-radius:10px; opacity:0.4">
+        <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+        <div style="flex:1">${p.name} <span style="font-size:0.78rem; color:var(--muted)">(you)</span></div>
+      </div>`;
+    const voted = mySfVote === p.id;
+    return `
+      <button class="btn ${voted ? 'btn-danger' : 'btn-outline'}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; text-align:left"
+        onclick="castSpyfallVote('${p.id}')" ${mySfVote ? 'disabled' : ''}>
+        <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+        <div style="flex:1">${p.name}</div>
+        ${voted ? '<span style="color:#ef4444; font-size:0.85rem">✓ Your vote</span>' : ''}
+      </button>`;
+  }).join('');
 }
 
 function spyfallRoleReady() {
@@ -1888,12 +1899,29 @@ function castSpyfallVote(targetId) {
   renderSpyfallVoteScreen();
 }
 
-function submitSpyfallGuess() {
-  const input = document.getElementById('spyfall-guess-input');
-  const loc = input ? input.value.trim() : '';
-  if (!loc) return showToast('Type a location first!', 'error');
-  socket.emit('spyfall-spy-guess', { location: loc });
-  if (input) input.value = '';
+const SPYFALL_LOC_NAMES = [
+  "Hospital","Beach","Airplane","Casino","School","Police Station","Supermarket","Restaurant",
+  "Movie Set","Space Station","Circus","Submarine","Bank","University","Prison","Cruise Ship",
+  "Gym","Haunted House","Pirate Ship","Spy HQ","Sports Stadium","Art Gallery","Ski Resort",
+  "TV Studio","Zoo"
+];
+
+function renderSpyfallLocGrid() {
+  const grid = document.getElementById('spyfall-loc-grid');
+  if (!grid) return;
+  grid.innerHTML = SPYFALL_LOC_NAMES.map(loc => `
+    <button class="btn btn-outline" style="padding:12px 8px; font-size:0.82rem; text-align:center"
+      onclick="submitSpyfallGuess('${loc}')">${loc}</button>
+  `).join('');
+}
+
+function submitSpyfallGuess(location) {
+  if (!location) return;
+  socket.emit('spyfall-spy-guess', { location });
+  // Disable all buttons after guessing
+  const grid = document.getElementById('spyfall-loc-grid');
+  if (grid) grid.querySelectorAll('button').forEach(b => b.disabled = true);
+  showToast('Guess submitted!', 'success');
 }
 
 // Keep Render server awake — ping every 4 minutes

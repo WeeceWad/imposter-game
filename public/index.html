@@ -1209,7 +1209,8 @@ function renderLobbyData(room) {
   document.getElementById('lobby-player-count').textContent = room.players.length;
   const amHost = room.host === myId;
   const gameType = (room.settings && room.settings.gameType) || 'imposter';
-  const isWhoami = gameType === 'whoami';
+  const isWhoami  = gameType === 'whoami';
+  const isSpyfall = gameType === 'spyfall';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -1220,24 +1221,37 @@ function renderLobbyData(room) {
     // Game type toggle buttons
     const impBtn = document.getElementById('gametype-imposter-btn');
     const wamBtn = document.getElementById('gametype-whoami-btn');
-    if (impBtn) impBtn.className = 'btn btn-sm' + (!isWhoami ? ' btn-primary' : ' btn-outline');
-    if (wamBtn) wamBtn.className = 'btn btn-sm' + (isWhoami ? ' btn-primary' : ' btn-outline');
+    const sfBtn  = document.getElementById('gametype-spyfall-btn');
+    if (impBtn) impBtn.className = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
+    if (wamBtn) wamBtn.className = 'btn btn-sm' + (isWhoami   ? ' btn-primary' : ' btn-outline');
+    if (sfBtn)  sfBtn.className  = 'btn btn-sm' + (isSpyfall  ? ' btn-primary' : ' btn-outline');
 
-    const isVideo = room.settings.gameMode === 'video';
-    const wordCats = document.getElementById('host-categories');
-    const videoCats = document.getElementById('host-video-categories');
-    const whoamiCats = document.getElementById('host-whoami-categories');
-    const blindRow = document.getElementById('blind-row');
+    const isVideo     = room.settings.gameMode === 'video';
+    const wordCats    = document.getElementById('host-categories');
+    const videoCats   = document.getElementById('host-video-categories');
+    const whoamiCats  = document.getElementById('host-whoami-categories');
+    const spyfallInfo = document.getElementById('host-spyfall-info');
+    const blindRow    = document.getElementById('blind-row');
     const hostSettings = document.getElementById('host-settings');
 
-    if (isWhoami) {
-      // Who Am I? mode — hide all imposter sections
+    // ── SPYFALL MODE ──
+    if (isSpyfall) {
       if (hostSettings) hostSettings.style.display = 'none';
-      if (wordCats) wordCats.style.display = 'none';
-      if (videoCats) videoCats.style.display = 'none';
-      if (whoamiCats) whoamiCats.style.display = 'block';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'block';
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 3 players';
 
-      // Populate Who Am I? category grid
+    // ── WHO AM I MODE ──
+    } else if (isWhoami) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'block';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+
       const whoamiGrid = document.getElementById('whoami-category-grid');
       if (whoamiGrid) {
         const WHOAMI_CAT_DEFS = [
@@ -1251,33 +1265,29 @@ function renderLobbyData(room) {
           </div>
         `).join('');
       }
-
-      // Start hint
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Need at least 2 players';
 
+    // ── IMPOSTER MODE ──
     } else {
-      // Imposter mode
       if (hostSettings) hostSettings.style.display = 'block';
-      if (whoamiCats) whoamiCats.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = !isVideo ? 'block' : 'none';
+      if (videoCats)   videoCats.style.display   =  isVideo ? 'block' : 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
       if (spyfallInfo) spyfallInfo.style.display = 'none';
-      if (wordCats) wordCats.style.display = !isVideo ? 'block' : 'none';
-      if (videoCats) videoCats.style.display = isVideo ? 'block' : 'none';
-      if (blindRow) blindRow.style.display = isVideo ? 'none' : 'flex';
+      if (blindRow)    blindRow.style.display    = isVideo ? 'none' : 'flex';
 
       document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
       const blindToggle = document.getElementById('blind-toggle');
-      blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
+      if (blindToggle) blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
 
       // Game mode buttons
-      const wordBtn = document.getElementById('mode-word-btn');
+      const wordBtn  = document.getElementById('mode-word-btn');
       const videoBtn = document.getElementById('mode-video-btn');
-      if (wordBtn) {
-        wordBtn.className = 'btn btn-sm' + (!isVideo ? ' btn-primary' : ' btn-outline');
-        videoBtn.className = 'btn btn-sm' + (isVideo ? ' btn-primary' : ' btn-outline');
-      }
+      if (wordBtn)  wordBtn.className  = 'btn btn-sm' + (!isVideo ? ' btn-primary' : ' btn-outline');
+      if (videoBtn) videoBtn.className = 'btn btn-sm' + ( isVideo ? ' btn-primary' : ' btn-outline');
 
-      // Populate video category grid
+      // Video category grid
       const videoGrid = document.getElementById('video-category-grid');
       if (videoGrid) {
         const videoCategoryDefs = [
@@ -1301,7 +1311,6 @@ function renderLobbyData(room) {
       }
       renderCategoryGrid();
 
-      // Start hint
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Need at least 3 players';
     }

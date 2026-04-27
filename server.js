@@ -565,7 +565,8 @@ function sanitizeRoom(room) {
     voteCount: Object.keys(room.votes || {}).length,
     result: room.result || null,
     speakingOrder: room.speakingOrder || [],
-    gameMode: room.settings ? room.settings.gameMode : 'word'
+    gameMode: room.settings ? room.settings.gameMode : 'word',
+    spyfallVoteCount: room.spyfallData ? Object.keys(room.spyfallData.votes || {}).length : 0
   };
 }
 
@@ -581,6 +582,37 @@ function tallyVotes(votes) {
 // GAME ROOMS
 // ─────────────────────────────────────────────
 const rooms = {};
+
+// ─────────────────────────────────────────────
+// SPYFALL — LOCATIONS
+// ─────────────────────────────────────────────
+const SPYFALL_LOCS = [
+  { name:"Hospital",        emoji:"🏥", roles:["Doctor","Nurse","Patient","Surgeon","Receptionist","Paramedic","Cleaner","Visitor"] },
+  { name:"Beach",           emoji:"🏖️", roles:["Lifeguard","Surfer","Vendor","Tourist","Swimmer","Volleyball Player","Sunbather","Photographer"] },
+  { name:"Airplane",        emoji:"✈️", roles:["Pilot","Flight Attendant","Passenger","Co-Pilot","Air Marshal","Mechanic","Businessman","Tourist"] },
+  { name:"Casino",          emoji:"🎰", roles:["Dealer","Security Guard","High Roller","Cocktail Waitress","Manager","Card Counter","Gambler","Cashier"] },
+  { name:"School",          emoji:"🏫", roles:["Teacher","Student","Headteacher","Janitor","Dinner Lady","Sports Coach","New Kid","Supply Teacher"] },
+  { name:"Police Station",  emoji:"🚔", roles:["Detective","Uniformed Officer","Suspect","Lawyer","Desk Sergeant","Informant","Crime Scene Tech","Prisoner"] },
+  { name:"Supermarket",     emoji:"🛒", roles:["Cashier","Stock Stocker","Security Guard","Customer","Store Manager","Delivery Driver","Baker","Self-Checkout User"] },
+  { name:"Restaurant",      emoji:"🍽️", roles:["Head Chef","Waiter","Food Critic","Manager","Dishwasher","Sommelier","Regular Customer","First Date"] },
+  { name:"Movie Set",       emoji:"🎬", roles:["Director","Actor","Stuntperson","Camera Operator","Make-Up Artist","Producer","Extra","Screenwriter"] },
+  { name:"Space Station",   emoji:"🚀", roles:["Commander","Engineer","Scientist","Pilot","Mission Control","Medic","Botanist","New Recruit"] },
+  { name:"Circus",          emoji:"🎪", roles:["Ringmaster","Clown","Acrobat","Lion Tamer","Trapeze Artist","Ticket Seller","Magician","Audience Member"] },
+  { name:"Submarine",       emoji:"🤿", roles:["Captain","Navigator","Engineer","Cook","Sonar Operator","New Recruit","First Mate","Weapons Officer"] },
+  { name:"Bank",            emoji:"🏦", roles:["Bank Manager","Teller","Security Guard","Loan Officer","Customer","Robber","Accountant","Trainee"] },
+  { name:"University",      emoji:"🎓", roles:["Professor","Student","Librarian","Janitor","Security Guard","Dean","Research Assistant","Fresher"] },
+  { name:"Prison",          emoji:"⛓️", roles:["Prison Guard","Inmate","Warden","Lawyer","Chaplain","Informant","New Inmate","Cook"] },
+  { name:"Cruise Ship",     emoji:"🛳️", roles:["Captain","Passenger","Entertainer","Chef","Bartender","Cleaner","Tour Guide","Doctor"] },
+  { name:"Gym",             emoji:"💪", roles:["Personal Trainer","Regular Member","Receptionist","New Member","Competitive Bodybuilder","Yoga Instructor","Manager","Cleaning Staff"] },
+  { name:"Haunted House",   emoji:"👻", roles:["Scared Tourist","Ghost Actor","Tour Guide","Security","Manager","Daredevil","Photographer","Screamer"] },
+  { name:"Pirate Ship",     emoji:"🏴‍☠️", roles:["Captain","First Mate","Cook","Navigator","Lookout","Prisoner","Cannoneer","Deckhand"] },
+  { name:"Spy HQ",          emoji:"🕵️", roles:["Head of Intelligence","Field Agent","Analyst","Tech Expert","Double Agent","Receptionist","Trainee","Handler"] },
+  { name:"Sports Stadium",  emoji:"🏟️", roles:["Star Player","Coach","Referee","Commentator","Mascot","Groundskeeper","Supporter","Hot Dog Vendor"] },
+  { name:"Art Gallery",     emoji:"🖼️", roles:["Curator","Artist","Security Guard","Critic","Tourist","Auctioneer","Restorer","Wealthy Collector"] },
+  { name:"Ski Resort",      emoji:"⛷️", roles:["Ski Instructor","Skier","Snowboarder","Lift Operator","Chalet Maid","Patrol Officer","Après-Ski Regular","Beginner"] },
+  { name:"TV Studio",       emoji:"📺", roles:["Presenter","Director","Camera Operator","Makeup Artist","Floor Manager","Guest","Audience Member","Intern"] },
+  { name:"Zoo",             emoji:"🦁", roles:["Zookeeper","Vet","Tour Guide","Animal Trainer","Visitor","Security Guard","Cleaner","Manager"] }
+];
 
 // ─────────────────────────────────────────────
 // WHO AM I — CATEGORIES
@@ -600,6 +632,7 @@ const WHOAMI_CATS = {
     "Lizzo","Meghan Thee Stallion","Ice Spice","Gracie Abrams","Benson Boone","Noah Kahan",
     "Morgan Wallen","Luke Combs","Zach Bryan","ABBA","The Beatles","The Rolling Stones",
     "Led Zeppelin","Radiohead","Coldplay","Oasis","Arctic Monkeys","Linkin Park","Green Day",
+    "Mariah Carey","Celine Dion","Katy Perry","Mick Jagger","Ozzy Osbourne","Bob Dylan","Jennifer Lopez",
     // Actors
     "Zendaya","Timothee Chalamet","Tom Holland","Ryan Reynolds","Dwayne Johnson","Leonardo DiCaprio",
     "Brad Pitt","Margot Robbie","Scarlett Johansson","Chris Hemsworth","Robert Downey Jr",
@@ -611,6 +644,7 @@ const WHOAMI_CATS = {
     "Anya Taylor-Joy","Ana de Armas","Emma Stone","Emma Watson","Daniel Radcliffe",
     "Chris Pratt","Chris Evans","Mark Ruffalo","Jeremy Renner","Benedict Cumberbatch",
     "Matt Damon","Ben Affleck","George Clooney","Adam Sandler","Will Ferrell","Seth Rogen",
+    "Tom Cruise","Ryan Gosling","Joaquin Phoenix","Heath Ledger","Robin Williams","Arnold Schwarzenegger","Sylvester Stallone",
     // Footballers
     "Lionel Messi","Cristiano Ronaldo","Kylian Mbappe","Neymar","Harry Kane","Mohamed Salah",
     "Erling Haaland","Vinicius Jr","Jude Bellingham","Luka Modric","Kevin De Bruyne",
@@ -819,6 +853,36 @@ io.on('connection', (socket) => {
   socket.on('start-game', async () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
+
+    // ── SPYFALL MODE ──
+    if (room.settings.gameType === 'spyfall') {
+      if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players for Spyfall.' });
+      const loc = SPYFALL_LOCS[Math.floor(Math.random() * SPYFALL_LOCS.length)];
+      const spyIdx = Math.floor(Math.random() * room.players.length);
+      const shuffledRoles = [...loc.roles].sort(() => Math.random() - 0.5);
+      let ri = 0;
+      room.spyfallData = {
+        locationName: loc.name, locationEmoji: loc.emoji,
+        spyId: room.players[spyIdx].id, spyName: room.players[spyIdx].name,
+        roles: {}, votes: {}
+      };
+      room.players.forEach((p, i) => {
+        room.spyfallData.roles[p.id] = i === spyIdx ? null : shuffledRoles[ri++ % shuffledRoles.length];
+      });
+      room.gameState = 'spyfall-playing';
+      room.players.forEach(p => {
+        const isSpy = p.id === room.spyfallData.spyId;
+        io.to(p.id).emit('spyfall-started', {
+          isSpy,
+          locationName: isSpy ? null : loc.name,
+          locationEmoji: isSpy ? null : loc.emoji,
+          role: room.spyfallData.roles[p.id],
+          playerNames: room.players.map(pl => ({ id: pl.id, name: pl.name }))
+        });
+      });
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
 
     // ── WHO AM I MODE ──
     if (room.settings.gameType === 'whoami') {
@@ -1036,6 +1100,79 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
+  // ─────────────────────────────────────────────
+  // SPYFALL — SOCKET HANDLERS
+  // ─────────────────────────────────────────────
+
+  // Host ends discussion, moves to voting
+  socket.on('spyfall-end-discussion', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || room.gameState !== 'spyfall-playing') return;
+    room.gameState = 'spyfall-voting';
+    room.spyfallData.votes = {};
+    io.to(room.code).emit('spyfall-vote-started', {
+      playerNames: room.players.map(p => ({ id: p.id, name: p.name }))
+    });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Player casts their spy vote
+  socket.on('spyfall-vote', ({ targetId }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'spyfall-voting') return;
+    room.spyfallData.votes[socket.id] = targetId;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+
+    // Check if all have voted
+    if (Object.keys(room.spyfallData.votes).length >= room.players.length) {
+      // Tally votes
+      const tally = {};
+      Object.values(room.spyfallData.votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
+      const maxVotes = Math.max(...Object.values(tally));
+      const topIds = Object.keys(tally).filter(id => tally[id] === maxVotes);
+      const spyCaught = topIds.length === 1 && topIds[0] === room.spyfallData.spyId;
+      const suspectedId = topIds.length === 1 ? topIds[0] : null;
+      const suspectedName = suspectedId ? (room.players.find(p => p.id === suspectedId) || {}).name : null;
+
+      if (spyCaught) {
+        // Spy gets to guess the location
+        room.gameState = 'spyfall-spy-guessing';
+        io.to(room.code).emit('spyfall-caught', {
+          spyId: room.spyfallData.spyId,
+          spyName: room.spyfallData.spyName,
+          suspectedName,
+          votes: tally
+        });
+      } else {
+        // Spy wins — reveal
+        room.gameState = 'spyfall-ended';
+        const roles = room.players.map(p => ({ name: p.name, role: room.spyfallData.roles[p.id] || 'SPY', isSpy: p.id === room.spyfallData.spyId }));
+        io.to(room.code).emit('spyfall-game-ended', {
+          spyWon: true, reason: 'tie',
+          locationName: room.spyfallData.locationName, locationEmoji: room.spyfallData.locationEmoji,
+          spyName: room.spyfallData.spyName, spyGuess: null, roles
+        });
+        io.to(room.code).emit('room-update', sanitizeRoom(room));
+      }
+    }
+  });
+
+  // Spy guesses the location
+  socket.on('spyfall-spy-guess', ({ location }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'spyfall-spy-guessing') return;
+    if (socket.id !== room.spyfallData.spyId) return;
+    const correct = location.trim().toLowerCase() === room.spyfallData.locationName.toLowerCase();
+    room.gameState = 'spyfall-ended';
+    const roles = room.players.map(p => ({ name: p.name, role: room.spyfallData.roles[p.id] || 'SPY', isSpy: p.id === room.spyfallData.spyId }));
+    io.to(room.code).emit('spyfall-game-ended', {
+      spyWon: correct, reason: correct ? 'spy-guessed' : 'spy-caught',
+      locationName: room.spyfallData.locationName, locationEmoji: room.spyfallData.locationEmoji,
+      spyName: room.spyfallData.spyName, spyGuess: location, roles
+    });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
   // Play again
   socket.on('play-again', () => {
     const room = rooms[socket.roomCode];
@@ -1046,6 +1183,7 @@ io.on('connection', (socket) => {
     room.currentCategoryKey = null;
     room.whoamiAssignments = {};
     room.whoamiGuesses = {};
+    room.spyfallData = null;
     room.imposters = [];
     room.votes = {};
     room.readyPlayers = new Set();
@@ -1210,26 +1348,16 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
   });
 
-  // Disconnect — use a grace period so brief network blips don't destroy the room
+  // Disconnect — grace period so brief blips don't destroy rooms
   socket.on('disconnect', () => {
     const name = socket.playerName || 'A player';
 
-    // Imposter room
+    // Unified lobby room (imposter / whoami / spyfall)
     const room = rooms[socket.roomCode];
     if (room) {
       if (!room._dcTimers) room._dcTimers = {};
       const delay = room.gameState !== 'lobby' ? 60000 : 30000;
       room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, delay);
-    }
-
-    // Who Am I room
-    const wroom = whoamiRooms[socket.whoamiCode];
-    if (wroom) {
-      wroom.players = wroom.players.filter(p => p.id !== socket.id);
-      if (wroom.players.length === 0) { delete whoamiRooms[wroom.code]; return; }
-      if (wroom.host === socket.id) { wroom.host = wroom.players[0].id; wroom.players[0].isHost = true; }
-      io.to(wroom.code).emit('room-update', sanitizeWhoamiRoom(wroom));
-      io.to(wroom.code).emit('player-left', { name });
     }
   });
 });

@@ -31,6 +31,11 @@
     /* ─────────────── SCREENS ─────────────── */
     .screen { display: none; width: 100%; max-width: 480px; padding: 24px 20px; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; justify-content: center; }
     .screen.active { display: flex; }
+    /* Lobby & game screens scroll from top so room code is never cut off on small phones */
+    #screen-lobby, #screen-whoami-role, #screen-whoami-game, #screen-whoami-guess, #screen-whoami-reveal,
+    #screen-spyfall-role, #screen-spyfall-discussion, #screen-spyfall-vote, #screen-spyfall-spy-guess, #screen-spyfall-final {
+      justify-content: flex-start; padding-top: 28px; overflow-y: auto;
+    }
 
     /* ─────────────── LOGO ─────────────── */
     .logo { font-size: 2.6rem; font-weight: 900; letter-spacing: -1px; background: linear-gradient(135deg, #a855f7, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -241,10 +246,6 @@
 
   <button class="btn btn-outline" onclick="joinRoom()">🚪 Join Room</button>
 
-  <div style="width:100%; text-align:center; padding-top:8px; display:flex; gap:8px; justify-content:center">
-    <a href="/spyfall.html" style="color:var(--muted); font-size:0.85rem; text-decoration:none; padding:8px 12px; border:1px solid var(--border); border-radius:8px">🕵️ Spyfall</a>
-    <a href="/whoami.html"  style="color:var(--muted); font-size:0.85rem; text-decoration:none; padding:8px 12px; border:1px solid var(--border); border-radius:8px">🤔 Who Am I?</a>
-  </div>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -262,7 +263,10 @@
   <div style="width:100%">
     <div class="card-title">Room Code <small>(tap to copy)</small></div>
     <div class="room-code-display" id="lobby-code" onclick="copyCode()">------</div>
-    <div class="code-tap-hint">Share this code with your friends</div>
+    <div style="display:flex; gap:8px; margin-top:8px">
+      <button class="btn btn-outline" style="flex:1; font-size:0.82rem; padding:10px 8px" onclick="copyCode()">📋 Copy Code</button>
+      <button class="btn btn-outline" style="flex:1; font-size:0.82rem; padding:10px 8px" onclick="copyInviteLink()">🔗 Invite Link</button>
+    </div>
   </div>
 
   <div class="card" style="width:100%">
@@ -272,10 +276,11 @@
 
   <!-- GAME TYPE SELECTOR (host only) -->
   <div id="host-game-type" class="card" style="width:100%; display:none">
-    <div class="card-title">Game</div>
+    <div class="card-title">Game Mode</div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-sm" id="gametype-imposter-btn" onclick="setGameType('imposter')" style="flex:1">🕵️ Imposter</button>
       <button class="btn btn-sm" id="gametype-whoami-btn" onclick="setGameType('whoami')" style="flex:1">🤔 Who Am I?</button>
+      <button class="btn btn-sm" id="gametype-spyfall-btn" onclick="setGameType('spyfall')" style="flex:1">🔍 Spyfall</button>
     </div>
   </div>
 
@@ -334,6 +339,15 @@
   <div id="host-whoami-categories" class="card" style="width:100%; display:none">
     <div class="card-title">Who Am I? — Category</div>
     <div class="category-grid" id="whoami-category-grid"></div>
+  </div>
+
+  <!-- SPYFALL INFO (spyfall only) -->
+  <div id="host-spyfall-info" class="card" style="width:100%; display:none">
+    <div class="card-title">Spyfall</div>
+    <div style="font-size:0.88rem; color:var(--muted); line-height:1.5">
+      Everyone gets a secret location and role — except the <strong style="color:#f59e0b">Spy</strong>, who doesn't know where they are.<br><br>
+      Discuss, ask questions, vote for the spy. If caught, the spy gets one last chance to guess the location!
+    </div>
   </div>
 
   <div id="host-start-btn" style="width:100%; display:none">
@@ -556,6 +570,110 @@
   <button class="btn btn-ghost" onclick="leaveRoom()">← Leave Room</button>
 </div>
 
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SPYFALL — ROLE SCREEN                     -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-spyfall-role" class="screen">
+  <div style="text-align:center; width:100%">
+    <div style="font-size:2.5rem">🔍</div>
+    <div style="font-size:1.4rem; font-weight:900; background:linear-gradient(135deg,#f59e0b,#ef4444); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-top:8px">Spyfall</div>
+  </div>
+
+  <div id="spyfall-role-card" style="width:100%"></div>
+
+  <div class="card" style="width:100%; background:rgba(99,102,241,.08); border-color:#4f46e5">
+    <div class="card-title">How to play</div>
+    <div style="font-size:0.85rem; color:var(--muted); line-height:1.6">
+      Ask each other short questions.<br>
+      Civilians: figure out who the spy is.<br>
+      Spy: blend in and guess the location!
+    </div>
+  </div>
+
+  <button class="btn btn-primary" style="width:100%" onclick="spyfallRoleReady()">✅ Got it — ready!</button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SPYFALL — DISCUSSION SCREEN               -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-spyfall-discussion" class="screen">
+  <div style="width:100%; display:flex; justify-content:space-between; align-items:center">
+    <div>
+      <div style="font-size:1.2rem; font-weight:900">🔍 Spyfall</div>
+      <div style="font-size:0.8rem; color:var(--muted)" id="spyfall-disc-room"></div>
+    </div>
+  </div>
+
+  <div id="spyfall-disc-card" style="width:100%"></div>
+
+  <div class="card" style="width:100%">
+    <div class="card-title">Players</div>
+    <div id="spyfall-disc-players" style="display:flex; flex-direction:column; gap:8px"></div>
+  </div>
+
+  <div id="spyfall-end-disc-wrap" style="display:none; width:100%">
+    <button class="btn btn-danger" style="width:100%" onclick="endSpyfallDiscussion()">🗳️ End Discussion & Vote</button>
+  </div>
+  <div id="spyfall-wait-msg" class="text-muted text-center" style="width:100%; display:none">
+    <span class="pulse">⏳</span> Waiting for host to start voting...
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SPYFALL — VOTING SCREEN                   -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-spyfall-vote" class="screen">
+  <div style="text-align:center; width:100%">
+    <div style="font-size:2rem">🗳️</div>
+    <div style="font-size:1.2rem; font-weight:900; margin-top:4px">Who is the Spy?</div>
+    <div class="text-muted" style="font-size:0.85rem; margin-top:4px">Tap a player to cast your vote</div>
+  </div>
+
+  <div class="card" style="width:100%; text-align:center">
+    <div class="text-muted" id="spyfall-vote-count-text">0 / 0 voted</div>
+  </div>
+
+  <div id="spyfall-vote-list" style="display:flex; flex-direction:column; gap:10px; width:100%"></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SPYFALL — SPY GUESS SCREEN                -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-spyfall-spy-guess" class="screen">
+  <div style="text-align:center; width:100%">
+    <div style="font-size:2.5rem">🎯</div>
+    <div id="spyfall-spy-guess-title" style="font-size:1.2rem; font-weight:900; margin-top:4px; color:#f59e0b">Spy — guess the location!</div>
+    <div class="text-muted" style="margin-top:6px; font-size:0.9rem" id="spyfall-spy-guess-sub">You were caught! One last chance to win...</div>
+  </div>
+
+  <div id="spyfall-spy-input-wrap" class="card" style="width:100%">
+    <div class="card-title">What was the location?</div>
+    <input type="text" id="spyfall-guess-input" placeholder="e.g. Hospital, Casino..." autocomplete="off" />
+    <button class="btn btn-primary" style="width:100%; margin-top:12px" onclick="submitSpyfallGuess()">🎯 That's my guess!</button>
+  </div>
+
+  <div id="spyfall-spy-wait" class="card" style="display:none; width:100%; text-align:center; padding:24px">
+    <div style="font-size:1.5rem">⏳</div>
+    <div class="text-muted" style="margin-top:8px">Waiting for the spy to guess...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SPYFALL — FINAL SCREEN                    -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-spyfall-final" class="screen">
+  <div id="spyfall-final-banner" style="text-align:center; width:100%; padding:20px; border-radius:14px; border:2px solid #7c3aed"></div>
+
+  <div class="card" style="width:100%">
+    <div class="card-title" id="spyfall-final-loc-title">The Location</div>
+    <div id="spyfall-final-roles" style="display:flex; flex-direction:column; gap:8px"></div>
+  </div>
+
+  <button class="btn btn-primary" style="width:100%" onclick="playAgain()">🔄 Play Again</button>
+  <button class="btn btn-ghost" style="width:100%" onclick="leaveRoom()">← Leave Room</button>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -706,9 +824,69 @@ function initSocket() {
     }
   });
 
+  // ── SPYFALL events ──
+  socket.on('spyfall-started', (data) => {
+    mySfRole = data;
+    mySfVote = null;
+    renderSpyfallRoleCard(data);
+    showScreen('spyfall-role');
+  });
+
+  socket.on('spyfall-vote-started', () => {
+    mySfVote = null;
+    if (currentRoom) renderSpyfallVoteScreen();
+    showScreen('spyfall-vote');
+  });
+
+  socket.on('spyfall-caught', (data) => {
+    const isSpy = mySfRole && mySfRole.isSpy;
+    const titleEl = document.getElementById('spyfall-spy-guess-title');
+    const subEl   = document.getElementById('spyfall-spy-guess-sub');
+    const inputW  = document.getElementById('spyfall-spy-input-wrap');
+    const waitEl  = document.getElementById('spyfall-spy-wait');
+    if (isSpy) {
+      if (titleEl) titleEl.textContent = 'You were caught! Guess the location to win!';
+      if (subEl)   subEl.textContent   = 'One last chance...';
+      if (inputW)  inputW.style.display = 'block';
+      if (waitEl)  waitEl.style.display = 'none';
+    } else {
+      if (titleEl) titleEl.textContent = data.spyName + ' was caught!';
+      if (subEl)   subEl.textContent   = 'Waiting for them to guess the location...';
+      if (inputW)  inputW.style.display = 'none';
+      if (waitEl)  waitEl.style.display = 'block';
+    }
+    showScreen('spyfall-spy-guess');
+  });
+
+  socket.on('spyfall-game-ended', (data) => {
+    const banner = document.getElementById('spyfall-final-banner');
+    if (banner) {
+      if (data.spyWon) {
+        banner.style.borderColor = '#ef4444';
+        banner.innerHTML = `<div style="font-size:2.5rem">🕵️</div><div style="font-size:1.4rem;font-weight:900;color:#ef4444;margin-top:8px">The Spy Won!</div><div style="color:var(--muted);margin-top:6px">${data.spyName} got away with it${data.reason==='spy-guessed' ? ' — and correctly guessed the location!' : '!'}</div>`;
+      } else {
+        banner.style.borderColor = '#22c55e';
+        banner.innerHTML = `<div style="font-size:2.5rem">🎉</div><div style="font-size:1.4rem;font-weight:900;color:#22c55e;margin-top:8px">Civilians Win!</div><div style="color:var(--muted);margin-top:6px">${data.spyName} was the spy${data.spyGuess ? ' and guessed "' + data.spyGuess + '" — wrong!' : '!'}</div>`;
+      }
+    }
+    const locTitle = document.getElementById('spyfall-final-loc-title');
+    if (locTitle) locTitle.textContent = 'Location: ' + (data.locationEmoji||'') + ' ' + data.locationName;
+    const rolesList = document.getElementById('spyfall-final-roles');
+    if (rolesList) {
+      rolesList.innerHTML = (data.roles||[]).map(r => `
+        <div class="player-item ${r.isSpy ? 'host-item' : ''}">
+          <div class="player-avatar" style="${r.isSpy ? 'background:#ef4444' : ''}">${r.name[0].toUpperCase()}</div>
+          <div class="player-name">${r.name}</div>
+          <span class="player-badge" style="background:${r.isSpy ? '#ef444422' : 'rgba(99,102,241,.2)'}; color:${r.isSpy ? '#ef4444' : '#a78bfa'}">${r.isSpy ? '🕵️ SPY' : r.role}</span>
+        </div>`).join('');
+    }
+    showScreen('spyfall-final');
+  });
+
   socket.on('reset-game', () => {
     myRole = null; myWord = null; myVote = null; myCategory = null;
     myWhoamiCategoryName = null;
+    mySfRole = null; mySfVote = null;
     gameIsOver = false;
     showScreen('lobby');
   });
@@ -730,10 +908,12 @@ function initSocket() {
     }
   });
 
-  socket.on('reconnect', () => {
-    showToast('Reconnected!', 'success');
-    // Request a sync in case we missed updates
-    if (currentRoom) socket.emit('request-sync', { code: currentRoom.code });
+  // socket.io v4: reconnect fires on the manager, not the socket
+  socket.io.on('reconnect', () => {
+    showToast('Reconnected! ✓', 'success');
+    if (currentRoom && myPlayerName) {
+      socket.emit('rejoin-room', { code: currentRoom.code, name: myPlayerName });
+    }
   });
 
   // ── WHO AM I events ──
@@ -805,7 +985,8 @@ function applyRoomUpdate(room) {
   isHost = room.host === myId;
   // Always update data, but block screen transitions if imposter game just ended
   const whoamiActive = room.gameState === 'whoami-playing' || room.gameState === 'whoami-ended';
-  if (gameIsOver && room.gameState !== 'lobby' && !whoamiActive) {
+  const spyfallActive = room.gameState && room.gameState.startsWith('spyfall-');
+  if (gameIsOver && room.gameState !== 'lobby' && !whoamiActive && !spyfallActive) {
     renderLobbyData(room);
     renderDiscussionData(room);
     renderVotingData(room);
@@ -853,14 +1034,43 @@ function applyRoomUpdate(room) {
   }
 
   if (room.gameState === 'whoami-playing') {
-    // whoami-game-started event handles the initial screen transition.
-    // But if someone rejoins mid-game they need to land somewhere sensible.
     const whoamiScreens = ['screen-whoami-role', 'screen-whoami-game', 'screen-whoami-guess'];
     if (!whoamiScreens.includes(active)) showScreen('whoami-game');
   }
 
   if (room.gameState === 'whoami-ended') {
     if (active !== 'screen-whoami-reveal') showScreen('whoami-reveal');
+  }
+
+  if (room.gameState === 'spyfall-playing') {
+    const sfScreens = ['screen-spyfall-role', 'screen-spyfall-discussion'];
+    if (!sfScreens.includes(active)) showScreen('spyfall-discussion');
+  }
+
+  if (room.gameState === 'spyfall-voting') {
+    const sfVoteScreens = ['screen-spyfall-vote'];
+    if (!sfVoteScreens.includes(active)) {
+      renderSpyfallVoteScreen();
+      showScreen('spyfall-vote');
+    }
+    // Update vote count
+    const countEl = document.getElementById('spyfall-vote-count-text');
+    if (countEl && room.spyfallVoteCount !== undefined) {
+      countEl.textContent = room.spyfallVoteCount + ' / ' + room.players.length + ' voted';
+    }
+  }
+
+  if (room.gameState === 'spyfall-spy-guessing') {
+    const isSpy = mySfRole && mySfRole.isSpy;
+    if (active !== 'screen-spyfall-spy-guess') {
+      document.getElementById('spyfall-spy-input-wrap').style.display = isSpy ? 'block' : 'none';
+      document.getElementById('spyfall-spy-wait').style.display = isSpy ? 'none' : 'block';
+      showScreen('spyfall-spy-guess');
+    }
+  }
+
+  if (room.gameState === 'spyfall-ended') {
+    if (active !== 'screen-spyfall-final') showScreen('spyfall-final');
   }
 }
 
@@ -904,6 +1114,7 @@ function joinRoom() {
 function leaveRoom() {
   if (socket) { socket.disconnect(); socket = null; }
   myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myPlayerName = null;
+  mySfRole = null; mySfVote = null; gameIsOver = false;
   showScreen('home');
 }
 
@@ -1049,6 +1260,7 @@ function renderLobbyData(room) {
       // Imposter mode
       if (hostSettings) hostSettings.style.display = 'block';
       if (whoamiCats) whoamiCats.style.display = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
       if (wordCats) wordCats.style.display = !isVideo ? 'block' : 'none';
       if (videoCats) videoCats.style.display = isVideo ? 'block' : 'none';
       if (blindRow) blindRow.style.display = isVideo ? 'none' : 'flex';
@@ -1558,6 +1770,122 @@ function showToast(msg, type = '') {
 document.getElementById('home-name').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(); });
 document.getElementById('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
 document.getElementById('whoami-guess-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitWhoamiGuess(); });
+
+// ── Invite link: auto-fill code from ?code= URL param ──
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const inviteCode = params.get('code');
+  if (inviteCode) {
+    document.getElementById('home-code').value = inviteCode.toUpperCase();
+    document.getElementById('home-name').focus();
+    showToast('Room code filled in — enter your name to join!', 'success');
+  }
+})();
+
+// ── Copy invite link ──
+function copyInviteLink() {
+  const code = document.getElementById('lobby-code').textContent;
+  if (!code || code === '------') return;
+  const url = window.location.origin + '/?code=' + code;
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('Invite link copied! 🔗', 'success'))
+    .catch(() => showToast(url));
+}
+
+// ──────────────────────────────────────────
+// SPYFALL — CLIENT STATE & FUNCTIONS
+// ──────────────────────────────────────────
+let mySfRole = null; // { isSpy, locationName, locationEmoji, role, playerNames }
+let mySfVote = null;
+
+function renderSpyfallRoleCard(data) {
+  const el = document.getElementById('spyfall-role-card');
+  if (!el) return;
+  if (data.isSpy) {
+    el.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(245,158,11,.1)); border:2px solid #ef4444; border-radius:14px; padding:28px 20px; text-align:center">
+        <div style="font-size:3rem">🕵️</div>
+        <div style="font-size:1.8rem; font-weight:900; color:#ef4444; margin-top:8px">YOU ARE THE SPY</div>
+        <div style="color:var(--muted); margin-top:10px; font-size:0.9rem">You don't know the location. Blend in and try to figure it out!</div>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(14,165,233,.15),rgba(99,102,241,.1)); border:2px solid #0ea5e9; border-radius:14px; padding:28px 20px; text-align:center">
+        <div style="font-size:2.5rem">${data.locationEmoji || '📍'}</div>
+        <div style="color:var(--muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; margin-top:8px">Location</div>
+        <div style="font-size:1.8rem; font-weight:900; color:#38bdf8; margin-top:4px">${data.locationName}</div>
+        <div style="color:var(--muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; margin-top:14px">Your Role</div>
+        <div style="font-size:1.3rem; font-weight:700; color:#a78bfa; margin-top:4px">${data.role}</div>
+      </div>`;
+  }
+}
+
+function renderSpyfallDiscCard() {
+  const el = document.getElementById('spyfall-disc-card');
+  if (!el || !mySfRole) return;
+  if (mySfRole.isSpy) {
+    el.innerHTML = `<div style="background:rgba(239,68,68,.1); border:1px solid #ef4444; border-radius:10px; padding:14px; text-align:center; color:#ef4444; font-weight:700">🕵️ You are the SPY</div>`;
+  } else {
+    el.innerHTML = `<div style="background:rgba(14,165,233,.1); border:1px solid #0ea5e9; border-radius:10px; padding:14px; text-align:center">
+      <div style="color:var(--muted); font-size:0.75rem">Location: <strong style="color:#38bdf8">${mySfRole.locationName}</strong> &nbsp;|&nbsp; Role: <strong style="color:#a78bfa">${mySfRole.role}</strong></div>
+    </div>`;
+  }
+}
+
+function renderSpyfallDiscPlayers() {
+  if (!mySfRole || !currentRoom) return;
+  const el = document.getElementById('spyfall-disc-players');
+  if (!el) return;
+  el.innerHTML = currentRoom.players.map(p => `
+    <div class="player-item">
+      <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+      <div class="player-name">${p.name}</div>
+      ${p.id === currentRoom.host ? '<span class="player-badge badge-host">HOST</span>' : ''}
+      ${p.id === myId ? '<span class="player-badge badge-you">YOU</span>' : ''}
+    </div>`).join('');
+}
+
+function renderSpyfallVoteScreen() {
+  if (!currentRoom) return;
+  const el = document.getElementById('spyfall-vote-list');
+  if (!el) return;
+  el.innerHTML = currentRoom.players.map(p => `
+    <button class="btn ${mySfVote === p.id ? 'btn-danger' : 'btn-outline'}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; text-align:left"
+      onclick="castSpyfallVote('${p.id}')" ${mySfVote ? 'disabled' : ''}>
+      <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+      <div style="flex:1">${p.name}${p.id === myId ? ' (You)' : ''}</div>
+      ${mySfVote === p.id ? '<span style="color:#ef4444">✓ Your vote</span>' : ''}
+    </button>`).join('');
+}
+
+function spyfallRoleReady() {
+  renderSpyfallDiscCard();
+  renderSpyfallDiscPlayers();
+  if (currentRoom) document.getElementById('spyfall-disc-room').textContent = 'Room: ' + currentRoom.code;
+  document.getElementById('spyfall-end-disc-wrap').style.display = isHost ? 'block' : 'none';
+  document.getElementById('spyfall-wait-msg').style.display = isHost ? 'none' : 'block';
+  showScreen('spyfall-discussion');
+}
+
+function endSpyfallDiscussion() {
+  if (!isHost || !socket) return;
+  socket.emit('spyfall-end-discussion');
+}
+
+function castSpyfallVote(targetId) {
+  if (mySfVote || !socket) return;
+  mySfVote = targetId;
+  socket.emit('spyfall-vote', { targetId });
+  renderSpyfallVoteScreen();
+}
+
+function submitSpyfallGuess() {
+  const input = document.getElementById('spyfall-guess-input');
+  const loc = input ? input.value.trim() : '';
+  if (!loc) return showToast('Type a location first!', 'error');
+  socket.emit('spyfall-spy-guess', { location: loc });
+  if (input) input.value = '';
+}
 
 // Keep Render server awake — ping every 4 minutes
 setInterval(() => fetch('/ping').catch(() => {}), 4 * 60 * 1000);

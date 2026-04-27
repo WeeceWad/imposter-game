@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Spyfall</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d14; --surface: #16162a; --card: #1e1e38; --border: #2a2a50;
+      --accent: #ef4444; --accent2: #f97316; --text: #f1f1ff; --muted: #888aaa;
+      --success: #22c55e; --radius: 14px;
+    }
+    html, body {
+      height: 100%; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); overflow-x: hidden;
+    }
+    body { display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+    .screen { display: none; width: 100%; max-width: 480px; padding: 24px 20px; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; justify-content: center; }
+    .screen.active { display: flex; }
+    .screen.top { justify-content: flex-start; padding-top: 36px; }
+
+    .logo { font-size: 2.6rem; font-weight: 900; letter-spacing: -1px; background: linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; width: 100%; }
+    .card-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+
+    input[type="text"] {
+      width: 100%; padding: 14px 16px; background: var(--surface);
+      border: 2px solid var(--border); border-radius: 10px; color: var(--text);
+      font-size: 1rem; outline: none; transition: border-color .2s;
+    }
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    .btn { width: 100%; padding: 15px; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; border: none; transition: all .15s; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: linear-gradient(135deg, #dc2626, #ef4444); color: white; }
+    .btn-success { background: linear-gradient(135deg, #16a34a, #22c55e); color: white; }
+    .btn-outline { background: transparent; color: var(--text); border: 2px solid var(--border); }
+    .btn-outline:hover { border-color: var(--accent); }
+    .btn-ghost { background: transparent; color: var(--muted); font-size: 0.85rem; padding: 10px; border: none; cursor: pointer; }
+    .btn-sm { padding: 8px 14px; font-size: 0.82rem; width: auto; border-radius: 8px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .player-input-row { display: flex; gap: 10px; align-items: center; }
+    .player-num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; color: var(--muted); flex-shrink: 0; }
+
+    .role-card { width: 100%; border-radius: 18px; padding: 36px 24px; text-align: center; }
+    .role-card.player-card { background: linear-gradient(135deg, #0c2340, #1e3a5f); border: 2px solid #3b82f6; }
+    .role-card.spy-card { background: linear-gradient(135deg, #2d0a0a, #450a0a); border: 2px solid #ef4444; }
+
+    .timer-display { font-size: 5rem; font-weight: 900; font-variant-numeric: tabular-nums; text-align: center; line-height: 1; }
+    .timer-display.urgent { color: #ef4444; animation: pulse 1s ease-in-out infinite; }
+
+    .vote-option {
+      width: 100%; padding: 14px 18px; border-radius: 10px; border: 2px solid var(--border);
+      background: var(--surface); color: var(--text); font-size: 1rem; font-weight: 600;
+      cursor: pointer; text-align: left; transition: all .15s; display: flex; align-items: center; gap: 12px;
+    }
+    .vote-option:hover { border-color: var(--accent); background: rgba(239,68,68,0.08); }
+    .vote-option.selected { border-color: var(--accent); background: rgba(239,68,68,0.15); }
+    .vote-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #ec4899); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; flex-shrink: 0; }
+
+    .stat-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .stat-row:last-child { border-bottom: none; }
+
+    .result-banner { text-align: center; padding: 28px 20px; background: var(--card); border-radius: 18px; width: 100%; border: 1px solid var(--border); }
+
+    .text-muted { color: var(--muted); }
+    .text-center { text-align: center; }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .fade-in { animation: fadeIn .35s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 20px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+    #toast.show { opacity: 1; }
+    #toast.error { background: #dc2626; }
+    #toast.success { background: #16a34a; }
+  </style>
+</head>
+<body>
+
+<!-- ══ HOME ══ -->
+<div id="screen-home" class="screen active">
+  <div style="text-align:center">
+    <div style="font-size:3.5rem; filter:drop-shadow(0 0 20px #ef4444)">🕵️</div>
+    <div class="logo" style="margin-top:8px">SPYFALL</div>
+    <div class="text-muted" style="margin-top:4px; font-size:0.9rem">Find the spy — or be one</div>
+  </div>
+
+  <div class="card text-muted" style="font-size:0.88rem; line-height:1.75">
+    Everyone sees the same <strong style="color:var(--text)">secret location</strong> and a role — except the
+    <strong style="color:#ef4444">spy</strong>, who sees nothing. Ask questions to expose the spy without giving
+    the location away. At the end, vote for who you think it is.
+  </div>
+
+  <button class="btn btn-primary" onclick="showScreen('setup')">🕵️ Start Game</button>
+  <a href="/" style="color:var(--muted); font-size:0.85rem; text-decoration:none">← Back to Imposter</a>
+</div>
+
+<!-- ══ SETUP ══ -->
+<div id="screen-setup" class="screen top">
+  <div style="text-align:center; width:100%">
+    <div style="font-size:2rem">🕵️</div>
+    <div style="font-size:1.3rem; font-weight:900; margin-top:4px">Player Setup</div>
+    <div class="text-muted" style="font-size:0.85rem; margin-top:2px">3–8 players</div>
+  </div>
+
+  <div class="card" style="width:100%">
+    <div class="card-title">Player Names</div>
+    <div id="player-inputs" style="display:flex; flex-direction:column; gap:10px"></div>
+    <div style="display:flex; gap:8px; margin-top:14px">
+      <button class="btn btn-outline btn-sm" id="add-player-btn" onclick="addPlayer()">+ Add Player</button>
+      <button class="btn btn-outline btn-sm" id="remove-player-btn" onclick="removePlayer()">− Remove</button>
+    </div>
+  </div>
+
+  <div class="card" style="width:100%">
+    <div class="card-title">Discussion Time</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn btn-sm btn-outline" id="timer-5"  onclick="setTimer(5)">5 min</button>
+      <button class="btn btn-sm btn-primary" id="timer-8"  onclick="setTimer(8)">8 min</button>
+      <button class="btn btn-sm btn-outline" id="timer-10" onclick="setTimer(10)">10 min</button>
+      <button class="btn btn-sm btn-outline" id="timer-15" onclick="setTimer(15)">15 min</button>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="startGame()">🚀 Start</button>
+  <button class="btn-ghost" onclick="showScreen('home')">← Back</button>
+</div>
+
+<!-- ══ PEEK INTRO ══ -->
+<div id="screen-peek-intro" class="screen">
+  <div style="font-size:3.5rem">📱</div>
+  <div style="text-align:center">
+    <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted)">Pass to</div>
+    <div id="peek-name" style="font-size:2.2rem; font-weight:900; margin-top:6px"></div>
+  </div>
+  <div class="text-muted text-center" style="font-size:0.9rem">Make sure no one else can see the screen</div>
+  <button class="btn btn-primary" onclick="showPeekReveal()">👁️ I'm ready — show my role</button>
+</div>
+
+<!-- ══ PEEK REVEAL ══ -->
+<div id="screen-peek-reveal" class="screen">
+  <div id="peek-card-container" style="width:100%"></div>
+  <button class="btn btn-outline" onclick="nextPeek()">✅ Got it — cover screen and pass on</button>
+</div>
+
+<!-- ══ DISCUSSION ══ -->
+<div id="screen-discussion" class="screen">
+  <div style="text-align:center">
+    <div style="font-size:1.8rem; font-weight:900">💬 Discussion</div>
+    <div class="text-muted" style="margin-top:4px; font-size:0.88rem">Ask each other questions to find the spy</div>
+  </div>
+
+  <div id="timer-display" class="timer-display">8:00</div>
+
+  <div style="display:flex; gap:8px; width:100%">
+    <button class="btn btn-outline btn-sm" style="flex:1" onclick="addMinute()">+1 min</button>
+    <button class="btn btn-outline btn-sm" style="flex:1" onclick="subtractMinute()">−1 min</button>
+  </div>
+
+  <button class="btn btn-primary" onclick="goToVoting()">🗳️ End Discussion — Vote!</button>
+</div>
+
+<!-- ══ VOTE INTRO ══ -->
+<div id="screen-vote-intro" class="screen">
+  <div style="font-size:3rem">🗳️</div>
+  <div style="text-align:center">
+    <div style="font-size:1.5rem; font-weight:900">Time to Vote!</div>
+    <div class="text-muted" style="margin-top:8px; font-size:0.9rem">
+      Pass the phone around secretly. Each player picks who they think is the spy.
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="startVoteSequence()">Start Voting →</button>
+</div>
+
+<!-- ══ VOTE CAST ══ -->
+<div id="screen-vote-cast" class="screen top">
+  <div style="text-align:center; width:100%">
+    <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted)">Pass to</div>
+    <div id="vote-player-name" style="font-size:2rem; font-weight:900; margin-top:6px"></div>
+    <div class="text-muted" style="font-size:0.85rem; margin-top:4px">Who is the spy?</div>
+  </div>
+
+  <div id="vote-options" style="display:flex; flex-direction:column; gap:8px; width:100%"></div>
+
+  <button class="btn btn-primary" id="vote-confirm-btn" onclick="confirmVote()" disabled>✓ Confirm Vote</button>
+</div>
+
+<!-- ══ VOTE RESULT ══ -->
+<div id="screen-vote-result" class="screen top">
+  <div style="text-align:center; width:100%; margin-bottom:4px">
+    <div style="font-size:1.8rem; font-weight:900">🗳️ Vote Results</div>
+  </div>
+  <div id="vote-result-content" style="width:100%; display:flex; flex-direction:column; gap:12px"></div>
+  <button class="btn btn-primary" id="vote-result-btn"></button>
+</div>
+
+<!-- ══ SPY GUESS ══ -->
+<div id="screen-spy-guess" class="screen">
+  <div style="font-size:3.5rem; filter:drop-shadow(0 0 16px #ef4444)">🕵️</div>
+  <div style="text-align:center">
+    <div id="spy-guess-title" style="font-size:1.4rem; font-weight:900; color:#ef4444"></div>
+    <div class="text-muted" style="margin-top:8px; font-size:0.9rem">
+      Guess the location correctly and you still win
+    </div>
+  </div>
+  <div class="card" style="width:100%">
+    <div class="card-title">What was the location?</div>
+    <input type="text" id="spy-guess-input" placeholder="Type the location..." autocomplete="off" />
+  </div>
+  <button class="btn btn-primary" onclick="submitSpyGuess()">🎯 That's my final answer!</button>
+</div>
+
+<!-- ══ FINAL ══ -->
+<div id="screen-final" class="screen top">
+  <div id="final-content" style="width:100%; display:flex; flex-direction:column; gap:16px; align-items:center"></div>
+  <button class="btn btn-outline" onclick="playAgain()">🔄 Play Again</button>
+  <a href="/" style="color:var(--muted); font-size:0.85rem; text-decoration:none">← Back to Imposter</a>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ──────────────────────────────────────────
+// LOCATIONS
+// ──────────────────────────────────────────
+const LOCATIONS = [
+  { name: 'Hospital',        emoji: '🏥', roles: ['Doctor','Nurse','Patient','Surgeon','Receptionist','Janitor','Paramedic','Anesthesiologist'] },
+  { name: 'Beach',           emoji: '🏖️', roles: ['Lifeguard','Tourist','Ice Cream Vendor','Volleyball Player','Photographer','Surfer','Beach Bum','Jet Ski Instructor'] },
+  { name: 'Airplane',        emoji: '✈️', roles: ['Pilot','Co-Pilot','Flight Attendant','Passenger','Air Marshal','First Class Passenger','Tourist','Baggage Handler'] },
+  { name: 'School',          emoji: '🏫', roles: ['Teacher','Student','Principal','Janitor','Coach','New Student','School Nurse','Cafeteria Worker'] },
+  { name: 'Casino',          emoji: '🎰', roles: ['Dealer','Pit Boss','High Roller','Security Guard','Cocktail Waitress','Manager','Gambler','Card Counter'] },
+  { name: 'Restaurant',      emoji: '🍽️', roles: ['Head Chef','Waiter','Manager','Health Inspector','Customer','Dishwasher','Food Critic','Sous Chef'] },
+  { name: 'Police Station',  emoji: '🚔', roles: ['Detective','Officer','Police Chief','Suspect','Lawyer','Informant','Desk Clerk','Crime Scene Tech'] },
+  { name: 'Hotel',           emoji: '🏨', roles: ['Concierge','Guest','Housekeeper','Manager','Bellboy','Chef','Security Guard','Receptionist'] },
+  { name: 'Space Station',   emoji: '🚀', roles: ['Commander','Astronaut','Engineer','Scientist','Space Tourist','Flight Controller','Medic'] },
+  { name: 'Pirate Ship',     emoji: '🏴‍☠️', roles: ['Captain','First Mate','Sailor','Cook','Navigator','Prisoner','Lookout','Gunner'] },
+  { name: 'Circus',          emoji: '🎪', roles: ['Clown','Acrobat','Ringmaster','Lion Tamer','Ticket Seller','Trapeze Artist','Juggler','Fire Breather'] },
+  { name: 'Military Base',   emoji: '🪖', roles: ['General','Soldier','Medic','Engineer','Cook','Sniper','Intelligence Officer','Drill Sergeant'] },
+  { name: 'Prison',          emoji: '⛓️', roles: ['Warden','Guard','Prisoner','Lawyer','Visitor','Psychiatrist','New Inmate','Parole Officer'] },
+  { name: 'Museum',          emoji: '🏛️', roles: ['Curator','Tour Guide','Security Guard','Visitor','Archaeologist','Art Restorer','Ticket Inspector','Donor'] },
+  { name: 'Wedding',         emoji: '💒', roles: ['Bride','Groom','Best Man','Bridesmaid','Priest','Caterer','Photographer','Drunk Uncle'] },
+  { name: 'Football Stadium',emoji: '⚽', roles: ['Player','Coach','Referee','Fan','Commentator','Hot Dog Vendor','Manager','Physio'] },
+  { name: 'Submarine',       emoji: '🤿', roles: ['Captain','Navigator','Engineer','Cook','Torpedo Officer','Radio Operator','New Recruit','Sonar Operator'] },
+  { name: 'Spa',             emoji: '🧖', roles: ['Masseur','Client','Receptionist','Nail Technician','Manager','Yoga Instructor','Sauna Attendant','Aromatherapist'] },
+  { name: 'Movie Set',       emoji: '🎬', roles: ['Director','Lead Actor','Stuntman','Camera Operator','Make-up Artist','Producer','Extra','Screenwriter'] },
+  { name: 'Supermarket',     emoji: '🛒', roles: ['Cashier','Manager','Customer','Stock Clerk','Security Guard','Butcher','Delivery Driver','Self-Checkout Attendant'] },
+  { name: 'Night Club',      emoji: '🎵', roles: ['DJ','Bouncer','Regular','Bartender','VIP Guest','Coat Check','Promoter','Undercover Cop'] },
+  { name: 'Bank',            emoji: '🏦', roles: ['Teller','Manager','Security Guard','Customer','Loan Officer','Intern','Cleaner','Bank Robber'] },
+  { name: 'Cruise Ship',     emoji: '🚢', roles: ['Captain','Tourist','Chef','Entertainer','Crew Member','Lifeguard','Bartender','Navigator'] },
+  { name: 'Library',         emoji: '📚', roles: ['Librarian','Student','Researcher','Security Guard','Volunteer','Children\'s Librarian','Visitor','Sleeping Homeless Person'] },
+  { name: 'Theme Park',      emoji: '🎢', roles: ['Ride Operator','Tourist','Character Mascot','Security Guard','Food Vendor','Manager','Child','Ride Mechanic'] },
+  { name: 'Ice Hockey Rink', emoji: '🏒', roles: ['Player','Coach','Referee','Fan','Zamboni Driver','Commentator','Team Doctor','Ice Skater'] },
+  { name: 'Ski Resort',      emoji: '⛷️', roles: ['Skier','Snowboarder','Ski Instructor','Lift Operator','Ski Patrol Medic','Lodge Bartender','Tourist','Chalet Host'] },
+  { name: 'Gym',             emoji: '💪', roles: ['Personal Trainer','Member','Receptionist','Manager','Nutritionist','Yoga Instructor','Bodybuilder','Cardio Addict'] },
+  { name: 'Office',          emoji: '🏢', roles: ['CEO','Manager','Intern','Receptionist','IT Support','Accountant','Janitor','HR Manager'] },
+  { name: 'Haunted House',   emoji: '👻', roles: ['Ghost Actor','Tour Guide','Scared Visitor','Paranormal Investigator','Caretaker','Skeptic','Child','Security Guard'] },
+  { name: 'University',      emoji: '🎓', roles: ['Professor','Student','Dean','Janitor','Librarian','Fresher','Tutor','Security Guard'] },
+  { name: 'Airport',         emoji: '🛫', roles: ['Pilot','Passenger','Security Officer','Border Control','Check-in Agent','Cleaner','Duty Free Worker','Lost Luggage Clerk'] },
+  { name: 'Superhero HQ',    emoji: '🦸', roles: ['Leader','Tech Expert','Rookie','Veteran','Scientist','Villain Informant','Sidekick','Receptionist'] },
+  { name: 'Film Premiere',   emoji: '🎟️', roles: ['Lead Actor','Director','Paparazzi','Fan','Publicist','Security Guard','Interviewer','Gate Crasher'] },
+  { name: 'Cooking Show',    emoji: '👨‍🍳', roles: ['Host','Contestant','Judge','Camera Operator','Producer','Runner','Sous Chef','Nervous Beginner'] },
+];
+
+// ──────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────
+let players        = [];
+let playerCount    = 4;
+let spyIndex       = -1;
+let spyName        = '';
+let currentLoc     = null;
+let roles          = [];
+let currentPeekIdx = 0;
+let currentVoteIdx = 0;
+let selectedVote   = null;
+let votes          = {};
+let accusedName    = '';
+let discussionMins = 8;
+let timerSecs      = 0;
+let timerInterval  = null;
+
+// ──────────────────────────────────────────
+// SCREEN
+// ──────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ──────────────────────────────────────────
+// SETUP
+// ──────────────────────────────────────────
+function renderPlayerInputs() {
+  const c = document.getElementById('player-inputs');
+  c.innerHTML = '';
+  for (let i = 0; i < playerCount; i++) {
+    c.innerHTML += `
+      <div class="player-input-row">
+        <div class="player-num">${i + 1}</div>
+        <input type="text" placeholder="Player ${i + 1}" id="pi-${i}" autocomplete="off" />
+      </div>`;
+  }
+  document.getElementById('add-player-btn').disabled    = playerCount >= 8;
+  document.getElementById('remove-player-btn').disabled = playerCount <= 3;
+}
+
+function addPlayer()    { if (playerCount < 8) { playerCount++; renderPlayerInputs(); } }
+function removePlayer() { if (playerCount > 3) { playerCount--; renderPlayerInputs(); } }
+
+function setTimer(mins) {
+  discussionMins = mins;
+  [5, 8, 10, 15].forEach(m => {
+    const b = document.getElementById('timer-' + m);
+    if (b) b.className = 'btn btn-sm ' + (m === mins ? 'btn-primary' : 'btn-outline');
+  });
+}
+
+function startGame() {
+  players = [];
+  for (let i = 0; i < playerCount; i++) {
+    const v = (document.getElementById('pi-' + i)?.value || '').trim();
+    if (!v) return showToast('Fill in all player names!', 'error');
+    if (players.includes(v)) return showToast('Duplicate name: ' + v, 'error');
+    players.push(v);
+  }
+
+  // Pick random location
+  currentLoc = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+
+  // Pick spy
+  spyIndex = Math.floor(Math.random() * players.length);
+  spyName  = players[spyIndex];
+
+  // Assign roles (cycle through shuffled roles, skip spy slot)
+  const shuffled = [...currentLoc.roles].sort(() => Math.random() - 0.5);
+  let ri = 0;
+  roles = players.map((_, i) => i === spyIndex ? null : shuffled[ri++ % shuffled.length]);
+
+  // Reset
+  currentPeekIdx = 0;
+  currentVoteIdx = 0;
+  votes          = {};
+  selectedVote   = null;
+  accusedName    = '';
+
+  showPeekIntro();
+}
+
+// ──────────────────────────────────────────
+// PEEK SEQUENCE
+// ──────────────────────────────────────────
+function showPeekIntro() {
+  document.getElementById('peek-name').textContent = players[currentPeekIdx];
+  showScreen('peek-intro');
+}
+
+function showPeekReveal() {
+  const i   = currentPeekIdx;
+  const spy = i === spyIndex;
+  const c   = document.getElementById('peek-card-container');
+
+  if (spy) {
+    c.innerHTML = `
+      <div class="role-card spy-card fade-in">
+        <div style="font-size:4rem; margin-bottom:16px; filter:drop-shadow(0 0 20px #ef4444)">🕵️</div>
+        <div style="font-size:1.7rem; font-weight:900; color:#ef4444; letter-spacing:-0.5px">YOU ARE THE SPY</div>
+        <div style="color:var(--muted); font-size:0.88rem; margin-top:14px; line-height:1.7">
+          You don't know the location.<br>
+          Ask vague questions, blend in, and try to figure out where you are from the others' answers!
+        </div>
+      </div>`;
+  } else {
+    c.innerHTML = `
+      <div class="role-card player-card fade-in">
+        <div style="font-size:4rem; margin-bottom:10px">${currentLoc.emoji}</div>
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:2px; color:#93c5fd; margin-bottom:4px">Location</div>
+        <div style="font-size:1.9rem; font-weight:900; color:#fff; margin-bottom:20px">${currentLoc.name}</div>
+        <div style="height:1px; background:rgba(59,130,246,0.3); margin-bottom:18px"></div>
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:2px; color:#93c5fd; margin-bottom:6px">Your Role</div>
+        <div style="font-size:1.5rem; font-weight:800; color:#60a5fa">${roles[i]}</div>
+        <div style="font-size:0.78rem; color:var(--muted); margin-top:10px">Don't give the location away!</div>
+      </div>`;
+  }
+
+  showScreen('peek-reveal');
+}
+
+function nextPeek() {
+  currentPeekIdx++;
+  if (currentPeekIdx >= players.length) {
+    startDiscussion();
+  } else {
+    showPeekIntro();
+  }
+}
+
+// ──────────────────────────────────────────
+// DISCUSSION
+// ──────────────────────────────────────────
+function startDiscussion() {
+  timerSecs = discussionMins * 60;
+  updateTimerDisplay();
+  showScreen('discussion');
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timerSecs--;
+    updateTimerDisplay();
+    if (timerSecs <= 0) {
+      clearInterval(timerInterval);
+      showToast("Time's up! Head to voting.", 'error');
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const abs  = Math.max(0, timerSecs);
+  const mins = Math.floor(abs / 60);
+  const secs = abs % 60;
+  const el   = document.getElementById('timer-display');
+  el.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+  el.className   = 'timer-display' + (timerSecs <= 30 ? ' urgent' : '');
+}
+
+function addMinute()      { timerSecs += 60; updateTimerDisplay(); }
+function subtractMinute() { timerSecs = Math.max(0, timerSecs - 60); updateTimerDisplay(); }
+
+function goToVoting() {
+  clearInterval(timerInterval);
+  showScreen('vote-intro');
+}
+
+// ──────────────────────────────────────────
+// VOTING
+// ──────────────────────────────────────────
+function startVoteSequence() {
+  currentVoteIdx = 0;
+  votes          = {};
+  showNextVote();
+}
+
+function showNextVote() {
+  if (currentVoteIdx >= players.length) {
+    showVoteResults();
+    return;
+  }
+
+  const voter = players[currentVoteIdx];
+  document.getElementById('vote-player-name').textContent = voter;
+  selectedVote = null;
+  document.getElementById('vote-confirm-btn').disabled = true;
+
+  const opts = document.getElementById('vote-options');
+  opts.innerHTML = players
+    .map((p, idx) => ({ p, idx }))
+    .filter(({ idx }) => idx !== currentVoteIdx)
+    .map(({ p, idx }) => `
+      <button class="vote-option" onclick="selectVote(${idx}, this)">
+        <div class="vote-avatar">${p[0].toUpperCase()}</div>
+        <span>${p}</span>
+      </button>`)
+    .join('');
+
+  showScreen('vote-cast');
+}
+
+function selectVote(playerIdx, btn) {
+  selectedVote = players[playerIdx];
+  document.querySelectorAll('.vote-option').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('vote-confirm-btn').disabled = false;
+}
+
+function confirmVote() {
+  if (!selectedVote) return;
+  votes[players[currentVoteIdx]] = selectedVote;
+  currentVoteIdx++;
+  showNextVote();
+}
+
+function showVoteResults() {
+  // Tally
+  const tally = {};
+  players.forEach(p => { tally[p] = 0; });
+  Object.values(votes).forEach(v => { tally[v] = (tally[v] || 0) + 1; });
+
+  const maxVotes  = Math.max(...Object.values(tally));
+  const topVoted  = players.filter(p => tally[p] === maxVotes);
+  const sorted    = [...players].sort((a, b) => tally[b] - tally[a]);
+
+  let html = `<div class="card" style="width:100%">
+    <div class="card-title">Vote Tally</div>
+    ${sorted.map(p => `
+      <div class="stat-row">
+        <div class="vote-avatar">${p[0].toUpperCase()}</div>
+        <div style="flex:1; font-weight:600">${p}</div>
+        <div style="font-size:1.1rem; font-weight:800; color:${tally[p] === maxVotes ? '#ef4444' : 'var(--muted)'}">
+          ${tally[p]} vote${tally[p] !== 1 ? 's' : ''}
+        </div>
+      </div>`).join('')}
+  </div>`;
+
+  const btn = document.getElementById('vote-result-btn');
+
+  if (topVoted.length > 1) {
+    // Tie — spy wins automatically
+    html += `<div class="card text-center" style="width:100%; border-color:#ef4444">
+      <div style="font-size:1.2rem; font-weight:700; color:#ef4444">🤝 It's a tie!</div>
+      <div class="text-muted" style="margin-top:6px; font-size:0.88rem">Nobody was caught. The spy wins automatically.</div>
+    </div>`;
+    btn.textContent = '👁️ Reveal the spy';
+    btn.onclick     = () => showFinalResult('spy-wins');
+
+  } else {
+    accusedName     = topVoted[0];
+    const caughtSpy = accusedName === spyName;
+
+    if (caughtSpy) {
+      html += `<div class="card text-center" style="width:100%; border-color:#f97316">
+        <div style="font-size:1.2rem; font-weight:700; color:#f97316">🎯 ${accusedName} was caught!</div>
+        <div class="text-muted" style="margin-top:6px; font-size:0.88rem">
+          But the spy gets one last chance — guess the location to still win.
+        </div>
+      </div>`;
+      btn.textContent = '🕵️ Spy — make your guess';
+      btn.onclick     = showSpyGuess;
+    } else {
+      html += `<div class="card text-center" style="width:100%; border-color:#ef4444">
+        <div style="font-size:1.2rem; font-weight:700; color:#ef4444">😬 Wrong person!</div>
+        <div class="text-muted" style="margin-top:6px; font-size:0.88rem">
+          ${accusedName} is innocent. The spy wins!
+        </div>
+      </div>`;
+      btn.textContent = '👁️ Reveal the spy';
+      btn.onclick     = () => showFinalResult('spy-wins');
+    }
+  }
+
+  document.getElementById('vote-result-content').innerHTML = html;
+  showScreen('vote-result');
+}
+
+// ──────────────────────────────────────────
+// SPY GUESS
+// ──────────────────────────────────────────
+function showSpyGuess() {
+  document.getElementById('spy-guess-title').textContent = `${spyName} — you've been caught!`;
+  document.getElementById('spy-guess-input').value = '';
+  showScreen('spy-guess');
+}
+
+function submitSpyGuess() {
+  const guess = document.getElementById('spy-guess-input').value.trim();
+  if (!guess) return showToast('Type your guess!', 'error');
+  const correct = guess.toLowerCase().trim() === currentLoc.name.toLowerCase();
+  showFinalResult(correct ? 'spy-wins-guess' : 'players-win');
+}
+
+// ──────────────────────────────────────────
+// FINAL
+// ──────────────────────────────────────────
+function showFinalResult(result) {
+  const spyWon = result !== 'players-win';
+  let html = '';
+
+  html += `<div class="result-banner fade-in" style="border-color:${spyWon ? '#ef4444' : '#22c55e'}">
+    <div style="font-size:3.5rem">${spyWon ? '🕵️' : '🎉'}</div>
+    <div style="font-size:1.7rem; font-weight:900; color:${spyWon ? '#ef4444' : '#22c55e'}; margin-top:10px">
+      ${spyWon ? 'Spy Wins!' : 'Players Win!'}
+    </div>
+    <div style="color:var(--muted); margin-top:8px; font-size:0.9rem">
+      ${result === 'spy-wins'       ? "The spy wasn't caught!" :
+        result === 'spy-wins-guess' ? `${spyName} guessed the location correctly!` :
+                                      `${spyName} couldn't name the location!`}
+    </div>
+  </div>`;
+
+  html += `<div class="card text-center fade-in" style="width:100%">
+    <div class="card-title">The Location Was</div>
+    <div style="font-size:3.5rem; margin:10px 0">${currentLoc.emoji}</div>
+    <div style="font-size:1.6rem; font-weight:900">${currentLoc.name}</div>
+  </div>`;
+
+  html += `<div class="card text-center fade-in" style="width:100%; border-color:#ef4444">
+    <div class="card-title" style="color:#ef4444">The Spy Was</div>
+    <div style="font-size:1.8rem; font-weight:900; color:#ef4444">🕵️ ${spyName}</div>
+  </div>`;
+
+  html += `<div class="card fade-in" style="width:100%">
+    <div class="card-title">Everyone's Roles</div>
+    ${players.map((p, i) => `
+      <div class="stat-row">
+        <div class="vote-avatar">${p[0].toUpperCase()}</div>
+        <div>
+          <div style="font-weight:600">${p}</div>
+          <div style="font-size:0.8rem; color:${i === spyIndex ? '#ef4444' : '#93c5fd'}; margin-top:2px">
+            ${i === spyIndex ? '🕵️ The Spy' : roles[i]}
+          </div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+
+  document.getElementById('final-content').innerHTML = html;
+  showScreen('final');
+}
+
+// ──────────────────────────────────────────
+// PLAY AGAIN
+// ──────────────────────────────────────────
+function playAgain() {
+  clearInterval(timerInterval);
+  renderPlayerInputs();
+  showScreen('setup');
+}
+
+// ──────────────────────────────────────────
+// TOAST
+// ──────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ──────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────
+renderPlayerInputs();
+document.getElementById('spy-guess-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitSpyGuess();
+});
+</script>
+</body>
+</html>

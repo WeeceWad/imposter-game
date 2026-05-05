@@ -1361,29 +1361,15 @@ function renderRoleCard(data) {
   let html = '';
 
   if (gameMode === 'questions') {
-    if (role === 'imposter') {
-      html = `
-        <div class="role-card imposter-card reveal-anim">
-          <div class="role-icon">🔪</div>
-          <div class="role-title" style="color:#ef4444">YOU'RE THE IMPOSTER</div>
-          <div style="margin:16px 0; padding:16px; background:rgba(239,68,68,0.12); border-radius:12px; border:1px solid rgba(239,68,68,0.4)">
-            <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:#f87171; margin-bottom:8px">YOUR QUESTION</div>
-            <div style="font-size:1.05rem; font-weight:700; color:#fca5a5; line-height:1.4">${word}</div>
-          </div>
-          <div class="role-hint">Your question is <em>slightly different</em> from everyone else's. Answer it convincingly — don't get caught!</div>
-        </div>`;
-    } else {
-      html = `
-        <div class="role-card player-card reveal-anim">
-          <div class="role-icon">💬</div>
-          <div class="role-title" style="color:#60a5fa">YOU'RE A PLAYER</div>
-          <div style="margin:16px 0; padding:16px; background:rgba(96,165,250,0.12); border-radius:12px; border:1px solid rgba(96,165,250,0.4)">
-            <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:#60a5fa; margin-bottom:8px">YOUR QUESTION</div>
-            <div style="font-size:1.05rem; font-weight:700; color:#93c5fd; line-height:1.4">${word}</div>
-          </div>
-          <div class="role-hint">Answer this when it's your turn. Listen carefully — someone has a <em>different</em> question!</div>
-        </div>`;
-    }
+    html = `
+      <div class="role-card player-card reveal-anim">
+        <div class="role-icon">💬</div>
+        <div class="role-title" style="color:#60a5fa">YOUR QUESTION</div>
+        <div style="margin:16px 0; padding:16px; background:rgba(96,165,250,0.12); border-radius:12px; border:1px solid rgba(96,165,250,0.4)">
+          <div style="font-size:1.05rem; font-weight:700; color:#93c5fd; line-height:1.4">${word}</div>
+        </div>
+        <div class="role-hint">Answer this when it's your turn. Someone in the room has a slightly different question — figure out who!</div>
+      </div>`;
     document.getElementById('ready-btn').textContent = "✅ I've read my question";
   } else if (gameMode === 'video' && videoId) {
     // ── VIDEO MODE: everyone just sees their video ──

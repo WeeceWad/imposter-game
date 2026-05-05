@@ -428,6 +428,62 @@ const VIDEO_CATEGORIES = {
   nature:     { name: "🌿 Nature",         queries: ["nature shorts beautiful", "wildlife shorts amazing"] }
 };
 
+// ─────────────────────────────────────────────
+// QUESTIONS MODE — PAIRS
+// ─────────────────────────────────────────────
+const QUESTIONS = [
+  { playerQ: "What food could you eat every single day?", imposterQ: "What food could you never bring yourself to eat?" },
+  { playerQ: "If you could live anywhere in the world, where would you choose?", imposterQ: "If you had to leave your country forever, where would you least want to go?" },
+  { playerQ: "What's your favourite film of all time?", imposterQ: "What film do you think is massively overrated?" },
+  { playerQ: "What hobby would you take up if you had unlimited free time?", imposterQ: "What hobby do you think is the biggest waste of time?" },
+  { playerQ: "What's the best thing about summer?", imposterQ: "What's the most annoying thing about summer?" },
+  { playerQ: "What animal would you have as a pet if you could pick any?", imposterQ: "What animal do you find the most terrifying?" },
+  { playerQ: "What superpower would you most want to have?", imposterQ: "What superpower do you think would be completely useless?" },
+  { playerQ: "Which celebrity would you most like to have dinner with?", imposterQ: "Which celebrity do you think would be the worst dinner guest?" },
+  { playerQ: "What sport do you most enjoy watching?", imposterQ: "What sport do you find the most boring to watch?" },
+  { playerQ: "What would you do first if you won a million pounds?", imposterQ: "What's the most ridiculous waste of a million pounds you can think of?" },
+  { playerQ: "What TV show are you most obsessed with right now?", imposterQ: "What TV show do you think is completely overrated?" },
+  { playerQ: "What's the best meal of the day?", imposterQ: "What's the worst meal of the day to have to cook?" },
+  { playerQ: "What music genre is your favourite?", imposterQ: "What music genre do you absolutely can't stand?" },
+  { playerQ: "What makes you feel most relaxed after a long day?", imposterQ: "What instantly puts you in a terrible mood?" },
+  { playerQ: "What's the best city you've ever visited?", imposterQ: "What place was the most disappointing you've ever visited?" },
+  { playerQ: "What kind of weather is your favourite?", imposterQ: "What kind of weather makes you want to stay in bed all day?" },
+  { playerQ: "What subject did you enjoy most at school?", imposterQ: "What subject did you absolutely dread at school?" },
+  { playerQ: "What's your favourite type of holiday?", imposterQ: "What kind of holiday sounds like your worst nightmare?" },
+  { playerQ: "What's a skill you're genuinely proud of having?", imposterQ: "What's something you're surprisingly terrible at?" },
+  { playerQ: "What would your dream job be?", imposterQ: "What job would you absolutely refuse to do?" },
+  { playerQ: "What app do you use most on your phone?", imposterQ: "What app do you think is a complete waste of space?" },
+  { playerQ: "What fast food place is your go-to?", imposterQ: "What fast food restaurant would you never eat at?" },
+  { playerQ: "What's the best decade for music?", imposterQ: "What decade had the worst music, in your opinion?" },
+  { playerQ: "What historical period would you most like to visit?", imposterQ: "What historical period would be the most terrifying to actually live in?" },
+  { playerQ: "What fictional character would you most like to be?", imposterQ: "What fictional character would you absolutely hate to be?" },
+  { playerQ: "What's the best thing about technology today?", imposterQ: "What's the most annoying thing about modern technology?" },
+  { playerQ: "What's something you'd happily splash money on?", imposterQ: "What's something you think is a complete waste of money?" },
+  { playerQ: "What's the best gift you've ever received?", imposterQ: "What's the most disappointing gift you've ever been given?" },
+  { playerQ: "What country would you most want to visit?", imposterQ: "What country would you least want to visit?" },
+  { playerQ: "What film genre is your favourite?", imposterQ: "What film genre do you never bother watching?" },
+  { playerQ: "What breakfast food is your absolute favourite?", imposterQ: "What breakfast food do you find absolutely disgusting?" },
+  { playerQ: "What's something you could talk about for hours?", imposterQ: "What topic do you find unbearably boring to discuss?" },
+  { playerQ: "What part of your daily routine do you most look forward to?", imposterQ: "What part of your daily routine do you dread the most?" },
+  { playerQ: "What's the most impressive thing you can cook?", imposterQ: "What dish have you repeatedly failed to cook properly?" },
+  { playerQ: "What language would you most like to speak fluently?", imposterQ: "What language do you think sounds the harshest to listen to?" },
+  { playerQ: "What type of party is the most fun?", imposterQ: "What type of social event do you always try to get out of?" },
+  { playerQ: "What's the best thing about getting older?", imposterQ: "What's the worst thing about getting older?" },
+  { playerQ: "What animal do you think is the most impressive?", imposterQ: "What animal do you think is the most pointless?" },
+  { playerQ: "What habit are you most proud of having?", imposterQ: "What's a bad habit you just can't seem to shake?" },
+  { playerQ: "What's the most adventurous thing you've ever done?", imposterQ: "What's something you've done that you immediately regretted?" },
+  { playerQ: "What would you do with a completely free Saturday?", imposterQ: "What's the worst way you could imagine spending a free Saturday?" },
+  { playerQ: "What's your favourite time of year?", imposterQ: "What time of year do you dread the most?" },
+  { playerQ: "What celebrity do you think is genuinely talented?", imposterQ: "What celebrity do you find the most irritating?" },
+  { playerQ: "What's the best thing about where you live?", imposterQ: "What's the most annoying thing about where you live?" },
+  { playerQ: "What childhood memory makes you smile the most?", imposterQ: "What's a memory from growing up you'd rather forget?" },
+  { playerQ: "What sport would you most like to try?", imposterQ: "What sport do you think looks the most dangerous or reckless?" },
+  { playerQ: "What's something on your bucket list?", imposterQ: "What's something people put on bucket lists that you'd never bother doing?" },
+  { playerQ: "What's the most interesting job you've heard of someone having?", imposterQ: "What's the most tedious job you could imagine having?" },
+  { playerQ: "What would you do with an extra hour every single day?", imposterQ: "What do you think people waste the most time doing?" },
+  { playerQ: "What's the best thing about your friendship group?", imposterQ: "What's an annoying habit that a lot of people seem to have?" }
+];
+
 // Cache YouTube results to preserve API quota
 const _videoCache = {};
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -576,6 +632,125 @@ function tallyVotes(votes) {
     tally[id] = (tally[id] || 0) + 1;
   });
   return tally;
+}
+
+function buildResultPayload(room, extra = {}) {
+  const allPlayers = room.players.map(p => ({
+    name: p.name,
+    isImposter: room.imposters.includes(p.id)
+  }));
+  const imposterNames = room.imposters
+    .map(id => (room.players.find(p => p.id === id) || {}).name)
+    .filter(Boolean);
+  const imposterWords = room.imposters.map(id => {
+    const p = room.players.find(pl => pl.id === id);
+    return { name: p ? p.name : 'Unknown', word: room.imposterWords ? room.imposterWords[id] : null };
+  });
+  return {
+    result: room.result,
+    word: room.currentWord,
+    category: room.currentCategory,
+    imposters: imposterNames,
+    imposterWords,
+    blindMode: room.settings.blindImposter,
+    votingHistory: room.votingHistory || [],
+    allPlayers,
+    gameMode: room.settings.gameMode || 'word',
+    playerVideo: room.currentPlayerVideo || null,
+    imposterVideo: room.currentImposterVideo || null,
+    playerQuestion: room.currentPlayerQuestion || null,
+    imposterQuestion: room.currentImposterQuestion || null,
+    ...extra
+  };
+}
+
+function resolveVotes(room) {
+  const tally = tallyVotes(room.votes);
+  const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+
+  if (Object.keys(tally).length === 0) {
+    room.gameState = 'game-over';
+    room.result = 'players-win';
+    io.to(room.code).emit('game-over', buildResultPayload(room));
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+    return;
+  }
+
+  const maxVotes = Math.max(...Object.values(tally));
+  const topVotedIds = Object.keys(tally).filter(id => tally[id] === maxVotes);
+  const eliminatedId = topVotedIds[Math.floor(Math.random() * topVotedIds.length)];
+  const eliminatedPlayer = room.players.find(p => p.id === eliminatedId);
+  if (!eliminatedPlayer) return;
+
+  const isImposter = room.imposters.includes(eliminatedId);
+
+  if (!room.votingHistory) room.votingHistory = [];
+  const individualVotes = {};
+  Object.entries(room.votes).forEach(([voterId, targetId]) => {
+    const voter = room.players.find(p => p.id === voterId);
+    const target = room.players.find(p => p.id === targetId);
+    if (voter && target) individualVotes[voter.name] = target.name;
+  });
+  room.votingHistory.push({
+    round: room.votingHistory.length + 1,
+    eliminated: { name: eliminatedPlayer.name, isImposter },
+    individualVotes
+  });
+
+  room.eliminatedPlayers.push(eliminatedId);
+  room.lastEliminated = eliminatedId;
+
+  const remainingPlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+  const remainingImposters = room.imposters.filter(id => !room.eliminatedPlayers.includes(id));
+  const remainingInnocents = remainingPlayers.filter(p => !room.imposters.includes(p.id));
+
+  const elimResult = {
+    eliminated: {
+      name: eliminatedPlayer.name,
+      isImposter,
+      voteCount: tally[eliminatedId] || 0,
+      totalVotes: activePlayers.length
+    },
+    remainingImposters: remainingImposters.length
+  };
+
+  const isWordMode = !room.settings.gameMode || room.settings.gameMode === 'word';
+
+  if (isImposter) {
+    if (remainingImposters.length === 0) {
+      if (isWordMode && room.currentWord) {
+        room.gameState = 'imposter-guess';
+        io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'imposter-guess' });
+        io.to(eliminatedId).emit('make-guess', { category: room.currentCategory });
+      } else {
+        room.gameState = 'game-over';
+        room.result = 'players-win';
+        io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
+        setTimeout(() => {
+          io.to(room.code).emit('game-over', buildResultPayload(room));
+          io.to(room.code).emit('room-update', sanitizeRoom(room));
+        }, 2500);
+      }
+    } else {
+      room.gameState = 'elimination';
+      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'elimination' });
+    }
+  } else {
+    if (remainingImposters.length >= remainingInnocents.length) {
+      room.gameState = 'game-over';
+      room.result = 'imposters-win';
+      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
+      setTimeout(() => {
+        io.to(room.code).emit('game-over', buildResultPayload(room));
+        io.to(room.code).emit('room-update', sanitizeRoom(room));
+      }, 2500);
+    } else {
+      room.gameState = 'elimination';
+      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'elimination' });
+    }
+  }
+
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
 // ─────────────────────────────────────────────
@@ -930,6 +1105,16 @@ io.on('connection', (socket) => {
         console.error('Video fetch error:', e.message);
         return socket.emit('error', { message: 'Could not fetch videos. Check the API key is set on Render, then try again.' });
       }
+    } else if (room.settings.gameMode === 'questions') {
+      // ── QUESTIONS MODE ──
+      const qPair = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
+      room.currentPlayerQuestion = qPair.playerQ;
+      room.currentImposterQuestion = qPair.imposterQ;
+      room.currentWord = null;
+      room.currentCategory = '❓ Questions';
+      room.currentCategoryKey = null;
+      room.currentPlayerVideo = null;
+      room.currentImposterVideo = null;
     } else {
       // ── WORD MODE ──
       const { word, category, categoryKey } = pickWordFromCategories(room.settings.selectedCategories);
@@ -974,6 +1159,17 @@ io.on('connection', (socket) => {
           videoId: video.id,
           videoTitle: video.title,
           category: room.currentCategory,
+          blindMode: false
+        };
+      } else if (room.settings.gameMode === 'questions') {
+        // Questions mode: each player gets a question, imposter gets a different one
+        const question = isImposter ? room.currentImposterQuestion : room.currentPlayerQuestion;
+        room.imposterWords[player.id] = isImposter ? room.currentImposterQuestion : null;
+        roleData = {
+          role: isImposter ? 'imposter' : 'player',
+          gameMode: 'questions',
+          word: question,
+          category: '❓ Questions',
           blindMode: false
         };
       } else if (isImposter) {
@@ -1181,6 +1377,8 @@ io.on('connection', (socket) => {
     room.currentWord = null;
     room.currentCategory = null;
     room.currentCategoryKey = null;
+    room.currentPlayerQuestion = null;
+    room.currentImposterQuestion = null;
     room.whoamiAssignments = {};
     room.whoamiGuesses = {};
     room.spyfallData = null;

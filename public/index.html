@@ -29,8 +29,9 @@
     body { display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
 
     /* ─────────────── SCREENS ─────────────── */
-    .screen { display: none; width: 100%; max-width: 480px; padding: 24px 20px; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; justify-content: center; }
+    .screen { display: none; width: 100%; max-width: 480px; padding: 24px 20px; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; justify-content: center; scrollbar-width: none; -ms-overflow-style: none; }
     .screen.active { display: flex; }
+    .screen::-webkit-scrollbar { display: none; }
     /* Lobby & game screens scroll from top so room code is never cut off on small phones */
     #screen-lobby, #screen-whoami-role, #screen-whoami-game, #screen-whoami-guess, #screen-whoami-reveal,
     #screen-spyfall-role, #screen-spyfall-discussion, #screen-spyfall-vote, #screen-spyfall-spy-guess, #screen-spyfall-final {
@@ -294,9 +295,10 @@
         <div class="setting-label">Game Mode</div>
         <div class="setting-desc">Word or Video round</div>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-sm" id="mode-word-btn" onclick="setGameMode('word')">📝 Word</button>
         <button class="btn btn-sm" id="mode-video-btn" onclick="setGameMode('video')">🎬 Video</button>
+        <button class="btn btn-sm" id="mode-questions-btn" onclick="setGameMode('questions')">❓ Questions</button>
       </div>
     </div>
 
@@ -1272,22 +1274,26 @@ function renderLobbyData(room) {
 
     // ── IMPOSTER MODE ──
     } else {
+      const isQuestions2 = room.settings.gameMode === 'questions';
       if (hostSettings) hostSettings.style.display = 'block';
-      if (wordCats)    wordCats.style.display    = !isVideo ? 'block' : 'none';
+      if (wordCats)    wordCats.style.display    = (!isVideo && !isQuestions2) ? 'block' : 'none';
       if (videoCats)   videoCats.style.display   =  isVideo ? 'block' : 'none';
       if (whoamiCats)  whoamiCats.style.display  = 'none';
       if (spyfallInfo) spyfallInfo.style.display = 'none';
-      if (blindRow)    blindRow.style.display    = isVideo ? 'none' : 'flex';
+      if (blindRow)    blindRow.style.display    = (isVideo || isQuestions2) ? 'none' : 'flex';
 
       document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
       const blindToggle = document.getElementById('blind-toggle');
       if (blindToggle) blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
 
       // Game mode buttons
+      const isQuestions = room.settings.gameMode === 'questions';
       const wordBtn  = document.getElementById('mode-word-btn');
       const videoBtn = document.getElementById('mode-video-btn');
-      if (wordBtn)  wordBtn.className  = 'btn btn-sm' + (!isVideo ? ' btn-primary' : ' btn-outline');
+      const qBtn     = document.getElementById('mode-questions-btn');
+      if (wordBtn)  wordBtn.className  = 'btn btn-sm' + (!isVideo && !isQuestions ? ' btn-primary' : ' btn-outline');
       if (videoBtn) videoBtn.className = 'btn btn-sm' + ( isVideo ? ' btn-primary' : ' btn-outline');
+      if (qBtn)     qBtn.className     = 'btn btn-sm' + ( isQuestions ? ' btn-primary' : ' btn-outline');
 
       // Video category grid
       const videoGrid = document.getElementById('video-category-grid');
@@ -1354,7 +1360,32 @@ function renderRoleCard(data) {
   const { role, word, category, blindMode, gameMode, videoId } = data;
   let html = '';
 
-  if (gameMode === 'video' && videoId) {
+  if (gameMode === 'questions') {
+    if (role === 'imposter') {
+      html = `
+        <div class="role-card imposter-card reveal-anim">
+          <div class="role-icon">🔪</div>
+          <div class="role-title" style="color:#ef4444">YOU'RE THE IMPOSTER</div>
+          <div style="margin:16px 0; padding:16px; background:rgba(239,68,68,0.12); border-radius:12px; border:1px solid rgba(239,68,68,0.4)">
+            <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:#f87171; margin-bottom:8px">YOUR QUESTION</div>
+            <div style="font-size:1.05rem; font-weight:700; color:#fca5a5; line-height:1.4">${word}</div>
+          </div>
+          <div class="role-hint">Your question is <em>slightly different</em> from everyone else's. Answer it convincingly — don't get caught!</div>
+        </div>`;
+    } else {
+      html = `
+        <div class="role-card player-card reveal-anim">
+          <div class="role-icon">💬</div>
+          <div class="role-title" style="color:#60a5fa">YOU'RE A PLAYER</div>
+          <div style="margin:16px 0; padding:16px; background:rgba(96,165,250,0.12); border-radius:12px; border:1px solid rgba(96,165,250,0.4)">
+            <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:#60a5fa; margin-bottom:8px">YOUR QUESTION</div>
+            <div style="font-size:1.05rem; font-weight:700; color:#93c5fd; line-height:1.4">${word}</div>
+          </div>
+          <div class="role-hint">Answer this when it's your turn. Listen carefully — someone has a <em>different</em> question!</div>
+        </div>`;
+    }
+    document.getElementById('ready-btn').textContent = "✅ I've read my question";
+  } else if (gameMode === 'video' && videoId) {
     // ── VIDEO MODE: everyone just sees their video ──
     html = `
       <div class="role-card player-card reveal-anim" style="padding:16px">
@@ -1426,12 +1457,25 @@ function renderDiscussionData(room) {
   const label = document.getElementById('discussion-label');
   const wordDisplay = document.getElementById('discussion-word-display');
 
-  if (myRole === 'imposter') {
+  const isQuestionsMode = room.settings && room.settings.gameMode === 'questions';
+
+  if (isQuestionsMode) {
+    label.textContent = 'YOUR QUESTION';
+    wordDisplay.className = '';
+    wordDisplay.style.fontSize = '0.95rem';
+    wordDisplay.style.color = myRole === 'imposter' ? '#fca5a5' : '#93c5fd';
+    wordDisplay.style.fontStyle = 'normal';
+    wordDisplay.style.fontWeight = '700';
+    wordDisplay.style.lineHeight = '1.4';
+    wordDisplay.textContent = myWord || '---';
+  } else if (myRole === 'imposter') {
     label.textContent = 'CATEGORY HINT';
     wordDisplay.className = '';
     wordDisplay.style.fontSize = '1.1rem';
     wordDisplay.style.color = 'var(--muted)';
     wordDisplay.style.fontStyle = 'italic';
+    wordDisplay.style.fontWeight = '';
+    wordDisplay.style.lineHeight = '';
     wordDisplay.textContent = myCategory || '---';
   } else {
     label.textContent = 'THE WORD IS';
@@ -1439,6 +1483,8 @@ function renderDiscussionData(room) {
     wordDisplay.style.fontSize = '';
     wordDisplay.style.color = '';
     wordDisplay.style.fontStyle = '';
+    wordDisplay.style.fontWeight = '';
+    wordDisplay.style.lineHeight = '';
     wordDisplay.textContent = myWord || '---';
   }
 
@@ -1621,8 +1667,18 @@ function renderGameOver(data) {
       </div>
     </div>`;
 
-  // ── The Word / Videos ──
-  if (data.gameMode === 'video') {
+  // ── The Word / Videos / Questions ──
+  if (data.gameMode === 'questions') {
+    html += `
+      <div class="word-box fade-in">
+        <div class="word-box-label">Everyone's Question</div>
+        <div style="font-size:1rem; font-weight:700; margin-top:6px; line-height:1.4">${data.playerQuestion || '?'}</div>
+      </div>
+      <div class="word-box fade-in" style="border-color:#ef4444; background:rgba(239,68,68,0.06)">
+        <div class="word-box-label" style="color:#ef4444">🔪 Imposter's Question</div>
+        <div style="font-size:1rem; font-weight:700; margin-top:6px; color:#fca5a5; line-height:1.4">${data.imposterQuestion || '?'}</div>
+      </div>`;
+  } else if (data.gameMode === 'video') {
     if (data.playerVideo) {
       html += `
         <div class="word-box fade-in">

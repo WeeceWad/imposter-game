@@ -1209,6 +1209,29 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Player doesn't recognise their word/question/video
+  socket.on('dont-know-word', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'role-reveal') return;
+
+    const gameMode = room.settings.gameMode || 'word';
+    const revealData = {
+      gameMode,
+      category: room.currentCategory,
+      playerWord: gameMode === 'questions' ? room.currentPlayerQuestion : room.currentWord,
+      imposterWord: gameMode === 'questions'
+        ? room.currentImposterQuestion
+        : (room.settings.blindImposter && room.imposterWords
+            ? Object.values(room.imposterWords).find(w => w !== null) || null
+            : null),
+      playerVideo: room.currentPlayerVideo || null,
+      imposterVideo: room.currentImposterVideo || null
+    };
+
+    io.to(room.code).emit('word-revealed-early', revealData);
+    // Game state stays at role-reveal — host will click Play Again to restart
+  });
+
   // Start voting (host only)
   socket.on('start-voting', () => {
     const room = rooms[socket.roomCode];

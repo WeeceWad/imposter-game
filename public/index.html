@@ -377,6 +377,7 @@
   </div>
 
   <button id="ready-btn" class="btn btn-primary" onclick="markReady()">✅ I've seen my role</button>
+  <button id="dont-know-btn" class="btn btn-ghost" onclick="dontKnowWord()" style="font-size:0.82rem">🤷 I don't know this</button>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -887,11 +888,22 @@ function initSocket() {
     showScreen('spyfall-final');
   });
 
+  socket.on('word-revealed-early', (data) => {
+    gameIsOver = true;
+    renderEarlyReveal(data);
+    showScreen('gameover');
+    document.getElementById('play-again-btn').style.display = isHost ? 'block' : 'none';
+    document.getElementById('change-pack-btn').style.display = 'none';
+    document.getElementById('waiting-for-host-msg').style.display = isHost ? 'none' : 'block';
+    if (isHost) document.getElementById('play-again-inner').textContent = '🔄 Play Again with New Roles';
+  });
+
   socket.on('reset-game', () => {
     myRole = null; myWord = null; myVote = null; myCategory = null;
     myWhoamiCategoryName = null;
     mySfRole = null; mySfVote = null;
     gameIsOver = false;
+    document.getElementById('play-again-inner').textContent = '🔄 Play Again';
     showScreen('lobby');
   });
 
@@ -1423,6 +1435,96 @@ function renderRoleCard(data) {
   }
 
   document.getElementById('role-card-container').innerHTML = html;
+
+  // Update "I don't know this" button label
+  const dontKnowBtn = document.getElementById('dont-know-btn');
+  if (dontKnowBtn) {
+    const typeLabel = getCategoryType(category, gameMode);
+    dontKnowBtn.textContent = `🤷 I don't know this ${typeLabel}`;
+    dontKnowBtn.disabled = false;
+    dontKnowBtn.style.display = 'block';
+  }
+}
+
+function getCategoryType(category, gameMode) {
+  if (gameMode === 'video') return 'video';
+  if (gameMode === 'questions') return 'question';
+  const c = (category || '').toLowerCase();
+  if (c.includes('movie')) return 'movie';
+  if (c.includes('tv') || c.includes('show')) return 'show';
+  if (c.includes('video game')) return 'game';
+  if (c.includes('character')) return 'character';
+  if (c.includes('athlete')) return 'athlete';
+  if (c.includes('musician')) return 'musician';
+  if (c.includes('actor')) return 'actor';
+  return 'word';
+}
+
+function dontKnowWord() {
+  if (!socket || !currentRoom) return;
+  const btn = document.getElementById('dont-know-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Revealing...'; }
+  socket.emit('dont-know-word');
+}
+
+function renderEarlyReveal(data) {
+  let html = `
+    <div class="result-banner fade-in">
+      <span class="result-emoji">🤷</span>
+      <div class="result-title" style="color:var(--warn)">Someone didn't know it!</div>
+      <div class="result-sub">Here's what each side had</div>
+    </div>`;
+
+  if (data.gameMode === 'questions') {
+    html += `
+      <div class="word-box fade-in">
+        <div class="word-box-label">Everyone's Question</div>
+        <div style="font-size:1rem; font-weight:700; margin-top:6px; line-height:1.4">${data.playerWord || '?'}</div>
+      </div>
+      <div class="word-box fade-in" style="border-color:#ef4444; background:rgba(239,68,68,0.06)">
+        <div class="word-box-label" style="color:#ef4444">🔪 Imposter's Question</div>
+        <div style="font-size:1rem; font-weight:700; margin-top:6px; color:#fca5a5; line-height:1.4">${data.imposterWord || '?'}</div>
+      </div>`;
+  } else if (data.gameMode === 'video') {
+    if (data.playerVideo) {
+      html += `
+        <div class="word-box fade-in">
+          <div class="word-box-label">Players' Video</div>
+          ${data.playerVideo.thumbnail ? `<img src="${data.playerVideo.thumbnail}" style="width:100%;border-radius:8px;margin:8px 0"/>` : ''}
+          <div style="font-size:0.9rem;font-weight:600">${data.playerVideo.title}</div>
+        </div>`;
+    }
+    if (data.imposterVideo) {
+      html += `
+        <div class="word-box fade-in" style="border-color:#ef4444; background:rgba(239,68,68,0.06)">
+          <div class="word-box-label" style="color:#ef4444">🔪 Imposter's Video</div>
+          ${data.imposterVideo.thumbnail ? `<img src="${data.imposterVideo.thumbnail}" style="width:100%;border-radius:8px;margin:8px 0"/>` : ''}
+          <div style="font-size:0.9rem;font-weight:600">${data.imposterVideo.title}</div>
+        </div>`;
+    }
+  } else {
+    html += `
+      <div class="word-box fade-in">
+        <div class="word-box-label">Players Had</div>
+        <div class="word-box-value">${data.playerWord || '?'}</div>
+        <div class="text-muted" style="font-size:0.8rem; margin-top:4px">${data.category || ''}</div>
+      </div>`;
+    if (data.imposterWord) {
+      html += `
+        <div class="word-box fade-in" style="border-color:#a855f7; background:rgba(168,85,247,0.08)">
+          <div class="word-box-label" style="color:#a855f7">Imposter Had</div>
+          <div class="word-box-value" style="color:#c084fc">${data.imposterWord}</div>
+        </div>`;
+    } else {
+      html += `
+        <div class="word-box fade-in" style="border-color:#ef4444; background:rgba(239,68,68,0.06)">
+          <div class="word-box-label" style="color:#ef4444">🔪 The Imposter</div>
+          <div style="font-size:1rem; font-weight:700; margin-top:6px; color:#fca5a5">Had no word — they were the fake!</div>
+        </div>`;
+    }
+  }
+
+  document.getElementById('gameover-content').innerHTML = html;
 }
 
 function markReady() {
@@ -1799,6 +1901,8 @@ function showScreen(name) {
     document.getElementById('ready-btn').disabled = false;
     document.getElementById('ready-btn').textContent = "✅ I've seen my role";
     document.getElementById('ready-status').style.display = 'none';
+    const dkb = document.getElementById('dont-know-btn');
+    if (dkb) { dkb.disabled = false; dkb.style.display = 'none'; } // hidden until renderRoleCard runs
   }
   if (name === 'discussion' && currentRoom) renderDiscussionData(currentRoom);
   if (name === 'voting' && currentRoom) renderVotingData(currentRoom);

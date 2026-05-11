@@ -779,8 +779,8 @@ function initSocket() {
     document.getElementById('ready-btn').disabled = false;
     document.getElementById('ready-btn').textContent = "✅ I've seen my role";
     document.getElementById('ready-status').style.display = 'none';
-    renderRoleCard(data);
     showScreen('role');
+    renderRoleCard(data);
   });
 
   socket.on('ready-update', ({ readyCount, totalCount }) => {

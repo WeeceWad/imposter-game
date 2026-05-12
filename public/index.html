@@ -1271,9 +1271,12 @@ function renderLobbyData(room) {
       const whoamiGrid = document.getElementById('whoami-category-grid');
       if (whoamiGrid) {
         const WHOAMI_CAT_DEFS = [
-          { key: 'famous',      label: '🌟 Famous People' },
-          { key: 'famousBands', label: '🎸 Famous People w/ Bands' },
-          { key: 'fictional',   label: '🦸 Fictional Characters' }
+          { key: 'athletes',         label: '⚽ Athletes' },
+          { key: 'actors',           label: '🎭 Actors' },
+          { key: 'musicArtists',     label: '🎵 Music Artists' },
+          { key: 'musicArtistsBands',label: '🎸 Music Artists w/ Bands' },
+          { key: 'youtubers',        label: '📺 YouTubers' },
+          { key: 'fictional',        label: '🦸 Fictional Characters' }
         ];
         const selWam = room.settings.whoamiCategory || 'famous';
         whoamiGrid.innerHTML = WHOAMI_CAT_DEFS.map(c => `

@@ -725,7 +725,7 @@ const SPYFALL_LOCS = [
 // WHO AM I — CATEGORIES
 // ─────────────────────────────────────────────
 const WHOAMI_CATS = {
-  famous: { name: "Famous People", items: [
+  athletes: { name: "Athletes", items: [
     // Football
     "Cristiano Ronaldo","Lionel Messi","David Beckham","Harry Kane","Wayne Rooney",
     "Jude Bellingham","Mohamed Salah","Erling Haaland","Kylian Mbappe","Kevin De Bruyne",
@@ -747,8 +747,9 @@ const WHOAMI_CATS = {
     "Max Holloway","Justin Gaethje",
     // F1
     "Lewis Hamilton","Max Verstappen","Michael Schumacher","Fernando Alonso","Sebastian Vettel",
-    "Daniel Ricciardo","Lando Norris","Charles Leclerc","George Russell","Ayrton Senna",
-    // Actors (Male)
+    "Daniel Ricciardo","Lando Norris","Charles Leclerc","George Russell","Ayrton Senna"
+  ]},
+  actors: { name: "Actors", items: [
     "Tom Hanks","Leonardo DiCaprio","Tom Cruise","Robert Downey Jr","Dwayne Johnson",
     "Will Smith","Brad Pitt","Johnny Depp","Denzel Washington","Samuel L Jackson",
     "Morgan Freeman","Harrison Ford","Arnold Schwarzenegger","Sylvester Stallone",
@@ -757,13 +758,24 @@ const WHOAMI_CATS = {
     "Vin Diesel","Mark Wahlberg","Adam Sandler","Jim Carrey","Will Ferrell",
     "Steve Carell","Bradley Cooper","Christian Bale","Joaquin Phoenix","Timothee Chalamet",
     "Austin Butler","Cillian Murphy","Andrew Garfield","Ryan Gosling","Paul Rudd","Chris Evans",
-    // Actors (Female)
     "Scarlett Johansson","Jennifer Aniston","Angelina Jolie","Margot Robbie","Zendaya",
     "Emma Stone","Julia Roberts","Meryl Streep","Sandra Bullock","Anne Hathaway",
     "Nicole Kidman","Charlize Theron","Emma Watson","Florence Pugh","Anya Taylor-Joy",
     "Sydney Sweeney","Gal Gadot","Elizabeth Olsen","Brie Larson","Natalie Portman",
-    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet",
-    // Musicians (Solo only — no bands)
+    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet"
+  ]},
+  musicArtists: { name: "Music Artists", items: [
+    "Michael Jackson","Elvis Presley","Taylor Swift","Beyonce","Ed Sheeran","Adele",
+    "Eminem","Drake","Justin Bieber","Rihanna","Elton John","David Bowie",
+    "Whitney Houston","Freddie Mercury","Bruno Mars","Harry Styles","Post Malone",
+    "The Weeknd","Ariana Grande","Billie Eilish","Olivia Rodrigo","Sabrina Carpenter",
+    "Miley Cyrus","Justin Timberlake","Britney Spears","Christina Aguilera","Kanye West",
+    "Jay-Z","Snoop Dogg","50 Cent","Travis Scott","Kendrick Lamar","Cardi B","Doja Cat",
+    "Nicki Minaj","Lewis Capaldi","Sam Smith","Dua Lipa","Calvin Harris","Shawn Mendes",
+    "Camila Cabello","Selena Gomez","Lady Gaga","Katy Perry","Pink","Usher","Prince",
+    "Madonna","George Michael","Stevie Wonder","Bob Marley","Phil Collins"
+  ]},
+  musicArtistsBands: { name: "Music Artists w/ Bands", items: [
     "Michael Jackson","Elvis Presley","Taylor Swift","Beyonce","Ed Sheeran","Adele",
     "Eminem","Drake","Justin Bieber","Rihanna","Elton John","David Bowie",
     "Whitney Houston","Freddie Mercury","Bruno Mars","Harry Styles","Post Malone",
@@ -773,67 +785,13 @@ const WHOAMI_CATS = {
     "Nicki Minaj","Lewis Capaldi","Sam Smith","Dua Lipa","Calvin Harris","Shawn Mendes",
     "Camila Cabello","Selena Gomez","Lady Gaga","Katy Perry","Pink","Usher","Prince",
     "Madonna","George Michael","Stevie Wonder","Bob Marley","Phil Collins",
-    // YouTubers / Content Creators (solo only)
-    "MrBeast","PewDiePie","Markiplier","Jacksepticeye","Logan Paul","Jake Paul","KSI",
-    "TommyInnit","Dream","Ninja","Tfue","xQc","Kai Cenat","IShowSpeed","Adin Ross",
-    "Andrew Tate","Tristan Tate","Joe Rogan","Theo Von","DanTDM","James Charles",
-    "Jeffree Star","Shane Dawson","David Dobrik","Zach King","Vsauce","MatPat","Mark Rober"
-  ]},
-  famousBands: { name: "Famous People w/ Bands", items: [
-    // Football
-    "Cristiano Ronaldo","Lionel Messi","David Beckham","Harry Kane","Wayne Rooney",
-    "Jude Bellingham","Mohamed Salah","Erling Haaland","Kylian Mbappe","Kevin De Bruyne",
-    "Virgil van Dijk","Trent Alexander-Arnold","Bukayo Saka","Phil Foden","Marcus Rashford",
-    "Declan Rice","Son Heung-min","Neymar","Ronaldinho","Pele","Diego Maradona",
-    "Thierry Henry","Frank Lampard","Steven Gerrard","Rio Ferdinand","John Terry",
-    "Paul Pogba","Antoine Griezmann","Robert Lewandowski","Luka Modric","Toni Kroos",
-    // Boxing
-    "Muhammad Ali","Mike Tyson","Floyd Mayweather","Anthony Joshua","Tyson Fury",
-    "Canelo Alvarez","Deontay Wilder","Manny Pacquiao","Sugar Ray Leonard","Oscar De La Hoya",
-    "Lennox Lewis","Vitali Klitschko","Wladimir Klitschko","Jake Paul","Tommy Fury",
-    "Amir Khan","Ricky Hatton","Carl Froch","Joe Calzaghe","Roy Jones Jr",
-    "Evander Holyfield","George Foreman",
-    // MMA
-    "Conor McGregor","Jon Jones","Khabib Nurmagomedov","Georges St-Pierre","Anderson Silva",
-    "Israel Adesanya","Alex Pereira","Tom Aspinall","Leon Edwards","Michael Bisping",
-    "Dustin Poirier","Charles Oliveira","Sean Strickland","Khamzat Chimaev","Paddy Pimblett",
-    "Nate Diaz","Nick Diaz","Francis Ngannou","Ciryl Gane","Alexander Volkanovski",
-    "Max Holloway","Justin Gaethje",
-    // F1
-    "Lewis Hamilton","Max Verstappen","Michael Schumacher","Fernando Alonso","Sebastian Vettel",
-    "Daniel Ricciardo","Lando Norris","Charles Leclerc","George Russell","Ayrton Senna",
-    // Actors (Male)
-    "Tom Hanks","Leonardo DiCaprio","Tom Cruise","Robert Downey Jr","Dwayne Johnson",
-    "Will Smith","Brad Pitt","Johnny Depp","Denzel Washington","Samuel L Jackson",
-    "Morgan Freeman","Harrison Ford","Arnold Schwarzenegger","Sylvester Stallone",
-    "Keanu Reeves","Matt Damon","Ben Affleck","Chris Hemsworth","Chris Pratt",
-    "Ryan Reynolds","Hugh Jackman","Daniel Craig","Idris Elba","Jason Statham",
-    "Vin Diesel","Mark Wahlberg","Adam Sandler","Jim Carrey","Will Ferrell",
-    "Steve Carell","Bradley Cooper","Christian Bale","Joaquin Phoenix","Timothee Chalamet",
-    "Austin Butler","Cillian Murphy","Andrew Garfield","Ryan Gosling","Paul Rudd","Chris Evans",
-    // Actors (Female)
-    "Scarlett Johansson","Jennifer Aniston","Angelina Jolie","Margot Robbie","Zendaya",
-    "Emma Stone","Julia Roberts","Meryl Streep","Sandra Bullock","Anne Hathaway",
-    "Nicole Kidman","Charlize Theron","Emma Watson","Florence Pugh","Anya Taylor-Joy",
-    "Sydney Sweeney","Gal Gadot","Elizabeth Olsen","Brie Larson","Natalie Portman",
-    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet",
-    // Bands & Groups
     "The Beatles","Queen","Rolling Stones","Led Zeppelin","Pink Floyd","Oasis","Coldplay",
     "Nirvana","Guns N Roses","Fleetwood Mac","AC/DC","Metallica","Red Hot Chili Peppers",
     "Foo Fighters","Arctic Monkeys","Radiohead","Linkin Park","Green Day","Blink-182",
     "The Killers","Imagine Dragons","One Direction","Backstreet Boys","NSYNC","Maroon 5",
-    "Kings of Leon","Fall Out Boy",
-    // Musicians (Solo)
-    "Michael Jackson","Elvis Presley","Taylor Swift","Beyonce","Ed Sheeran","Adele",
-    "Eminem","Drake","Justin Bieber","Rihanna","Elton John","David Bowie",
-    "Whitney Houston","Freddie Mercury","Bruno Mars","Harry Styles","Post Malone",
-    "The Weeknd","Ariana Grande","Billie Eilish","Olivia Rodrigo","Sabrina Carpenter",
-    "Miley Cyrus","Justin Timberlake","Britney Spears","Christina Aguilera","Kanye West",
-    "Jay-Z","Snoop Dogg","50 Cent","Travis Scott","Kendrick Lamar","Cardi B","Doja Cat",
-    "Nicki Minaj","Lewis Capaldi","Sam Smith","Dua Lipa","Calvin Harris","Shawn Mendes",
-    "Camila Cabello","Selena Gomez","Lady Gaga","Katy Perry","Pink","Usher","Prince",
-    "Madonna","George Michael","Stevie Wonder","Bob Marley","Phil Collins",
-    // YouTubers / Content Creators (including groups)
+    "Kings of Leon","Fall Out Boy"
+  ]},
+  youtubers: { name: "YouTubers", items: [
     "MrBeast","PewDiePie","Markiplier","Jacksepticeye","Logan Paul","Jake Paul","KSI",
     "Sidemen","TommyInnit","Dream","Dude Perfect","Rhett & Link","Ninja","Tfue","xQc",
     "Kai Cenat","IShowSpeed","Adin Ross","Andrew Tate","Tristan Tate","Joe Rogan",
@@ -1038,7 +996,7 @@ io.on('connection', (socket) => {
     // ── WHO AM I MODE ──
     if (room.settings.gameType === 'whoami') {
       if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players.' });
-      const cat = WHOAMI_CATS[room.settings.whoamiCategory || 'famous'] || WHOAMI_CATS.famous;
+      const cat = WHOAMI_CATS[room.settings.whoamiCategory || 'athletes'] || WHOAMI_CATS.athletes;
       const pool = [...cat.items];
       for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -1493,7 +1451,7 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players.' });
 
-    const cat = WHOAMI_CATS[room.settings.category] || WHOAMI_CATS.famous;
+    const cat = WHOAMI_CATS[room.settings.category] || WHOAMI_CATS.athletes;
     const pool = [...cat.items].sort(() => Math.random() - 0.5);
 
     room.assignments = {};

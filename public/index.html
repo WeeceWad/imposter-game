@@ -1149,7 +1149,7 @@ function renderCategoryGrid() {
   if (!categories.length) return;
   const grid = document.getElementById('category-grid');
   const selected = currentRoom?.settings?.selectedCategories || ['movies','tvShows','videoGames','gameCharacters'];
-  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', celebrities:'⭐', fictionalCharacters:'🦸' };
+  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸' };
   grid.innerHTML = categories.map(c => `
     <div class="cat-chip ${selected.includes(c.key) ? 'selected' : ''}" onclick="toggleCategory('${c.key}')" id="cat-${c.key}">
       <span class="cat-emoji">${emojiMap[c.key]||'📦'}</span>
@@ -1271,12 +1271,8 @@ function renderLobbyData(room) {
       const whoamiGrid = document.getElementById('whoami-category-grid');
       if (whoamiGrid) {
         const WHOAMI_CAT_DEFS = [
-          { key: 'athletes',         label: '⚽ Athletes' },
-          { key: 'actors',           label: '🎭 Actors' },
-          { key: 'musicArtists',     label: '🎵 Music Artists' },
-          { key: 'musicArtistsBands',label: '🎸 Music Artists w/ Bands' },
-          { key: 'youtubers',        label: '📺 YouTubers' },
-          { key: 'fictional',        label: '🦸 Fictional Characters' }
+          { key: 'famous',    label: '🌟 Famous People' },
+          { key: 'fictional', label: '🦸 Fictional Characters' }
         ];
         const selWam = room.settings.whoamiCategory || 'famous';
         whoamiGrid.innerHTML = WHOAMI_CAT_DEFS.map(c => `

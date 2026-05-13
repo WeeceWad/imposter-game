@@ -689,18 +689,14 @@ function resolveVotes(room) {
       io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'elimination' });
     }
   } else {
-    if (remainingImposters.length >= remainingInnocents.length) {
-      room.gameState = 'game-over';
-      room.result = 'imposters-win';
-      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
-      setTimeout(() => {
-        io.to(room.code).emit('game-over', buildResultPayload(room));
-        io.to(room.code).emit('room-update', sanitizeRoom(room));
-      }, 2500);
-    } else {
-      room.gameState = 'elimination';
-      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'elimination' });
-    }
+    // An innocent was voted out — imposters win immediately
+    room.gameState = 'game-over';
+    room.result = 'imposters-win';
+    io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
+    setTimeout(() => {
+      io.to(room.code).emit('game-over', buildResultPayload(room));
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+    }, 2500);
   }
 
   io.to(room.code).emit('room-update', sanitizeRoom(room));

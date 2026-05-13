@@ -806,6 +806,11 @@ function initSocket() {
     document.getElementById('my-guess-form').style.display = 'block';
     document.getElementById('waiting-for-guess').style.display = 'none';
     document.getElementById('guess-category').textContent = category;
+    // Reset the input and button for a fresh round
+    const guessInput = document.getElementById('guess-input');
+    const guessBtn = document.querySelector('#my-guess-form .btn');
+    if (guessInput) { guessInput.value = ''; guessInput.disabled = false; }
+    if (guessBtn) { guessBtn.disabled = false; guessBtn.textContent = '🎯 Submit Guess'; }
   });
 
   socket.on('game-over', (data) => {

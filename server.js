@@ -1054,6 +1054,7 @@ io.on('connection', (socket) => {
       }
       room.whoamiAssignments = {};
       room.whoamiAttempts = {};
+      room.whoamiReady = new Set();
       room.players.forEach((p, i) => { room.whoamiAssignments[p.id] = pool[i % pool.length]; });
       room.gameState = 'whoami-playing';
       room.players.forEach(player => {
@@ -1278,6 +1279,20 @@ io.on('connection', (socket) => {
     room.gameState = 'discussion';
     room.votes = {};
     io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Player marks themselves ready on the role screen
+  socket.on('whoami-player-ready', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'whoami-playing') return;
+    if (!room.whoamiReady) room.whoamiReady = new Set();
+    room.whoamiReady.add(socket.id);
+    const readyCount = room.whoamiReady.size;
+    const totalCount = room.players.length;
+    io.to(room.code).emit('whoami-ready-update', { readyCount, totalCount });
+    if (readyCount >= totalCount) {
+      io.to(room.code).emit('whoami-all-ready');
+    }
   });
 
   // Player submits a Who Am I guess (up to 3 attempts)

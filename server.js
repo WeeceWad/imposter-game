@@ -776,7 +776,57 @@ const WHOAMI_CATS = {
     "Nicole Kidman","Charlize Theron","Emma Watson","Florence Pugh","Anya Taylor-Joy",
     "Sydney Sweeney","Gal Gadot","Elizabeth Olsen","Brie Larson","Natalie Portman",
     "Reese Witherspoon","Jennifer Lawrence","Kate Winslet",
-    // Music Artists
+    // Music Artists (solo only)
+    "Michael Jackson","Elvis Presley","Taylor Swift","Beyonce","Ed Sheeran","Adele",
+    "Eminem","Drake","Justin Bieber","Rihanna","Elton John","David Bowie",
+    "Whitney Houston","Freddie Mercury","Bruno Mars","Harry Styles","Post Malone",
+    "The Weeknd","Ariana Grande","Billie Eilish","Olivia Rodrigo","Sabrina Carpenter",
+    "Miley Cyrus","Justin Timberlake","Britney Spears","Christina Aguilera","Kanye West",
+    "Jay-Z","Snoop Dogg","50 Cent","Travis Scott","Kendrick Lamar","Cardi B","Doja Cat",
+    "Nicki Minaj","Lewis Capaldi","Sam Smith","Dua Lipa","Calvin Harris","Shawn Mendes",
+    "Camila Cabello","Selena Gomez","Lady Gaga","Katy Perry","Pink","Usher","Prince",
+    "Madonna","George Michael","Stevie Wonder","Bob Marley","Phil Collins",
+    // YouTubers (solo only)
+    "MrBeast","PewDiePie","Markiplier","Jacksepticeye","Logan Paul","KSI",
+    "TommyInnit","Dream","Ninja","Tfue","xQc","Kai Cenat","IShowSpeed","Adin Ross",
+    "Andrew Tate","Tristan Tate","Joe Rogan","Theo Von","DanTDM","James Charles",
+    "Jeffree Star","Shane Dawson","David Dobrik","Zach King","Vsauce","MatPat","Mark Rober"
+  ]},
+  famousBands: { name: "Famous People w/ Bands", items: [
+    // Athletes
+    "Cristiano Ronaldo","Lionel Messi","David Beckham","Harry Kane","Wayne Rooney",
+    "Jude Bellingham","Mohamed Salah","Erling Haaland","Kylian Mbappe","Kevin De Bruyne",
+    "Virgil van Dijk","Trent Alexander-Arnold","Bukayo Saka","Phil Foden","Marcus Rashford",
+    "Declan Rice","Son Heung-min","Neymar","Ronaldinho","Pele","Diego Maradona",
+    "Thierry Henry","Frank Lampard","Steven Gerrard","Rio Ferdinand","John Terry",
+    "Paul Pogba","Antoine Griezmann","Robert Lewandowski","Luka Modric","Toni Kroos",
+    "Muhammad Ali","Mike Tyson","Floyd Mayweather","Anthony Joshua","Tyson Fury",
+    "Canelo Alvarez","Deontay Wilder","Manny Pacquiao","Sugar Ray Leonard","Oscar De La Hoya",
+    "Lennox Lewis","Vitali Klitschko","Wladimir Klitschko","Jake Paul","Tommy Fury",
+    "Amir Khan","Ricky Hatton","Carl Froch","Joe Calzaghe","Roy Jones Jr",
+    "Evander Holyfield","George Foreman",
+    "Conor McGregor","Jon Jones","Khabib Nurmagomedov","Georges St-Pierre","Anderson Silva",
+    "Israel Adesanya","Alex Pereira","Tom Aspinall","Leon Edwards","Michael Bisping",
+    "Dustin Poirier","Charles Oliveira","Sean Strickland","Khamzat Chimaev","Paddy Pimblett",
+    "Nate Diaz","Nick Diaz","Francis Ngannou","Ciryl Gane","Alexander Volkanovski",
+    "Max Holloway","Justin Gaethje",
+    "Lewis Hamilton","Max Verstappen","Michael Schumacher","Fernando Alonso","Sebastian Vettel",
+    "Daniel Ricciardo","Lando Norris","Charles Leclerc","George Russell","Ayrton Senna",
+    // Actors
+    "Tom Hanks","Leonardo DiCaprio","Tom Cruise","Robert Downey Jr","Dwayne Johnson",
+    "Will Smith","Brad Pitt","Johnny Depp","Denzel Washington","Samuel L Jackson",
+    "Morgan Freeman","Harrison Ford","Arnold Schwarzenegger","Sylvester Stallone",
+    "Keanu Reeves","Matt Damon","Ben Affleck","Chris Hemsworth","Chris Pratt",
+    "Ryan Reynolds","Hugh Jackman","Daniel Craig","Idris Elba","Jason Statham",
+    "Vin Diesel","Mark Wahlberg","Adam Sandler","Jim Carrey","Will Ferrell",
+    "Steve Carell","Bradley Cooper","Christian Bale","Joaquin Phoenix","Timothee Chalamet",
+    "Austin Butler","Cillian Murphy","Andrew Garfield","Ryan Gosling","Paul Rudd","Chris Evans",
+    "Scarlett Johansson","Jennifer Aniston","Angelina Jolie","Margot Robbie","Zendaya",
+    "Emma Stone","Julia Roberts","Meryl Streep","Sandra Bullock","Anne Hathaway",
+    "Nicole Kidman","Charlize Theron","Emma Watson","Florence Pugh","Anya Taylor-Joy",
+    "Sydney Sweeney","Gal Gadot","Elizabeth Olsen","Brie Larson","Natalie Portman",
+    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet",
+    // Music Artists + Bands
     "Michael Jackson","Elvis Presley","Taylor Swift","Beyonce","Ed Sheeran","Adele",
     "Eminem","Drake","Justin Bieber","Rihanna","Elton John","David Bowie",
     "Whitney Houston","Freddie Mercury","Bruno Mars","Harry Styles","Post Malone",
@@ -791,7 +841,7 @@ const WHOAMI_CATS = {
     "Foo Fighters","Arctic Monkeys","Radiohead","Linkin Park","Green Day","Blink-182",
     "The Killers","Imagine Dragons","One Direction","Backstreet Boys","NSYNC","Maroon 5",
     "Kings of Leon","Fall Out Boy",
-    // YouTubers
+    // YouTubers + groups
     "MrBeast","PewDiePie","Markiplier","Jacksepticeye","Logan Paul","KSI",
     "Sidemen","TommyInnit","Dream","Dude Perfect","Rhett & Link","Ninja","Tfue","xQc",
     "Kai Cenat","IShowSpeed","Adin Ross","Andrew Tate","Tristan Tate","Joe Rogan",
@@ -1003,12 +1053,13 @@ io.on('connection', (socket) => {
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
       room.whoamiAssignments = {};
+      room.whoamiAttempts = {};
       room.players.forEach((p, i) => { room.whoamiAssignments[p.id] = pool[i % pool.length]; });
       room.gameState = 'whoami-playing';
       room.players.forEach(player => {
         const others = room.players
           .filter(p => p.id !== player.id)
-          .map(p => ({ name: p.name, word: room.whoamiAssignments[p.id] }));
+          .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
         io.to(player.id).emit('whoami-game-started', { others, categoryName: cat.name });
       });
       io.to(room.code).emit('room-update', sanitizeRoom(room));
@@ -1229,25 +1280,74 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  // Store a player's Who Am I guess
+  // Player submits a Who Am I guess (up to 3 attempts)
   socket.on('whoami-guess', ({ guess }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'whoami-playing') return;
-    if (!room.whoamiGuesses) room.whoamiGuesses = {};
-    room.whoamiGuesses[socket.id] = (guess || '').trim();
+    const playerId = socket.id;
+    const assignment = (room.whoamiAssignments || {})[playerId];
+    if (!assignment) return;
+
+    if (!room.whoamiAttempts) room.whoamiAttempts = {};
+    const attempts = (room.whoamiAttempts[playerId] || 0) + 1;
+    room.whoamiAttempts[playerId] = attempts;
+
+    const correct = (guess || '').trim().toLowerCase() === assignment.toLowerCase();
+
+    if (correct || attempts >= 3) {
+      // Give them a new person
+      const used = new Set(Object.values(room.whoamiAssignments));
+      const cat = WHOAMI_CATS[room.settings.whoamiCategory || 'famous'] || WHOAMI_CATS.famous;
+      const pool = cat.items.filter(item => !used.has(item));
+      const newPerson = (pool.length > 0 ? pool : cat.items)[Math.floor(Math.random() * (pool.length > 0 ? pool.length : cat.items.length))];
+      room.whoamiAssignments[playerId] = newPerson;
+      room.whoamiAttempts[playerId] = 0;
+
+      socket.emit('whoami-guess-result', { correct, failed: !correct, wasWord: assignment, newWord: newPerson, attemptsLeft: 3 });
+
+      // Update every player's "others" list with the new assignment
+      room.players.forEach(player => {
+        const others = room.players
+          .filter(p => p.id !== player.id)
+          .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
+        io.to(player.id).emit('whoami-assignments-updated', { others });
+      });
+    } else {
+      socket.emit('whoami-guess-result', { correct: false, failed: false, wasWord: null, newWord: null, attemptsLeft: 3 - attempts });
+    }
+  });
+
+  // Host changes a player's assignment
+  socket.on('whoami-change-assignment', ({ playerId }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || room.gameState !== 'whoami-playing') return;
+    const used = new Set(Object.values(room.whoamiAssignments));
+    const cat = WHOAMI_CATS[room.settings.whoamiCategory || 'famous'] || WHOAMI_CATS.famous;
+    const pool = cat.items.filter(item => !used.has(item));
+    const newPerson = (pool.length > 0 ? pool : cat.items)[Math.floor(Math.random() * (pool.length > 0 ? pool.length : cat.items.length))];
+    room.whoamiAssignments[playerId] = newPerson;
+    if (room.whoamiAttempts) room.whoamiAttempts[playerId] = 0;
+
+    // Notify the changed player
+    io.to(playerId).emit('whoami-my-assignment-changed');
+
+    // Update everyone's "others" list
+    room.players.forEach(player => {
+      const others = room.players
+        .filter(p => p.id !== player.id)
+        .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
+      io.to(player.id).emit('whoami-assignments-updated', { others });
+    });
   });
 
   // End Who Am I game (host only)
   socket.on('whoami-end-game', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
-    const guesses = room.whoamiGuesses || {};
-    const all = room.players.map(p => {
-      const word = (room.whoamiAssignments || {})[p.id] || '?';
-      const guess = guesses[p.id] || null;
-      const correct = guess ? guess.toLowerCase().trim() === word.toLowerCase().trim() : false;
-      return { name: p.name, word, guess, correct };
-    });
+    const all = room.players.map(p => ({
+      name: p.name,
+      word: (room.whoamiAssignments || {})[p.id] || '?'
+    }));
     room.gameState = 'whoami-ended';
     io.to(room.code).emit('whoami-game-ended', { all });
     io.to(room.code).emit('room-update', sanitizeRoom(room));

@@ -427,6 +427,7 @@
       <div class="progress-bar" id="vote-bar" style="width:0%; background:linear-gradient(90deg,#ef4444,#dc2626)"></div>
     </div>
     <div style="margin-top:8px; font-size:0.85rem; color:var(--muted)" id="vote-count-text">0 / 0 voted</div>
+    <div style="margin-top:4px; font-size:0.78rem; color:var(--muted)" id="vote-threshold-text"></div>
   </div>
 
   <div id="voting-player-list" class="player-list" style="width:100%"></div>
@@ -805,6 +806,11 @@ function initSocket() {
   socket.on('vote-update', ({ voteCount, totalCount }) => {
     document.getElementById('vote-bar').style.width = `${(voteCount/totalCount)*100}%`;
     document.getElementById('vote-count-text').textContent = `${voteCount} / ${totalCount} voted`;
+  });
+
+  socket.on('vote-failed', ({ requiredVotes, maxVotes }) => {
+    showScreen('discussion');
+    showToast(`No consensus — need ${requiredVotes} vote${requiredVotes !== 1 ? 's' : ''} on one person. Keep discussing!`, 'error');
   });
 
   socket.on('elimination-result', (data) => {
@@ -1264,9 +1270,10 @@ function toggleCategory(key) {
 function changeImposterCount(delta) {
   if (!isHost || !currentRoom) return;
   const players = currentRoom.players.length;
-  const max = Math.max(1, Math.floor((players - 1) / 2));
-  const current = currentRoom.settings.imposterCount;
+  const max = Math.max(1, Math.floor(players / 2));
+  const current = currentRoom.settings.imposterCount || 1;
   const next = Math.max(1, Math.min(max, current + delta));
+  if (next === current) return;
   socket.emit('update-settings', { settings: { imposterCount: next } });
 }
 
@@ -1396,7 +1403,12 @@ function renderLobbyData(room) {
       if (spyfallInfo) spyfallInfo.style.display = 'none';
       if (blindRow)    blindRow.style.display    = (isVideo || isQuestions2) ? 'none' : 'flex';
 
-      document.getElementById('imposter-count-display').textContent = room.settings.imposterCount;
+      const impCount = room.settings.imposterCount || 1;
+      const impMax = Math.max(1, Math.floor(room.players.length / 2));
+      document.getElementById('imposter-count-display').textContent = impCount;
+      const stepperBtns = document.querySelectorAll('#host-settings .stepper-btn');
+      if (stepperBtns[0]) stepperBtns[0].disabled = impCount <= 1;
+      if (stepperBtns[1]) stepperBtns[1].disabled = impCount >= impMax;
       const blindToggle = document.getElementById('blind-toggle');
       if (blindToggle) blindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
 
@@ -1718,6 +1730,9 @@ function renderVotingData(room) {
   const total = activePlayers.length;
   document.getElementById('vote-bar').style.width = `${(voteCount/total)*100}%`;
   document.getElementById('vote-count-text').textContent = `${voteCount} / ${total} voted`;
+  const req = room.settings?.imposterCount || 1;
+  const threshEl = document.getElementById('vote-threshold-text');
+  if (threshEl) threshEl.textContent = req > 1 ? `Need ${req} votes on one person to eliminate` : '';
 
   const imEliminated = room.eliminatedPlayers.includes(myId);
   const iAmVotable = !imEliminated;

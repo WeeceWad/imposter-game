@@ -630,6 +630,17 @@ function resolveVotes(room) {
   }
 
   const maxVotes = Math.max(...Object.values(tally));
+  const requiredVotes = room.settings.imposterCount || 1;
+
+  // Not enough votes on any one person — round fails, back to discussion
+  if (maxVotes < requiredVotes) {
+    room.gameState = 'discussion';
+    room.votes = {};
+    io.to(room.code).emit('vote-failed', { requiredVotes, maxVotes });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+    return;
+  }
+
   const topVotedIds = Object.keys(tally).filter(id => tally[id] === maxVotes);
   const eliminatedId = topVotedIds[Math.floor(Math.random() * topVotedIds.length)];
   const eliminatedPlayer = room.players.find(p => p.id === eliminatedId);
@@ -1069,7 +1080,7 @@ io.on('connection', (socket) => {
 
     // ── IMPOSTER MODE ──
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
-    const maxImposters = Math.floor((room.players.length - 1) / 2);
+    const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
     if (room.settings.imposterCount > maxImposters) {
       return socket.emit('error', { message: `Too many imposters for ${room.players.length} players. Max is ${maxImposters}.` });
     }
@@ -1130,6 +1141,11 @@ io.on('connection', (socket) => {
     room.speakingOrder = [...room.players].sort(() => Math.random() - 0.5).map(p => p.id);
 
     // Send each player their private role
+    // Pre-generate one shared blind-imposter word so all imposters get the same fake word
+    const sharedBlindWord = room.settings.blindImposter
+      ? pickDifferentWord(room.settings.selectedCategories, room.currentWord, room.currentCategoryKey)
+      : null;
+
     room.imposterWords = {};
     room.players.forEach(player => {
       const isImposter = room.imposters.includes(player.id);
@@ -1160,9 +1176,8 @@ io.on('connection', (socket) => {
         };
       } else if (isImposter) {
         if (room.settings.blindImposter) {
-          const imposterWord = pickDifferentWord(room.settings.selectedCategories, room.currentWord, room.currentCategoryKey);
-          room.imposterWords[player.id] = imposterWord;
-          roleData = { role: 'unknown', word: imposterWord, category: room.currentCategory, blindMode: true, gameMode: 'word' };
+          room.imposterWords[player.id] = sharedBlindWord;
+          roleData = { role: 'unknown', word: sharedBlindWord, category: room.currentCategory, blindMode: true, gameMode: 'word' };
         } else {
           room.imposterWords[player.id] = null;
           roleData = { role: 'imposter', word: null, category: room.currentCategory, blindMode: false, gameMode: 'word' };

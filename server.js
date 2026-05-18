@@ -1512,6 +1512,15 @@ io.on('connection', (socket) => {
     }
 
     const oldId = player.id;
+    // If socket ID hasn't changed (tab came back while still connected), just re-sync
+    if (oldId === socket.id) {
+      socket.join(room.code);
+      socket.roomCode = room.code;
+      socket.playerName = name;
+      socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
+      socket.emit('room-update', sanitizeRoom(room));
+      return;
+    }
     player.id = socket.id;
     socket.join(room.code);
     socket.roomCode = room.code;
@@ -1533,6 +1542,18 @@ io.on('connection', (socket) => {
     if (room.imposterWords && room.imposterWords[oldId] !== undefined) {
       room.imposterWords[socket.id] = room.imposterWords[oldId];
       delete room.imposterWords[oldId];
+    }
+    if (room.whoamiAssignments && room.whoamiAssignments[oldId] !== undefined) {
+      room.whoamiAssignments[socket.id] = room.whoamiAssignments[oldId];
+      delete room.whoamiAssignments[oldId];
+    }
+    if (room.whoamiAttempts && room.whoamiAttempts[oldId] !== undefined) {
+      room.whoamiAttempts[socket.id] = room.whoamiAttempts[oldId];
+      delete room.whoamiAttempts[oldId];
+    }
+    if (room.whoamiReady && room.whoamiReady.has(oldId)) {
+      room.whoamiReady.delete(oldId);
+      room.whoamiReady.add(socket.id);
     }
 
     socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
@@ -1641,7 +1662,8 @@ io.on('connection', (socket) => {
     const room = rooms[socket.roomCode];
     if (room) {
       if (!room._dcTimers) room._dcTimers = {};
-      const delay = room.gameState !== 'lobby' ? 60000 : 30000;
+      // Give generous grace periods — mobile browsers suspend sockets when backgrounded
+      const delay = room.gameState !== 'lobby' ? 300000 : 120000; // 5 min in-game, 2 min lobby
       room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, delay);
     }
   });

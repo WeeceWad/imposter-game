@@ -954,6 +954,20 @@ function initSocket() {
     }
   });
 
+  // When tab becomes visible again (mobile switch back, alt-tab, etc.)
+  // force the socket to reconnect if it dropped while backgrounded
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentRoom && myPlayerName) {
+      if (!socket.connected) {
+        socket.connect();
+      } else {
+        // Socket thinks it's connected but server may have a stale connection —
+        // send a lightweight ping to confirm; rejoin-room handles the rest
+        socket.emit('rejoin-room', { code: currentRoom.code, name: myPlayerName });
+      }
+    }
+  });
+
   // ── WHO AM I events ──
   let whoamiAttemptsLeft = 3;
 

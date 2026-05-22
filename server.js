@@ -1120,20 +1120,29 @@ io.on('connection', (socket) => {
       room._drawTimer = null;
 
       const drawTime = room.settings.drawTime || 30;
+      const blindDraw = !!room.settings.blindImposter;
+      // Pre-generate one shared fake word for all imposters (blind mode)
+      const sharedDrawBlindWord = blindDraw
+        ? pickDifferentWord(room.settings.selectedCategories, word, categoryKey)
+        : null;
+
       room.players.forEach(player => {
         const isImposter = room.imposters.includes(player.id);
-        let playerWord;
+        let playerWord, playerRole;
         if (isImposter) {
-          playerWord = pickDifferentWord(room.settings.selectedCategories, word, categoryKey);
+          playerWord = blindDraw ? sharedDrawBlindWord : pickDifferentWord(room.settings.selectedCategories, word, categoryKey);
+          playerRole = blindDraw ? 'unknown' : 'imposter';
           room.imposterWords[player.id] = playerWord;
         } else {
           playerWord = word;
+          playerRole = 'player';
         }
         io.to(player.id).emit('draw-role', {
-          role: isImposter ? 'imposter' : 'player',
+          role: playerRole,
           word: playerWord,
           category,
-          drawTime
+          drawTime,
+          blindMode: blindDraw
         });
       });
 
@@ -1174,15 +1183,29 @@ io.on('connection', (socket) => {
 
       const currentTurnId = turnOrder[0] ? turnOrder[0].id : null;
 
+      const blindCollab = !!room.settings.blindImposter;
+      const sharedCollabBlindWord = blindCollab
+        ? pickDifferentWord(room.settings.selectedCategories, word, categoryKey)
+        : null;
+
       room.players.forEach(player => {
         const isImposter = room.imposters.includes(player.id);
-        room.imposterWords[player.id] = isImposter ? null : null;
+        let playerWord, playerRole;
+        if (isImposter) {
+          playerWord = blindCollab ? sharedCollabBlindWord : null;
+          playerRole = blindCollab ? 'unknown' : 'imposter';
+          room.imposterWords[player.id] = playerWord;
+        } else {
+          playerWord = word;
+          playerRole = 'player';
+        }
         io.to(player.id).emit('collab-role', {
-          role: isImposter ? 'imposter' : 'player',
-          word: isImposter ? null : word,
+          role: playerRole,
+          word: playerWord,
           category,
           turnOrder,
-          currentTurnId
+          currentTurnId,
+          blindMode: blindCollab
         });
       });
 

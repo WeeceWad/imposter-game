@@ -402,6 +402,15 @@
         <button class="btn btn-sm" id="drawtime-60-btn" onclick="setDrawTime(60)">60s</button>
       </div>
     </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Blind Imposter 🕵️</div>
+        <div class="setting-desc">Imposter gets a wrong word — doesn't know they're fake</div>
+      </div>
+      <div class="toggle-wrap">
+        <div class="toggle" id="draw-blind-toggle" onclick="toggleDrawBlind()"></div>
+      </div>
+    </div>
   </div>
 
   <!-- DRAW CATEGORIES (draw + collab only) -->
@@ -767,10 +776,10 @@
 <!-- DRAW — CANVAS SCREEN                      -->
 <!-- ══════════════════════════════════════════ -->
 <div id="screen-draw-canvas" class="screen" style="justify-content:flex-start; padding-top:20px; overflow-y:auto">
-  <div style="width:100%; display:flex; align-items:center; justify-content:space-between">
-    <div>
-      <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Your Word</div>
-      <div id="draw-canvas-word" style="font-size:1.4rem; font-weight:900"></div>
+  <div style="width:100%; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; background:var(--bg); padding:8px 0 10px">
+    <div style="background:var(--card); border:2px solid var(--accent); border-radius:12px; padding:8px 16px; flex:1; margin-right:12px">
+      <div style="font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Draw this</div>
+      <div id="draw-canvas-word" style="font-size:1.3rem; font-weight:900; color:var(--accent2)"></div>
     </div>
     <div id="draw-timer-display" class="draw-timer-big">30</div>
   </div>
@@ -823,6 +832,12 @@
 <!-- COLLAB — CANVAS SCREEN                    -->
 <!-- ══════════════════════════════════════════ -->
 <div id="screen-collab-canvas" class="screen" style="justify-content:flex-start; padding-top:20px; overflow-y:auto">
+  <div id="collab-word-pill" style="width:100%; position:sticky; top:0; z-index:10; background:var(--bg); padding-bottom:8px; display:none">
+    <div style="background:var(--card); border:2px solid var(--accent); border-radius:12px; padding:8px 16px">
+      <div style="font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Your word</div>
+      <div id="collab-canvas-word" style="font-size:1.3rem; font-weight:900; color:var(--accent2)"></div>
+    </div>
+  </div>
   <div id="collab-turn-indicator" class="turn-indicator">...</div>
   <div class="draw-canvas-wrap" id="collab-canvas-wrap" style="aspect-ratio:1">
     <canvas id="collab-canvas" style="touch-action:none"></canvas>
@@ -1262,12 +1277,21 @@ function initSocket() {
   // ── DRAW events ──
   socket.on('draw-role', function(data) {
     const isImposter = data.role === 'imposter';
-    const cardHtml = '<div class="role-card ' + (isImposter ? 'imposter-card' : 'player-card') + '" style="text-align:center">' +
-      '<div class="role-icon">' + (isImposter ? '🎭' : '🎨') + '</div>' +
-      '<div class="role-title">' + (isImposter ? "You're the Imposter!" : 'Your Word') + '</div>' +
+    const isUnknown  = data.role === 'unknown'; // blind imposter
+    const cardClass  = isImposter ? 'imposter-card' : isUnknown ? 'unknown-card' : 'player-card';
+    const icon       = isImposter ? '🎭' : isUnknown ? '🎨' : '🎨';
+    const title      = isImposter ? "You're the Imposter!" : 'Your Word';
+    const hint       = isImposter
+      ? 'Draw your word — but try to blend in with the others!'
+      : isUnknown
+        ? 'Draw this word. You might not be who you think you are…'
+        : "Draw this — but don't make it too obvious!";
+    const cardHtml = '<div class="role-card ' + cardClass + '" style="text-align:center">' +
+      '<div class="role-icon">' + icon + '</div>' +
+      '<div class="role-title">' + title + '</div>' +
       '<div class="role-category">' + data.category + '</div>' +
       '<div class="role-word">' + data.word + '</div>' +
-      '<div class="role-hint">' + (isImposter ? 'Draw your word but try to blend in with the others!' : "Draw this — but don't make it too obvious!") + '</div>' +
+      '<div class="role-hint">' + hint + '</div>' +
       '</div>';
     const card = document.getElementById('draw-role-card');
     if (card) card.innerHTML = cardHtml;
@@ -1286,6 +1310,8 @@ function initSocket() {
 
   socket.on('draw-all-ready', function(data) {
     showScreen('draw-canvas');
+    const wordEl = document.getElementById('draw-canvas-word');
+    if (wordEl) wordEl.textContent = myWord || '???';
     // showScreen already calls initDrawCanvas after 100ms; start countdown after canvas is ready
     setTimeout(function() {
       startDrawCountdown(data.drawTime || 30);
@@ -1309,13 +1335,18 @@ function initSocket() {
   // ── COLLAB events ──
   socket.on('collab-role', function(data) {
     const isImposter = data.role === 'imposter';
+    const isUnknown  = data.role === 'unknown'; // blind imposter
     collabTurnOrder = data.turnOrder || [];
-    const cardHtml = '<div class="role-card ' + (isImposter ? 'imposter-card' : 'player-card') + '" style="text-align:center">' +
+    const cardClass = isImposter ? 'imposter-card' : isUnknown ? 'unknown-card' : 'player-card';
+    const imposterBody = isUnknown
+      ? '<div class="role-word">' + data.word + '</div><div class="role-hint">You might not be who you think you are…</div>'
+      : '<div class="role-hint">You have no word — watch what others draw and try to blend in!</div>';
+    const cardHtml = '<div class="role-card ' + cardClass + '" style="text-align:center">' +
       '<div class="role-icon">' + (isImposter ? '🎭' : '🖌️') + '</div>' +
       '<div class="role-title">' + (isImposter ? "You're the Imposter!" : 'Your Word') + '</div>' +
       '<div class="role-category">' + data.category + '</div>' +
-      (isImposter
-        ? '<div class="role-hint">You have no word — watch what others draw and try to blend in!</div>'
+      ((isImposter || isUnknown)
+        ? imposterBody
         : '<div class="role-word">' + data.word + '</div>') +
       '</div>';
     const card = document.getElementById('collab-role-card');
@@ -1734,6 +1765,8 @@ function renderLobbyData(room) {
           const btn = document.getElementById('drawtime-' + t + '-btn');
           if (btn) btn.className = 'btn btn-sm' + (dt === t ? ' btn-primary' : ' btn-outline');
         });
+        const drawBlindToggle = document.getElementById('draw-blind-toggle');
+        if (drawBlindToggle) drawBlindToggle.className = 'toggle' + (room.settings.blindImposter ? ' on' : '');
       }
       if (drawCats) {
         drawCats.style.display = 'block';
@@ -2564,6 +2597,10 @@ function renderDrawReveal(drawings) {
 function startDrawVote() { socket.emit('draw-start-vote'); }
 
 function setDrawTime(t) { socket.emit('update-settings', { settings: { drawTime: t } }); }
+function toggleDrawBlind() {
+  if (!currentRoom || !isHost) return;
+  socket.emit('update-settings', { settings: { blindImposter: !currentRoom.settings.blindImposter } });
+}
 
 function renderDrawCategoryGrid(room) {
   const grid = document.getElementById('draw-category-grid');
@@ -2715,6 +2752,17 @@ function collabStartVote() { socket.emit('collab-start-vote'); }
 
 function goToCollabCanvas() {
   showScreen('collab-canvas');
+  // Show/populate the word pill — hide for blind imposters who have no word
+  const pill = document.getElementById('collab-word-pill');
+  const wordEl = document.getElementById('collab-canvas-word');
+  if (pill && wordEl) {
+    if (myWord) {
+      wordEl.textContent = myWord;
+      pill.style.display = 'block';
+    } else {
+      pill.style.display = 'none'; // true imposter with no word
+    }
+  }
 }
 
 // ──────────────────────────────────────────

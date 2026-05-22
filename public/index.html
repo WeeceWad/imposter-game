@@ -34,7 +34,8 @@
     .screen::-webkit-scrollbar { display: none; }
     /* Lobby & game screens scroll from top so room code is never cut off on small phones */
     #screen-lobby, #screen-whoami-role, #screen-whoami-game, #screen-whoami-guess, #screen-whoami-reveal,
-    #screen-spyfall-role, #screen-spyfall-discussion, #screen-spyfall-vote, #screen-spyfall-spy-guess, #screen-spyfall-final {
+    #screen-spyfall-role, #screen-spyfall-discussion, #screen-spyfall-vote, #screen-spyfall-spy-guess, #screen-spyfall-final,
+    #screen-collab-role {
       justify-content: flex-start; padding-top: 28px; overflow-y: auto;
     }
 
@@ -218,6 +219,27 @@
     .stat-val { font-weight: 700; }
     .imposters-chip { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; padding: 4px 10px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; display: inline-block; margin: 2px; }
     .lobby-top { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+
+    /* ─────────────── DRAWING ─────────────── */
+    .draw-canvas-wrap { width:100%; background:#fff; border-radius:14px; overflow:hidden; touch-action:none; cursor:crosshair; user-select:none; }
+    .draw-canvas-wrap canvas { display:block; width:100%; height:100%; }
+    .draw-tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; width:100%; padding:10px 0; }
+    .color-swatch { width:30px; height:30px; border-radius:50%; border:3px solid transparent; cursor:pointer; flex-shrink:0; transition:transform .15s,border-color .15s; }
+    .color-swatch.active { border-color:white; transform:scale(1.25); }
+    .brush-btn { width:30px; height:30px; border-radius:8px; background:var(--surface); border:2px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; color:var(--text); }
+    .brush-btn.active { border-color:var(--accent2); color:var(--accent2); }
+    .draw-timer-big { font-size:4rem; font-weight:900; text-align:center; line-height:1; }
+    .draw-timer-big.danger { color:var(--danger); animation:pulse 0.5s ease-in-out infinite; }
+    .drawing-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; }
+    .drawing-card { background:var(--card); border:2px solid var(--border); border-radius:12px; overflow:hidden; }
+    .drawing-card.is-you { border-color:var(--accent); }
+    .drawing-card img { width:100%; aspect-ratio:1; object-fit:contain; display:block; background:white; }
+    .drawing-name { padding:6px 10px; font-size:0.8rem; font-weight:700; text-align:center; }
+    .turn-indicator { padding:14px 20px; border-radius:14px; text-align:center; font-weight:800; font-size:1rem; width:100%; background:var(--surface); border:2px solid var(--border); }
+    .turn-indicator.my-turn { background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2)); border-color:var(--accent2); color:var(--accent2); }
+    .turn-list { display:flex; flex-direction:column; gap:6px; width:100%; }
+    .turn-item { padding:8px 14px; border-radius:8px; background:var(--surface); font-size:0.88rem; display:flex; align-items:center; gap:8px; }
+    .turn-item.active-turn { background:rgba(168,85,247,0.15); border:1px solid var(--accent2); font-weight:700; }
   </style>
 </head>
 <body>
@@ -278,10 +300,12 @@
   <!-- GAME TYPE SELECTOR (host only) -->
   <div id="host-game-type" class="card" style="width:100%; display:none">
     <div class="card-title">Game Mode</div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-sm" id="gametype-imposter-btn" onclick="setGameType('imposter')" style="flex:1">🕵️ Imposter</button>
-      <button class="btn btn-sm" id="gametype-whoami-btn" onclick="setGameType('whoami')" style="flex:1">🤔 Who Am I?</button>
-      <button class="btn btn-sm" id="gametype-spyfall-btn" onclick="setGameType('spyfall')" style="flex:1">🔍 Spyfall</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" id="gametype-imposter-btn" onclick="setGameType('imposter')" style="flex:1;min-width:calc(33% - 8px)">🕵️ Imposter</button>
+      <button class="btn btn-sm" id="gametype-whoami-btn" onclick="setGameType('whoami')" style="flex:1;min-width:calc(33% - 8px)">🤔 Who Am I?</button>
+      <button class="btn btn-sm" id="gametype-spyfall-btn" onclick="setGameType('spyfall')" style="flex:1;min-width:calc(33% - 8px)">🔍 Spyfall</button>
+      <button class="btn btn-sm" id="gametype-draw-btn" onclick="setGameType('draw')" style="flex:1;min-width:calc(50% - 8px)">🎨 Draw</button>
+      <button class="btn btn-sm" id="gametype-collab-btn" onclick="setGameType('collab')" style="flex:1;min-width:calc(50% - 8px)">🖌️ Collab Draw</button>
     </div>
   </div>
 
@@ -350,6 +374,40 @@
       Everyone gets a secret location and role — except the <strong style="color:#f59e0b">Spy</strong>, who doesn't know where they are.<br><br>
       Discuss, ask questions, vote for the spy. If caught, the spy gets one last chance to guess the location!
     </div>
+  </div>
+
+  <!-- DRAW SETTINGS (draw + collab only) -->
+  <div id="host-draw-settings" class="card" style="width:100%; display:none">
+    <div class="card-title">Draw Settings</div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Imposters</div>
+        <div class="setting-desc">Number of fake players</div>
+      </div>
+      <div class="stepper">
+        <button class="stepper-btn" onclick="changeImposterCount(-1)">−</button>
+        <div class="stepper-val" id="draw-imposter-count-display">1</div>
+        <button class="stepper-btn" onclick="changeImposterCount(1)">+</button>
+      </div>
+    </div>
+    <div class="setting-row" id="draw-time-row" style="display:none">
+      <div>
+        <div class="setting-label">Draw Time</div>
+        <div class="setting-desc">Seconds to draw</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" id="drawtime-20-btn" onclick="setDrawTime(20)">20s</button>
+        <button class="btn btn-sm" id="drawtime-30-btn" onclick="setDrawTime(30)">30s</button>
+        <button class="btn btn-sm" id="drawtime-45-btn" onclick="setDrawTime(45)">45s</button>
+        <button class="btn btn-sm" id="drawtime-60-btn" onclick="setDrawTime(60)">60s</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRAW CATEGORIES (draw + collab only) -->
+  <div id="host-draw-categories" class="card" style="width:100%; display:none">
+    <div class="card-title">Word Categories <small>(select at least one)</small></div>
+    <div class="category-grid" id="draw-category-grid"></div>
   </div>
 
   <div id="host-start-btn" style="width:100%; display:none">
@@ -690,6 +748,102 @@
   <button class="btn btn-ghost" style="width:100%" onclick="leaveRoom()">← Leave Room</button>
 </div>
 
+<!-- ══════════════════════════════════════════ -->
+<!-- DRAW — ROLE SCREEN                        -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-draw-role" class="screen">
+  <div class="logo-eye">🎨</div>
+  <div class="section-title text-center">Your Drawing Word</div>
+  <div class="text-muted text-center">Don't show anyone!</div>
+  <div id="draw-role-card" style="width:100%"></div>
+  <div class="card text-center" style="width:100%">
+    <div class="text-muted" style="font-size:0.85rem">Game starts when everyone is ready</div>
+    <div id="draw-ready-count" style="margin-top:8px; font-weight:700">0 / 0 ready</div>
+  </div>
+  <button class="btn btn-primary" id="draw-ready-btn" onclick="drawMarkReady()">✅ Ready to Draw!</button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DRAW — CANVAS SCREEN                      -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-draw-canvas" class="screen" style="justify-content:flex-start; padding-top:20px; overflow-y:auto">
+  <div style="width:100%; display:flex; align-items:center; justify-content:space-between">
+    <div>
+      <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Your Word</div>
+      <div id="draw-canvas-word" style="font-size:1.4rem; font-weight:900"></div>
+    </div>
+    <div id="draw-timer-display" class="draw-timer-big">30</div>
+  </div>
+  <div class="draw-canvas-wrap" id="draw-canvas-wrap" style="aspect-ratio:1">
+    <canvas id="draw-canvas" style="touch-action:none"></canvas>
+  </div>
+  <div class="draw-tools">
+    <div id="draw-color-swatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <div style="flex:1"></div>
+    <button class="brush-btn" id="brush-s" onclick="setBrushSize(4)" title="Small">S</button>
+    <button class="brush-btn" id="brush-m" onclick="setBrushSize(10)" title="Medium">M</button>
+    <button class="brush-btn" id="brush-l" onclick="setBrushSize(20)" title="Large">L</button>
+    <button class="btn btn-sm btn-outline" onclick="clearMyCanvas()" style="margin-left:8px">🗑️</button>
+  </div>
+  <div id="draw-submit-area" style="width:100%; display:none">
+    <button class="btn btn-success" onclick="submitDrawing()">✅ Submit Drawing</button>
+  </div>
+  <div id="draw-waiting-msg" class="text-muted text-center pulse" style="display:none">Waiting for other players...</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DRAW — REVEAL SCREEN                      -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-draw-reveal" class="screen" style="justify-content:flex-start; padding-top:20px; overflow-y:auto">
+  <div class="section-title text-center">🖼️ All Drawings</div>
+  <div class="text-muted text-center">Who drew something different?</div>
+  <div id="draw-reveal-grid" class="drawing-grid"></div>
+  <div id="draw-vote-btn-wrap" style="width:100%; display:none">
+    <button class="btn btn-danger" onclick="startDrawVote()">🗳️ Start Vote</button>
+  </div>
+  <div id="draw-waiting-vote-msg" class="text-muted text-center pulse" style="display:none">Waiting for host to start vote...</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- COLLAB — ROLE SCREEN                      -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-collab-role" class="screen">
+  <div class="logo-eye">🖌️</div>
+  <div class="section-title text-center">Collab Draw</div>
+  <div id="collab-role-card" style="width:100%"></div>
+  <div class="card" style="width:100%">
+    <div class="card-title">Drawing Order</div>
+    <div id="collab-turn-list" class="turn-list"></div>
+  </div>
+  <div class="text-muted text-center">Everyone adds to the same canvas.<br>Try to blend in!</div>
+  <button class="btn btn-primary" onclick="goToCollabCanvas()">🖌️ Go to Canvas</button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- COLLAB — CANVAS SCREEN                    -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-collab-canvas" class="screen" style="justify-content:flex-start; padding-top:20px; overflow-y:auto">
+  <div id="collab-turn-indicator" class="turn-indicator">...</div>
+  <div class="draw-canvas-wrap" id="collab-canvas-wrap" style="aspect-ratio:1">
+    <canvas id="collab-canvas" style="touch-action:none"></canvas>
+  </div>
+  <div class="draw-tools" id="collab-tools" style="display:none">
+    <div id="collab-color-swatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <div style="flex:1"></div>
+    <button class="brush-btn" id="collab-brush-s" onclick="setCollabBrushSize(4)">S</button>
+    <button class="brush-btn" id="collab-brush-m" onclick="setCollabBrushSize(10)">M</button>
+    <button class="brush-btn" id="collab-brush-l" onclick="setCollabBrushSize(20)">L</button>
+    <button class="btn btn-sm btn-outline" onclick="clearCollabStrokes()" style="margin-left:8px">🗑️ My Strokes</button>
+  </div>
+  <div id="collab-host-controls" style="width:100%; display:none">
+    <div class="row">
+      <button class="btn btn-outline" onclick="collabNextTurn()">⏭️ Next Player</button>
+      <button class="btn btn-danger" onclick="collabStartVote()">🗳️ Vote Now</button>
+    </div>
+  </div>
+  <div class="text-muted text-center" id="collab-non-host-hint" style="display:none">Waiting for host to manage turns...</div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -925,6 +1079,10 @@ function initSocket() {
     myWhoamiCategoryName = null;
     mySfRole = null; mySfVote = null;
     gameIsOver = false;
+    drawCtx = null; drawIsDrawing = false;
+    clearInterval(drawTimer); drawTimer = null;
+    collabCtx = null; collabIsDrawing = false;
+    collabCurrentDrawerId = null; collabTurnOrder = [];
     document.getElementById('play-again-inner').textContent = '🔄 Play Again';
     showScreen('lobby');
   });
@@ -1100,6 +1258,110 @@ function initSocket() {
     }
     showScreen('whoami-reveal');
   });
+
+  // ── DRAW events ──
+  socket.on('draw-role', function(data) {
+    const isImposter = data.role === 'imposter';
+    const cardHtml = '<div class="role-card ' + (isImposter ? 'imposter-card' : 'player-card') + '" style="text-align:center">' +
+      '<div class="role-icon">' + (isImposter ? '🎭' : '🎨') + '</div>' +
+      '<div class="role-title">' + (isImposter ? "You're the Imposter!" : 'Your Word') + '</div>' +
+      '<div class="role-category">' + data.category + '</div>' +
+      '<div class="role-word">' + data.word + '</div>' +
+      '<div class="role-hint">' + (isImposter ? 'Draw your word but try to blend in with the others!' : "Draw this — but don't make it too obvious!") + '</div>' +
+      '</div>';
+    const card = document.getElementById('draw-role-card');
+    if (card) card.innerHTML = cardHtml;
+    myWord = data.word;
+    const countEl = document.getElementById('draw-ready-count');
+    if (countEl) countEl.textContent = '0 / ' + (currentRoom ? currentRoom.players.length : '?') + ' ready';
+    const readyBtn = document.getElementById('draw-ready-btn');
+    if (readyBtn) { readyBtn.disabled = false; readyBtn.textContent = '✅ Ready to Draw!'; }
+    showScreen('draw-role');
+  });
+
+  socket.on('draw-ready-update', function(data) {
+    const el = document.getElementById('draw-ready-count');
+    if (el) el.textContent = data.readyCount + ' / ' + data.totalCount + ' ready';
+  });
+
+  socket.on('draw-all-ready', function(data) {
+    showScreen('draw-canvas');
+    // showScreen already calls initDrawCanvas after 100ms; start countdown after canvas is ready
+    setTimeout(function() {
+      startDrawCountdown(data.drawTime || 30);
+    }, 200);
+  });
+
+  socket.on('draw-time-up', function() {
+    clearInterval(drawTimer);
+    autoSubmitDrawing();
+  });
+
+  socket.on('draw-reveal', function(data) {
+    showScreen('draw-reveal');
+    renderDrawReveal(data.drawings || []);
+    const voteBtn = document.getElementById('draw-vote-btn-wrap');
+    const waitMsg = document.getElementById('draw-waiting-vote-msg');
+    if (voteBtn) voteBtn.style.display = isHost ? 'block' : 'none';
+    if (waitMsg) waitMsg.style.display = isHost ? 'none' : 'block';
+  });
+
+  // ── COLLAB events ──
+  socket.on('collab-role', function(data) {
+    const isImposter = data.role === 'imposter';
+    collabTurnOrder = data.turnOrder || [];
+    const cardHtml = '<div class="role-card ' + (isImposter ? 'imposter-card' : 'player-card') + '" style="text-align:center">' +
+      '<div class="role-icon">' + (isImposter ? '🎭' : '🖌️') + '</div>' +
+      '<div class="role-title">' + (isImposter ? "You're the Imposter!" : 'Your Word') + '</div>' +
+      '<div class="role-category">' + data.category + '</div>' +
+      (isImposter
+        ? '<div class="role-hint">You have no word — watch what others draw and try to blend in!</div>'
+        : '<div class="role-word">' + data.word + '</div>') +
+      '</div>';
+    const card = document.getElementById('collab-role-card');
+    if (card) card.innerHTML = cardHtml;
+
+    const list = document.getElementById('collab-turn-list');
+    if (list) {
+      list.innerHTML = (data.turnOrder || []).map(function(p, i) {
+        return '<div class="turn-item ' + (p.id === data.currentTurnId ? 'active-turn' : '') + '">' +
+          '<span>' + (i + 1) + '.</span> ' + p.name + (p.id === myId ? ' (you)' : '') +
+          (p.id === data.currentTurnId ? ' ✏️' : '') + '</div>';
+      }).join('');
+    }
+
+    myWord = data.word || null;
+    collabCurrentDrawerId = data.currentTurnId;
+    showScreen('collab-role');
+  });
+
+  socket.on('collab-turn-change', function(data) {
+    collabCurrentDrawerId = data.currentTurnId;
+    updateCollabTurn(data.currentTurnId, collabTurnOrder);
+    // Update turn list on role screen
+    const items = document.querySelectorAll('#collab-turn-list .turn-item');
+    items.forEach(function(item, i) {
+      const p = collabTurnOrder[i];
+      item.className = 'turn-item' + (p && p.id === data.currentTurnId ? ' active-turn' : '');
+    });
+  });
+
+  socket.on('collab-stroke', function(stroke) {
+    drawStrokeOnCollab(stroke);
+  });
+
+  socket.on('collab-clear-player', function() {
+    // Server follows up with collab-full-state which redraws everything
+  });
+
+  socket.on('collab-full-state', function(data) {
+    if (!collabCtx) return;
+    const canvas = document.getElementById('collab-canvas');
+    if (!canvas) return;
+    collabCtx.fillStyle = '#ffffff';
+    collabCtx.fillRect(0, 0, canvas.width, canvas.height);
+    (data.strokes || []).forEach(function(s) { drawStrokeOnCollab(s); });
+  });
 }
 
 // ──────────────────────────────────────────
@@ -1112,7 +1374,8 @@ function applyRoomUpdate(room) {
   // Always update data, but block screen transitions if imposter game just ended
   const whoamiActive = room.gameState === 'whoami-playing' || room.gameState === 'whoami-ended';
   const spyfallActive = room.gameState && room.gameState.startsWith('spyfall-');
-  if (gameIsOver && room.gameState !== 'lobby' && !whoamiActive && !spyfallActive) {
+  const drawActive = room.gameState && (room.gameState.startsWith('draw-') || room.gameState === 'collab-drawing');
+  if (gameIsOver && room.gameState !== 'lobby' && !whoamiActive && !spyfallActive && !drawActive) {
     renderLobbyData(room);
     renderDiscussionData(room);
     renderVotingData(room);
@@ -1198,6 +1461,31 @@ function applyRoomUpdate(room) {
   if (room.gameState === 'spyfall-ended') {
     if (active !== 'screen-spyfall-final') showScreen('spyfall-final');
   }
+
+  if (room.gameState === 'draw-role-reveal') {
+    if (active === 'screen-lobby') {
+      // Show a brief waiting state — draw-role event will show the actual role screen
+      showWaitingForRole();
+    }
+  }
+
+  if (room.gameState === 'draw-drawing') {
+    if (['screen-lobby', 'screen-draw-role'].includes(active)) showScreen('draw-canvas');
+  }
+
+  if (room.gameState === 'draw-reveal') {
+    if (active !== 'screen-draw-reveal') showScreen('draw-reveal');
+  }
+
+  if (room.gameState === 'collab-drawing') {
+    const collabScreens = ['screen-collab-role', 'screen-collab-canvas'];
+    if (!collabScreens.includes(active)) showScreen('collab-role');
+    // Update turn indicator if already on canvas
+    if (active === 'screen-collab-canvas') {
+      updateCollabTurn(collabCurrentDrawerId, collabTurnOrder);
+    }
+  }
+
 }
 
 function showWaitingForRole() {
@@ -1241,6 +1529,10 @@ function leaveRoom() {
   if (socket) { socket.disconnect(); socket = null; }
   myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myPlayerName = null;
   mySfRole = null; mySfVote = null; gameIsOver = false;
+  drawCtx = null; drawIsDrawing = false;
+  clearInterval(drawTimer); drawTimer = null;
+  collabCtx = null; collabIsDrawing = false;
+  collabCurrentDrawerId = null; collabTurnOrder = [];
   showScreen('home');
 }
 
@@ -1349,6 +1641,8 @@ function renderLobbyData(room) {
   const gameType = (room.settings && room.settings.gameType) || 'imposter';
   const isWhoami  = gameType === 'whoami';
   const isSpyfall = gameType === 'spyfall';
+  const isDraw    = gameType === 'draw';
+  const isCollab  = gameType === 'collab';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -1357,12 +1651,16 @@ function renderLobbyData(room) {
 
   if (amHost) {
     // Game type toggle buttons
-    const impBtn = document.getElementById('gametype-imposter-btn');
-    const wamBtn = document.getElementById('gametype-whoami-btn');
-    const sfBtn  = document.getElementById('gametype-spyfall-btn');
-    if (impBtn) impBtn.className = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
-    if (wamBtn) wamBtn.className = 'btn btn-sm' + (isWhoami   ? ' btn-primary' : ' btn-outline');
-    if (sfBtn)  sfBtn.className  = 'btn btn-sm' + (isSpyfall  ? ' btn-primary' : ' btn-outline');
+    const impBtn    = document.getElementById('gametype-imposter-btn');
+    const wamBtn    = document.getElementById('gametype-whoami-btn');
+    const sfBtn     = document.getElementById('gametype-spyfall-btn');
+    const drawBtn   = document.getElementById('gametype-draw-btn');
+    const collabBtn = document.getElementById('gametype-collab-btn');
+    if (impBtn)    impBtn.className    = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
+    if (wamBtn)    wamBtn.className    = 'btn btn-sm' + (isWhoami   ? ' btn-primary' : ' btn-outline');
+    if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall  ? ' btn-primary' : ' btn-outline');
+    if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw     ? ' btn-primary' : ' btn-outline');
+    if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab   ? ' btn-primary' : ' btn-outline');
 
     const isVideo     = room.settings.gameMode === 'video';
     const wordCats    = document.getElementById('host-categories');
@@ -1379,6 +1677,10 @@ function renderLobbyData(room) {
       if (videoCats)   videoCats.style.display   = 'none';
       if (whoamiCats)  whoamiCats.style.display  = 'none';
       if (spyfallInfo) spyfallInfo.style.display = 'block';
+      const drawSettings2 = document.getElementById('host-draw-settings');
+      const drawCats2 = document.getElementById('host-draw-categories');
+      if (drawSettings2) drawSettings2.style.display = 'none';
+      if (drawCats2) drawCats2.style.display = 'none';
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Need at least 3 players';
 
@@ -1389,6 +1691,10 @@ function renderLobbyData(room) {
       if (videoCats)   videoCats.style.display   = 'none';
       if (whoamiCats)  whoamiCats.style.display  = 'block';
       if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettings3 = document.getElementById('host-draw-settings');
+      const drawCats3 = document.getElementById('host-draw-categories');
+      if (drawSettings3) drawSettings3.style.display = 'none';
+      if (drawCats3) drawCats3.style.display = 'none';
 
       const whoamiGrid = document.getElementById('whoami-category-grid');
       if (whoamiGrid) {
@@ -1407,8 +1713,41 @@ function renderLobbyData(room) {
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Need at least 2 players';
 
+    // ── DRAW / COLLAB MODE ──
+    } else if (isDraw || isCollab) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettings = document.getElementById('host-draw-settings');
+      const drawCats = document.getElementById('host-draw-categories');
+      if (drawSettings) {
+        drawSettings.style.display = 'block';
+        const drawTimeRow = document.getElementById('draw-time-row');
+        if (drawTimeRow) drawTimeRow.style.display = isDraw ? 'flex' : 'none';
+        const impCount = room.settings.imposterCount || 1;
+        const dispEl = document.getElementById('draw-imposter-count-display');
+        if (dispEl) dispEl.textContent = impCount;
+        const dt = room.settings.drawTime || 30;
+        [20, 30, 45, 60].forEach(t => {
+          const btn = document.getElementById('drawtime-' + t + '-btn');
+          if (btn) btn.className = 'btn btn-sm' + (dt === t ? ' btn-primary' : ' btn-outline');
+        });
+      }
+      if (drawCats) {
+        drawCats.style.display = 'block';
+        renderDrawCategoryGrid(room);
+      }
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 3 players';
+
     // ── IMPOSTER MODE ──
     } else {
+      const drawSettings4 = document.getElementById('host-draw-settings');
+      const drawCats4 = document.getElementById('host-draw-categories');
+      if (drawSettings4) drawSettings4.style.display = 'none';
+      if (drawCats4) drawCats4.style.display = 'none';
       const isQuestions2 = room.settings.gameMode === 'questions';
       if (hostSettings) hostSettings.style.display = 'block';
       if (wordCats)    wordCats.style.display    = (!isVideo && !isQuestions2) ? 'block' : 'none';
@@ -2038,6 +2377,23 @@ function showScreen(name) {
   if (name === 'discussion' && currentRoom) renderDiscussionData(currentRoom);
   if (name === 'voting' && currentRoom) renderVotingData(currentRoom);
   if (name === 'elimination') document.getElementById('elim-continue-btn').style.display = 'none';
+
+  if (name === 'draw-canvas') {
+    const wordEl = document.getElementById('draw-canvas-word');
+    if (wordEl) wordEl.textContent = myWord || '???';
+    setTimeout(() => { initDrawCanvas(); }, 100);
+  }
+
+  if (name === 'collab-canvas') {
+    setTimeout(() => {
+      initCollabCanvas();
+      updateCollabTurn(collabCurrentDrawerId, collabTurnOrder);
+      const hostCtrl = document.getElementById('collab-host-controls');
+      const nonHostHint = document.getElementById('collab-non-host-hint');
+      if (hostCtrl) hostCtrl.style.display = isHost ? 'block' : 'none';
+      if (nonHostHint) nonHostHint.style.display = isHost ? 'none' : 'block';
+    }, 100);
+  }
 }
 
 // ──────────────────────────────────────────
@@ -2050,6 +2406,315 @@ function showToast(msg, type = '') {
   el.className = `show ${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ──────────────────────────────────────────
+// DRAW GAME (everyone draws simultaneously)
+// ──────────────────────────────────────────
+let drawCtx = null;
+let drawIsDrawing = false;
+let drawColor = '#000000';
+let drawSize = 10;
+let drawTimer = null;
+let drawTimeLeft = 30;
+const DRAW_COLORS = ['#000000','#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ec4899','#ffffff','#78716c'];
+
+function initDrawCanvas() {
+  const canvas = document.getElementById('draw-canvas');
+  const wrap = document.getElementById('draw-canvas-wrap');
+  if (!canvas || !wrap) return;
+  canvas.width = wrap.offsetWidth;
+  canvas.height = wrap.offsetWidth;
+  drawCtx = canvas.getContext('2d');
+  drawCtx.fillStyle = '#ffffff';
+  drawCtx.fillRect(0, 0, canvas.width, canvas.height);
+  drawCtx.lineCap = 'round';
+  drawCtx.lineJoin = 'round';
+
+  const swatchWrap = document.getElementById('draw-color-swatches');
+  if (swatchWrap) {
+    swatchWrap.innerHTML = DRAW_COLORS.map(c =>
+      '<div class="color-swatch ' + (c === drawColor ? 'active' : '') + '" style="background:' + c + ';' + (c === '#ffffff' ? 'border:2px solid var(--border);' : '') + '" onclick="setDrawColor(\'' + c + '\')" data-color="' + c + '"></div>'
+    ).join('');
+  }
+  updateBrushBtns('draw');
+
+  canvas.addEventListener('mousedown', e => { drawIsDrawing = true; drawDot(e); });
+  canvas.addEventListener('mousemove', e => { if (drawIsDrawing) drawLine(e); });
+  canvas.addEventListener('mouseup', () => { drawIsDrawing = false; drawLastPos = null; });
+  canvas.addEventListener('mouseleave', () => { drawIsDrawing = false; drawLastPos = null; });
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); drawIsDrawing = true; drawDot(e.touches[0], canvas); }, { passive: false });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (drawIsDrawing) drawLine(e.touches[0], canvas); }, { passive: false });
+  canvas.addEventListener('touchend', () => { drawIsDrawing = false; drawLastPos = null; });
+}
+
+function getCanvasPos(e, canvas) {
+  canvas = canvas || document.getElementById('draw-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+}
+
+let drawLastPos = null;
+function drawDot(e, canvas) {
+  const pos = getCanvasPos(e, canvas || document.getElementById('draw-canvas'));
+  drawLastPos = pos;
+  drawCtx.beginPath();
+  drawCtx.arc(pos.x, pos.y, drawSize / 2, 0, Math.PI * 2);
+  drawCtx.fillStyle = drawColor;
+  drawCtx.fill();
+}
+function drawLine(e, canvas) {
+  const pos = getCanvasPos(e, canvas || document.getElementById('draw-canvas'));
+  if (!drawLastPos) { drawLastPos = pos; return; }
+  drawCtx.beginPath();
+  drawCtx.moveTo(drawLastPos.x, drawLastPos.y);
+  drawCtx.lineTo(pos.x, pos.y);
+  drawCtx.strokeStyle = drawColor;
+  drawCtx.lineWidth = drawSize;
+  drawCtx.lineCap = 'round';
+  drawCtx.stroke();
+  drawLastPos = pos;
+}
+function setDrawColor(c) {
+  drawColor = c;
+  document.querySelectorAll('#draw-color-swatches .color-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === c);
+  });
+}
+function setBrushSize(s) { drawSize = s; updateBrushBtns('draw'); }
+function updateBrushBtns(prefix) {
+  const sizes = { 4: 's', 10: 'm', 20: 'l' };
+  const size = prefix === 'draw' ? drawSize : collabSize;
+  Object.entries(sizes).forEach(function(entry) {
+    const sz = entry[0]; const id = entry[1];
+    const btnId = (prefix === 'draw' ? 'brush-' : 'collab-brush-') + id;
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.toggle('active', parseInt(sz) === size);
+  });
+}
+function clearMyCanvas() {
+  if (!drawCtx) return;
+  const canvas = document.getElementById('draw-canvas');
+  drawCtx.fillStyle = '#ffffff';
+  drawCtx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function startDrawCountdown(seconds) {
+  drawTimeLeft = seconds;
+  const timerEl = document.getElementById('draw-timer-display');
+  clearInterval(drawTimer);
+  drawTimer = setInterval(function() {
+    drawTimeLeft--;
+    if (timerEl) {
+      timerEl.textContent = drawTimeLeft;
+      timerEl.className = 'draw-timer-big' + (drawTimeLeft <= 5 ? ' danger' : '');
+    }
+    if (drawTimeLeft <= 0) {
+      clearInterval(drawTimer);
+      autoSubmitDrawing();
+    }
+  }, 1000);
+}
+
+function autoSubmitDrawing() {
+  clearInterval(drawTimer);
+  const canvas = document.getElementById('draw-canvas');
+  const submitArea = document.getElementById('draw-submit-area');
+  const waitMsg = document.getElementById('draw-waiting-msg');
+  if (canvas) canvas.style.pointerEvents = 'none';
+  if (submitArea) submitArea.style.display = 'none';
+  if (waitMsg) waitMsg.style.display = 'block';
+  const imageData = canvas ? canvas.toDataURL('image/jpeg', 0.6) : null;
+  socket.emit('draw-submit', { imageData });
+}
+
+function submitDrawing() {
+  clearInterval(drawTimer);
+  const canvas = document.getElementById('draw-canvas');
+  const imageData = canvas ? canvas.toDataURL('image/jpeg', 0.6) : null;
+  socket.emit('draw-submit', { imageData });
+  const submitArea = document.getElementById('draw-submit-area');
+  const waitMsg = document.getElementById('draw-waiting-msg');
+  if (submitArea) submitArea.style.display = 'none';
+  if (waitMsg) waitMsg.style.display = 'block';
+  if (canvas) canvas.style.pointerEvents = 'none';
+}
+
+function drawMarkReady() {
+  const btn = document.getElementById('draw-ready-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Waiting...'; }
+  socket.emit('draw-player-ready');
+}
+
+function renderDrawReveal(drawings) {
+  const grid = document.getElementById('draw-reveal-grid');
+  if (!grid) return;
+  grid.innerHTML = drawings.map(function(d) {
+    return '<div class="drawing-card ' + (d.id === myId ? 'is-you' : '') + '">' +
+      (d.imageData
+        ? '<img src="' + d.imageData + '" alt="' + d.name + '\'s drawing">'
+        : '<div style="aspect-ratio:1;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.85rem">No drawing</div>') +
+      '<div class="drawing-name">' + d.name + (d.id === myId ? ' (you)' : '') + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function startDrawVote() { socket.emit('draw-start-vote'); }
+
+function setDrawTime(t) { socket.emit('update-settings', { settings: { drawTime: t } }); }
+
+function renderDrawCategoryGrid(room) {
+  const grid = document.getElementById('draw-category-grid');
+  if (!grid || !categories.length) return;
+  const selected = (room && room.settings && room.settings.selectedCategories) || ['movies','tvShows','videoGames','gameCharacters'];
+  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸' };
+  grid.innerHTML = categories.map(function(c) {
+    return '<div class="cat-chip ' + (selected.includes(c.key) ? 'selected' : '') + '" onclick="toggleDrawCategory(\'' + c.key + '\')">' +
+      '<span class="cat-emoji">' + (emojiMap[c.key] || '🎯') + '</span>' + c.name.replace(/^[^\s]+\s/, '') +
+      '<br><span class="cat-count">' + c.count + ' words</span></div>';
+  }).join('');
+}
+
+function toggleDrawCategory(key) {
+  if (!isHost || !currentRoom) return;
+  let cats = [...(currentRoom.settings.selectedCategories || [])];
+  if (cats.includes(key)) {
+    if (cats.length <= 1) return showToast('Select at least one category', 'error');
+    cats = cats.filter(function(c) { return c !== key; });
+  } else {
+    cats.push(key);
+  }
+  socket.emit('update-settings', { settings: { selectedCategories: cats } });
+}
+
+// ──────────────────────────────────────────
+// COLLAB DRAW
+// ──────────────────────────────────────────
+let collabCtx = null;
+let collabIsDrawing = false;
+let collabColor = '#000000';
+let collabSize = 10;
+let collabCurrentDrawerId = null;
+let collabLastPos = null;
+let collabTurnOrder = [];
+
+function initCollabCanvas() {
+  const canvas = document.getElementById('collab-canvas');
+  const wrap = document.getElementById('collab-canvas-wrap');
+  if (!canvas || !wrap) return;
+  canvas.width = wrap.offsetWidth;
+  canvas.height = wrap.offsetWidth;
+  collabCtx = canvas.getContext('2d');
+  collabCtx.fillStyle = '#ffffff';
+  collabCtx.fillRect(0, 0, canvas.width, canvas.height);
+  collabCtx.lineCap = 'round';
+  collabCtx.lineJoin = 'round';
+
+  const swatchWrap = document.getElementById('collab-color-swatches');
+  if (swatchWrap) {
+    swatchWrap.innerHTML = DRAW_COLORS.map(function(c) {
+      return '<div class="color-swatch ' + (c === collabColor ? 'active' : '') + '" style="background:' + c + ';' + (c === '#ffffff' ? 'border:2px solid var(--border);' : '') + '" onclick="setCollabColor(\'' + c + '\')" data-color="' + c + '"></div>';
+    }).join('');
+  }
+  updateBrushBtns('collab');
+
+  canvas.addEventListener('mousedown', function(e) { if (!isMyCollabTurn()) return; collabIsDrawing = true; collabDot(e); });
+  canvas.addEventListener('mousemove', function(e) { if (collabIsDrawing && isMyCollabTurn()) collabDrawLine(e); });
+  canvas.addEventListener('mouseup', function() { collabIsDrawing = false; collabLastPos = null; });
+  canvas.addEventListener('mouseleave', function() { collabIsDrawing = false; collabLastPos = null; });
+  canvas.addEventListener('touchstart', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); collabIsDrawing = true; collabDot(e.touches[0], canvas); }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); if (collabIsDrawing) collabDrawLine(e.touches[0], canvas); }, { passive: false });
+  canvas.addEventListener('touchend', function() { collabIsDrawing = false; collabLastPos = null; });
+}
+
+function isMyCollabTurn() { return collabCurrentDrawerId === myId; }
+
+function getCollabCanvasPos(e, canvas) {
+  canvas = canvas || document.getElementById('collab-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+}
+
+function collabDot(e, canvas) {
+  const pos = getCollabCanvasPos(e, canvas);
+  collabLastPos = pos;
+  collabCtx.beginPath();
+  collabCtx.arc(pos.x, pos.y, collabSize / 2, 0, Math.PI * 2);
+  collabCtx.fillStyle = collabColor;
+  collabCtx.fill();
+  const cvs = document.getElementById('collab-canvas');
+  socket.emit('collab-stroke', { type: 'dot', x: pos.x, y: pos.y, color: collabColor, size: collabSize, w: cvs ? cvs.width : 400 });
+}
+
+function collabDrawLine(e, canvas) {
+  const pos = getCollabCanvasPos(e, canvas);
+  if (!collabLastPos) { collabLastPos = pos; return; }
+  collabCtx.beginPath();
+  collabCtx.moveTo(collabLastPos.x, collabLastPos.y);
+  collabCtx.lineTo(pos.x, pos.y);
+  collabCtx.strokeStyle = collabColor;
+  collabCtx.lineWidth = collabSize;
+  collabCtx.lineCap = 'round';
+  collabCtx.stroke();
+  const cvs = document.getElementById('collab-canvas');
+  socket.emit('collab-stroke', { type: 'line', x0: collabLastPos.x, y0: collabLastPos.y, x: pos.x, y: pos.y, color: collabColor, size: collabSize, w: cvs ? cvs.width : 400 });
+  collabLastPos = pos;
+}
+
+function drawStrokeOnCollab(stroke) {
+  if (!collabCtx) return;
+  const canvas = document.getElementById('collab-canvas');
+  const scale = canvas.width / (stroke.w || canvas.width);
+  if (stroke.type === 'dot') {
+    collabCtx.beginPath();
+    collabCtx.arc(stroke.x * scale, stroke.y * scale, stroke.size / 2 * scale, 0, Math.PI * 2);
+    collabCtx.fillStyle = stroke.color;
+    collabCtx.fill();
+  } else {
+    collabCtx.beginPath();
+    collabCtx.moveTo(stroke.x0 * scale, stroke.y0 * scale);
+    collabCtx.lineTo(stroke.x * scale, stroke.y * scale);
+    collabCtx.strokeStyle = stroke.color;
+    collabCtx.lineWidth = stroke.size * scale;
+    collabCtx.lineCap = 'round';
+    collabCtx.stroke();
+  }
+}
+
+function setCollabColor(c) {
+  collabColor = c;
+  document.querySelectorAll('#collab-color-swatches .color-swatch').forEach(function(s) {
+    s.classList.toggle('active', s.dataset.color === c);
+  });
+}
+function setCollabBrushSize(s) { collabSize = s; updateBrushBtns('collab'); }
+function clearCollabStrokes() { socket.emit('collab-clear'); }
+
+function updateCollabTurn(currentTurnId, turnOrder) {
+  collabCurrentDrawerId = currentTurnId;
+  const drawer = turnOrder ? turnOrder.find(function(p) { return p.id === currentTurnId; }) : null;
+  const drawerName = drawer ? drawer.name : '...';
+  const isMe = currentTurnId === myId;
+  const indicator = document.getElementById('collab-turn-indicator');
+  if (indicator) {
+    indicator.className = 'turn-indicator' + (isMe ? ' my-turn' : '');
+    indicator.textContent = isMe ? '✏️ Your turn to draw!' : ('✏️ ' + drawerName + ' is drawing...');
+  }
+  const tools = document.getElementById('collab-tools');
+  if (tools) tools.style.display = isMe ? 'flex' : 'none';
+  const canvas = document.getElementById('collab-canvas');
+  if (canvas) canvas.style.cursor = isMe ? 'crosshair' : 'not-allowed';
+}
+
+function collabNextTurn() { socket.emit('collab-next-turn'); }
+function collabStartVote() { socket.emit('collab-start-vote'); }
+
+function goToCollabCanvas() {
+  showScreen('collab-canvas');
 }
 
 // ──────────────────────────────────────────

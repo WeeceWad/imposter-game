@@ -617,6 +617,18 @@ function buildResultPayload(room, extra = {}) {
   };
 }
 
+function revealDrawings(room) {
+  if (room._drawTimer) { clearTimeout(room._drawTimer); room._drawTimer = null; }
+  room.gameState = 'draw-reveal';
+  const drawings = room.players.map(p => ({
+    id: p.id,
+    name: p.name,
+    imageData: (room.drawSubmissions && room.drawSubmissions[p.id]) || null
+  }));
+  io.to(room.code).emit('draw-reveal', { drawings });
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
 function resolveVotes(room) {
   const tally = tallyVotes(room.votes);
   const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
@@ -1078,6 +1090,106 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // ── DRAW MODE ──
+    if (room.settings.gameType === 'draw') {
+      if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players for Draw.' });
+      const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
+      if ((room.settings.imposterCount || 1) > maxImposters) {
+        return socket.emit('error', { message: `Too many imposters. Max is ${maxImposters}.` });
+      }
+      const { word, category, categoryKey } = pickWordFromCategories(room.settings.selectedCategories);
+      room.currentWord = word;
+      room.currentCategory = category;
+      room.currentCategoryKey = categoryKey;
+      // Assign imposters
+      const shuffled = [...room.players];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      room.imposters = shuffled.slice(0, room.settings.imposterCount || 1).map(p => p.id);
+      room.imposterWords = {};
+      room.drawSubmissions = {};
+      room.drawReadyPlayers = new Set();
+      room.gameState = 'draw-role-reveal';
+      room.votes = {};
+      room.eliminatedPlayers = [];
+      room.lastEliminated = null;
+      room.result = null;
+      room.votingHistory = [];
+      room._drawTimer = null;
+
+      const drawTime = room.settings.drawTime || 30;
+      room.players.forEach(player => {
+        const isImposter = room.imposters.includes(player.id);
+        let playerWord;
+        if (isImposter) {
+          playerWord = pickDifferentWord(room.settings.selectedCategories, word, categoryKey);
+          room.imposterWords[player.id] = playerWord;
+        } else {
+          playerWord = word;
+        }
+        io.to(player.id).emit('draw-role', {
+          role: isImposter ? 'imposter' : 'player',
+          word: playerWord,
+          category,
+          drawTime
+        });
+      });
+
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
+    // ── COLLAB DRAW MODE ──
+    if (room.settings.gameType === 'collab') {
+      if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players for Collab Draw.' });
+      const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
+      if ((room.settings.imposterCount || 1) > maxImposters) {
+        return socket.emit('error', { message: `Too many imposters. Max is ${maxImposters}.` });
+      }
+      const { word, category, categoryKey } = pickWordFromCategories(room.settings.selectedCategories);
+      room.currentWord = word;
+      room.currentCategory = category;
+      room.currentCategoryKey = categoryKey;
+      // Assign imposters
+      const collabShuffled = [...room.players];
+      for (let i = collabShuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [collabShuffled[i], collabShuffled[j]] = [collabShuffled[j], collabShuffled[i]];
+      }
+      room.imposters = collabShuffled.slice(0, room.settings.imposterCount || 1).map(p => p.id);
+      room.imposterWords = {};
+      // Random turn order
+      const turnOrder = [...room.players].sort(() => Math.random() - 0.5).map(p => ({ id: p.id, name: p.name }));
+      room.collabTurnOrder = turnOrder;
+      room.collabCurrentTurnIdx = 0;
+      room.collabStrokes = [];
+      room.gameState = 'collab-drawing';
+      room.votes = {};
+      room.eliminatedPlayers = [];
+      room.lastEliminated = null;
+      room.result = null;
+      room.votingHistory = [];
+
+      const currentTurnId = turnOrder[0] ? turnOrder[0].id : null;
+
+      room.players.forEach(player => {
+        const isImposter = room.imposters.includes(player.id);
+        room.imposterWords[player.id] = isImposter ? null : null;
+        io.to(player.id).emit('collab-role', {
+          role: isImposter ? 'imposter' : 'player',
+          word: isImposter ? null : word,
+          category,
+          turnOrder,
+          currentTurnId
+        });
+      });
+
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
     // ── IMPOSTER MODE ──
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
     const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
@@ -1460,6 +1572,8 @@ io.on('connection', (socket) => {
   socket.on('play-again', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
+    // Clear any pending draw timer
+    if (room._drawTimer) { clearTimeout(room._drawTimer); room._drawTimer = null; }
     room.gameState = 'lobby';
     room.currentWord = null;
     room.currentCategory = null;
@@ -1475,6 +1589,11 @@ io.on('connection', (socket) => {
     room.eliminatedPlayers = [];
     room.lastEliminated = null;
     room.result = null;
+    room.drawSubmissions = {};
+    room.drawReadyPlayers = new Set();
+    room.collabStrokes = [];
+    room.collabTurnOrder = [];
+    room.collabCurrentTurnIdx = 0;
     io.to(room.code).emit('reset-game');
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
@@ -1555,10 +1674,29 @@ io.on('connection', (socket) => {
       room.whoamiReady.delete(oldId);
       room.whoamiReady.add(socket.id);
     }
+    if (room.drawReadyPlayers && room.drawReadyPlayers.has(oldId)) {
+      room.drawReadyPlayers.delete(oldId);
+      room.drawReadyPlayers.add(socket.id);
+    }
+    if (room.drawSubmissions && room.drawSubmissions[oldId] !== undefined) {
+      room.drawSubmissions[socket.id] = room.drawSubmissions[oldId];
+      delete room.drawSubmissions[oldId];
+    }
+    if (room.collabTurnOrder) {
+      room.collabTurnOrder = room.collabTurnOrder.map(p => p.id === oldId ? { ...p, id: socket.id } : p);
+    }
+    if (room.collabStrokes) {
+      room.collabStrokes = room.collabStrokes.map(s => s.playerId === oldId ? { ...s, playerId: socket.id } : s);
+    }
 
     socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
     socket.emit('room-update', sanitizeRoom(room));
     io.to(room.code).emit('room-update', sanitizeRoom(room));
+
+    // If rejoining during collab, send full canvas state
+    if (room.gameState === 'collab-drawing' && room.collabStrokes && room.collabStrokes.length > 0) {
+      socket.emit('collab-full-state', { strokes: room.collabStrokes });
+    }
   });
 
   // ─────────────────────────────────────────────
@@ -1652,6 +1790,113 @@ io.on('connection', (socket) => {
     socket.emit('whoami-rejoin-ack', { code: room.code, playerId: socket.id });
     socket.emit('room-update', sanitizeWhoamiRoom(room));
     io.to(room.code).emit('room-update', sanitizeWhoamiRoom(room));
+  });
+
+  // ─────────────────────────────────────────────
+  // DRAW — SOCKET HANDLERS
+  // ─────────────────────────────────────────────
+
+  // Player marks ready on the draw role screen
+  socket.on('draw-player-ready', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'draw-role-reveal') return;
+    if (!room.drawReadyPlayers) room.drawReadyPlayers = new Set();
+    room.drawReadyPlayers.add(socket.id);
+    const readyCount = room.drawReadyPlayers.size;
+    const totalCount = room.players.length;
+    io.to(room.code).emit('draw-ready-update', { readyCount, totalCount });
+    if (readyCount >= totalCount) {
+      room.gameState = 'draw-drawing';
+      const drawTime = room.settings.drawTime || 30;
+      io.to(room.code).emit('draw-all-ready', { drawTime });
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      // Server-side timer — fires when time is up
+      room._drawTimer = setTimeout(() => {
+        if (room.gameState === 'draw-drawing') {
+          io.to(room.code).emit('draw-time-up');
+          revealDrawings(room);
+        }
+      }, (drawTime + 2) * 1000); // +2s grace for last-second submits
+    }
+  });
+
+  // Player submits their drawing
+  socket.on('draw-submit', ({ imageData }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || !['draw-drawing', 'draw-reveal'].includes(room.gameState)) return;
+    if (!room.drawSubmissions) room.drawSubmissions = {};
+    room.drawSubmissions[socket.id] = imageData || null;
+    // Check if all players submitted
+    const allSubmitted = room.players.every(p => room.drawSubmissions[p.id] !== undefined);
+    if (allSubmitted && room.gameState === 'draw-drawing') {
+      revealDrawings(room);
+    }
+  });
+
+  // Host starts the vote from draw-reveal screen
+  socket.on('draw-start-vote', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (room.gameState !== 'draw-reveal') return;
+    room.gameState = 'voting';
+    room.votes = {};
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // ─────────────────────────────────────────────
+  // COLLAB DRAW — SOCKET HANDLERS
+  // ─────────────────────────────────────────────
+
+  // Player sends a stroke
+  socket.on('collab-stroke', (strokeData) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'collab-drawing') return;
+    const currentTurnId = room.collabTurnOrder && room.collabTurnOrder[room.collabCurrentTurnIdx || 0]
+      ? room.collabTurnOrder[room.collabCurrentTurnIdx || 0].id
+      : null;
+    if (socket.id !== currentTurnId) return; // only current drawer can send strokes
+    if (!room.collabStrokes) room.collabStrokes = [];
+    // Tag stroke with player ID so we can filter later
+    const taggedStroke = { ...strokeData, playerId: socket.id };
+    room.collabStrokes.push(taggedStroke);
+    // Broadcast to everyone else
+    socket.to(room.code).emit('collab-stroke', taggedStroke);
+  });
+
+  // Host advances to next player's turn
+  socket.on('collab-next-turn', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (room.gameState !== 'collab-drawing') return;
+    if (!room.collabTurnOrder || room.collabTurnOrder.length === 0) return;
+    room.collabCurrentTurnIdx = ((room.collabCurrentTurnIdx || 0) + 1) % room.collabTurnOrder.length;
+    const currentTurnId = room.collabTurnOrder[room.collabCurrentTurnIdx].id;
+    io.to(room.code).emit('collab-turn-change', { currentTurnId });
+  });
+
+  // Host starts voting in collab mode
+  socket.on('collab-start-vote', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (room.gameState !== 'collab-drawing') return;
+    room.gameState = 'voting';
+    room.votes = {};
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Current turn player clears their strokes from the canvas
+  socket.on('collab-clear', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'collab-drawing') return;
+    const currentTurnId = room.collabTurnOrder && room.collabTurnOrder[room.collabCurrentTurnIdx || 0]
+      ? room.collabTurnOrder[room.collabCurrentTurnIdx || 0].id
+      : null;
+    if (socket.id !== currentTurnId) return;
+    if (!room.collabStrokes) room.collabStrokes = [];
+    room.collabStrokes = room.collabStrokes.filter(s => s.playerId !== socket.id);
+    // Tell all clients to redraw from the remaining strokes
+    io.to(room.code).emit('collab-clear-player', { playerId: socket.id });
+    io.to(room.code).emit('collab-full-state', { strokes: room.collabStrokes });
   });
 
   // Disconnect — grace period so brief blips don't destroy rooms

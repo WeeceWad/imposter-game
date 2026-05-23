@@ -561,6 +561,16 @@ function pickDifferentWord(selectedCategories, mainWord, categoryKey) {
   return 'Unknown';
 }
 
+// Fisher-Yates shuffle, returns `count` randomly selected player IDs
+function selectImposters(players, count) {
+  const pool = [...players];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count).map(p => p.id);
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -1101,13 +1111,8 @@ io.on('connection', (socket) => {
       room.currentWord = word;
       room.currentCategory = category;
       room.currentCategoryKey = categoryKey;
-      // Assign imposters
-      const shuffled = [...room.players];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      room.imposters = shuffled.slice(0, room.settings.imposterCount || 1).map(p => p.id);
+      // Assign imposters — random via shared helper
+      room.imposters = selectImposters(room.players, room.settings.imposterCount || 1);
       room.imposterWords = {};
       room.drawSubmissions = {};
       room.drawReadyPlayers = new Set();
@@ -1121,16 +1126,14 @@ io.on('connection', (socket) => {
 
       const drawTime = room.settings.drawTime || 30;
       const blindDraw = !!room.settings.blindImposter;
-      // Pre-generate one shared fake word for all imposters (blind mode)
-      const sharedDrawBlindWord = blindDraw
-        ? pickDifferentWord(room.settings.selectedCategories, word, categoryKey)
-        : null;
+      // Always pre-generate ONE shared fake word so all imposters draw the same thing
+      const sharedImposterWord = pickDifferentWord(room.settings.selectedCategories, word, categoryKey);
 
       room.players.forEach(player => {
         const isImposter = room.imposters.includes(player.id);
         let playerWord, playerRole;
         if (isImposter) {
-          playerWord = blindDraw ? sharedDrawBlindWord : pickDifferentWord(room.settings.selectedCategories, word, categoryKey);
+          playerWord = sharedImposterWord;
           playerRole = blindDraw ? 'unknown' : 'imposter';
           room.imposterWords[player.id] = playerWord;
         } else {
@@ -1161,16 +1164,16 @@ io.on('connection', (socket) => {
       room.currentWord = word;
       room.currentCategory = category;
       room.currentCategoryKey = categoryKey;
-      // Assign imposters
-      const collabShuffled = [...room.players];
-      for (let i = collabShuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [collabShuffled[i], collabShuffled[j]] = [collabShuffled[j], collabShuffled[i]];
-      }
-      room.imposters = collabShuffled.slice(0, room.settings.imposterCount || 1).map(p => p.id);
+      // Assign imposters — random via shared helper
+      room.imposters = selectImposters(room.players, room.settings.imposterCount || 1);
       room.imposterWords = {};
-      // Random turn order
-      const turnOrder = [...room.players].sort(() => Math.random() - 0.5).map(p => ({ id: p.id, name: p.name }));
+      // Random turn order — proper Fisher-Yates
+      const turnOrderPool = [...room.players];
+      for (let i = turnOrderPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [turnOrderPool[i], turnOrderPool[j]] = [turnOrderPool[j], turnOrderPool[i]];
+      }
+      const turnOrder = turnOrderPool.map(p => ({ id: p.id, name: p.name }));
       room.collabTurnOrder = turnOrder;
       room.collabCurrentTurnIdx = 0;
       room.collabStrokes = [];
@@ -1257,13 +1260,8 @@ io.on('connection', (socket) => {
       room.currentImposterVideo = null;
     }
 
-    // Assign imposters — proper Fisher-Yates shuffle for fair distribution
-    const shuffledPlayers = [...room.players];
-    for (let i = shuffledPlayers.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
-    }
-    room.imposters = shuffledPlayers.slice(0, room.settings.imposterCount).map(p => p.id);
+    // Assign imposters — random via shared helper
+    room.imposters = selectImposters(room.players, room.settings.imposterCount || 1);
 
     // Reset state
     room.gameState = 'role-reveal';
@@ -1861,9 +1859,84 @@ io.on('connection', (socket) => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
     if (room.gameState !== 'draw-reveal') return;
-    room.gameState = 'voting';
+    room.gameState = 'draw-voting';
     room.votes = {};
+    io.to(room.code).emit('draw-voting-started');
     io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Player votes on a drawing (stays on the reveal screen)
+  socket.on('draw-vote', ({ targetId }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'draw-voting') return;
+    if (room.eliminatedPlayers && room.eliminatedPlayers.includes(socket.id)) return;
+    if (socket.id === targetId) return; // can't vote for yourself
+
+    room.votes[socket.id] = targetId;
+
+    const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+    const tally = {};
+    Object.values(room.votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
+
+    io.to(room.code).emit('draw-vote-update', {
+      voteCount: Object.keys(room.votes).length,
+      totalCount: activePlayers.length,
+      tally,
+      votes: room.votes
+    });
+
+    // Resolve when everyone has voted (excluding self-voters who can't vote)
+    const canVote = activePlayers.filter(p => !room.eliminatedPlayers.includes(p.id));
+    if (Object.keys(room.votes).length >= canVote.length) {
+      // Plurality resolve — no imposter-count threshold for draw game
+      const maxVotes = Object.values(tally).length ? Math.max(...Object.values(tally)) : 0;
+      if (maxVotes === 0) return;
+      const topIds = Object.keys(tally).filter(id => tally[id] === maxVotes);
+      const eliminatedId = topIds[Math.floor(Math.random() * topIds.length)];
+      const eliminatedPlayer = room.players.find(p => p.id === eliminatedId);
+      if (!eliminatedPlayer) return;
+
+      const isImposter = room.imposters.includes(eliminatedId);
+      if (!room.votingHistory) room.votingHistory = [];
+      const individualVotes = {};
+      Object.entries(room.votes).forEach(([vid, tid]) => {
+        const voter = room.players.find(p => p.id === vid);
+        const target = room.players.find(p => p.id === tid);
+        if (voter && target) individualVotes[voter.name] = target.name;
+      });
+      room.votingHistory.push({ round: room.votingHistory.length + 1, eliminated: { name: eliminatedPlayer.name, isImposter }, individualVotes });
+      room.eliminatedPlayers.push(eliminatedId);
+      room.lastEliminated = eliminatedId;
+
+      const remainingImposters = room.imposters.filter(id => !room.eliminatedPlayers.includes(id));
+      const elimResult = {
+        eliminated: { id: eliminatedId, name: eliminatedPlayer.name, isImposter, voteCount: tally[eliminatedId] || 0, totalVotes: activePlayers.length },
+        remainingImposters: remainingImposters.length
+      };
+
+      if (isImposter) {
+        if (remainingImposters.length === 0) {
+          if (room.currentWord) {
+            room.gameState = 'imposter-guess';
+            io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'imposter-guess' });
+            io.to(eliminatedId).emit('make-guess', { category: room.currentCategory });
+          } else {
+            room.gameState = 'game-over';
+            room.result = 'players-win';
+            io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
+            setTimeout(() => { io.to(room.code).emit('game-over', buildResultPayload(room)); io.to(room.code).emit('room-update', sanitizeRoom(room)); }, 2500);
+          }
+        } else {
+          room.gameState = 'draw-reveal';
+          io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'draw-reveal' });
+        }
+      } else {
+        room.gameState = 'game-over';
+        room.result = 'imposters-win';
+        io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
+        setTimeout(() => { io.to(room.code).emit('game-over', buildResultPayload(room)); io.to(room.code).emit('room-update', sanitizeRoom(room)); }, 2500);
+      }
+    }
   });
 
   // ─────────────────────────────────────────────
@@ -1884,6 +1957,20 @@ io.on('connection', (socket) => {
     room.collabStrokes.push(taggedStroke);
     // Broadcast to everyone else
     socket.to(room.code).emit('collab-stroke', taggedStroke);
+  });
+
+  // Bucket fill from current drawer — stored in collabStrokes so undo/replay works
+  socket.on('collab-fill', ({ x, y, color, w, segmentId }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'collab-drawing') return;
+    const currentTurnId = room.collabTurnOrder && room.collabTurnOrder[room.collabCurrentTurnIdx || 0]
+      ? room.collabTurnOrder[room.collabCurrentTurnIdx || 0].id : null;
+    if (socket.id !== currentTurnId) return;
+    if (!room.collabStrokes) room.collabStrokes = [];
+    const fillStroke = { type: 'fill', x, y, color, w, playerId: socket.id, segmentId };
+    room.collabStrokes.push(fillStroke);
+    // Broadcast to all other players so their canvas updates live
+    socket.to(room.code).emit('collab-fill', { x, y, color, w });
   });
 
   // Current drawer OR host advances to next player's turn

@@ -228,13 +228,22 @@
     .color-swatch.active { border-color:white; transform:scale(1.25); }
     .brush-btn { width:30px; height:30px; border-radius:8px; background:var(--surface); border:2px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; color:var(--text); }
     .brush-btn.active { border-color:var(--accent2); color:var(--accent2); }
+    .tool-btn { height:30px; padding:0 10px; border-radius:8px; background:var(--surface); border:2px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.9rem; color:var(--text); }
+    .tool-btn.active { border-color:var(--accent2); background:rgba(168,85,247,0.15); }
+    .draw-canvas-wrap canvas.fill-mode { cursor: cell; }
     .draw-timer-big { font-size:4rem; font-weight:900; text-align:center; line-height:1; }
     .draw-timer-big.danger { color:var(--danger); animation:pulse 0.5s ease-in-out infinite; }
     .drawing-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; }
-    .drawing-card { background:var(--card); border:2px solid var(--border); border-radius:12px; overflow:hidden; }
+    .drawing-card { position:relative; background:var(--card); border:2px solid var(--border); border-radius:12px; overflow:hidden; cursor:default; transition:border-color .2s, transform .15s; }
     .drawing-card.is-you { border-color:var(--accent); }
+    .drawing-card.clickable { cursor:pointer; }
+    .drawing-card.clickable:hover { border-color:var(--accent2); transform:scale(1.03); }
+    .drawing-card.my-vote { border-color:var(--danger) !important; box-shadow:0 0 0 3px rgba(239,68,68,0.3); }
+    .drawing-card.elim-card { opacity:0.35; pointer-events:none; filter:grayscale(1); }
     .drawing-card img { width:100%; aspect-ratio:1; object-fit:contain; display:block; background:white; }
     .drawing-name { padding:6px 10px; font-size:0.8rem; font-weight:700; text-align:center; }
+    .vote-badge { position:absolute; top:6px; right:6px; background:var(--danger); color:white; font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:20px; min-width:24px; text-align:center; pointer-events:none; z-index:2; }
+    .draw-vote-progress { width:100%; text-align:center; color:var(--muted); font-size:0.88rem; padding:6px 0; font-weight:600; }
     .turn-indicator { padding:14px 20px; border-radius:14px; text-align:center; font-weight:800; font-size:1rem; width:100%; background:var(--surface); border:2px solid var(--border); }
     .turn-indicator.my-turn { background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2)); border-color:var(--accent2); color:var(--accent2); }
     .turn-list { display:flex; flex-direction:column; gap:6px; width:100%; }
@@ -792,7 +801,9 @@
     <button class="brush-btn" id="brush-s" onclick="setBrushSize(4)" title="Small">S</button>
     <button class="brush-btn" id="brush-m" onclick="setBrushSize(10)" title="Medium">M</button>
     <button class="brush-btn" id="brush-l" onclick="setBrushSize(20)" title="Large">L</button>
-    <button class="btn btn-sm btn-outline" onclick="clearMyCanvas()" style="margin-left:8px">🗑️</button>
+    <button class="tool-btn" id="draw-fill-btn" onclick="setDrawTool('fill')" title="Fill" style="margin-left:6px">🪣</button>
+    <button class="btn btn-sm btn-outline" onclick="drawUndo()" style="margin-left:4px" title="Undo">↩️</button>
+    <button class="btn btn-sm btn-outline" onclick="clearMyCanvas()" style="margin-left:4px" title="Clear">🗑️</button>
   </div>
   <div id="draw-submit-area" style="width:100%; display:none">
     <button class="btn btn-success" onclick="submitDrawing()">✅ Submit Drawing</button>
@@ -807,6 +818,7 @@
   <div class="section-title text-center">🖼️ All Drawings</div>
   <div class="text-muted text-center">Who drew something different?</div>
   <div id="draw-reveal-grid" class="drawing-grid"></div>
+  <div id="draw-vote-progress" class="draw-vote-progress" style="display:none"></div>
   <div id="draw-vote-btn-wrap" style="width:100%; display:none">
     <button class="btn btn-danger" onclick="startDrawVote()">🗳️ Start Vote</button>
   </div>
@@ -848,7 +860,8 @@
     <button class="brush-btn" id="collab-brush-s" onclick="setCollabBrushSize(4)">S</button>
     <button class="brush-btn" id="collab-brush-m" onclick="setCollabBrushSize(10)">M</button>
     <button class="brush-btn" id="collab-brush-l" onclick="setCollabBrushSize(20)">L</button>
-    <button class="btn btn-sm btn-outline" onclick="collabUndo()" style="margin-left:8px" title="Undo last stroke">↩️</button>
+    <button class="tool-btn" id="collab-fill-btn" onclick="setCollabTool('fill')" title="Fill" style="margin-left:6px">🪣</button>
+    <button class="btn btn-sm btn-outline" onclick="collabUndo()" style="margin-left:4px" title="Undo last stroke">↩️</button>
   </div>
   <!-- Shown to the current drawer (any player) when it's their turn -->
   <div id="collab-done-btn-wrap" style="width:100%; display:none">
@@ -990,6 +1003,35 @@ function initSocket() {
   socket.on('elimination-result', (data) => {
     renderElimination(data);
     showScreen('elimination');
+    // Draw game: after showing who was eliminated, auto-return to the drawing reveal
+    if (data.gameState === 'draw-reveal') {
+      setTimeout(function() {
+        showScreen('draw-reveal');
+        // Mark eliminated card as greyed-out
+        if (data.eliminated && data.eliminated.id) {
+          var elimCard = document.querySelector('#draw-reveal-grid .drawing-card[data-playerid="' + data.eliminated.id + '"]');
+          if (elimCard) {
+            elimCard.classList.remove('clickable', 'my-vote');
+            elimCard.classList.add('elim-card');
+            elimCard.onclick = null;
+          }
+        }
+        // Re-show vote controls for the next round
+        var voteBtn = document.getElementById('draw-vote-btn-wrap');
+        var waitMsg = document.getElementById('draw-waiting-vote-msg');
+        var progEl  = document.getElementById('draw-vote-progress');
+        // Remove my-vote highlight and clickable from remaining non-eliminated cards
+        document.querySelectorAll('#draw-reveal-grid .drawing-card:not(.elim-card)').forEach(function(c) {
+          c.classList.remove('clickable', 'my-vote');
+          c.onclick = null;
+          var badge = c.querySelector('.vote-badge');
+          if (badge) { badge.style.display = 'none'; badge.textContent = '0'; }
+        });
+        if (voteBtn) voteBtn.style.display = isHost ? 'block' : 'none';
+        if (waitMsg) waitMsg.style.display = isHost ? 'none'  : 'block';
+        if (progEl)  progEl.style.display  = 'none';
+      }, 3000);
+    }
   });
 
   socket.on('make-guess', ({ category }) => {
@@ -1333,8 +1375,51 @@ function initSocket() {
     renderDrawReveal(data.drawings || []);
     const voteBtn = document.getElementById('draw-vote-btn-wrap');
     const waitMsg = document.getElementById('draw-waiting-vote-msg');
-    if (voteBtn) voteBtn.style.display = isHost ? 'block' : 'none';
-    if (waitMsg) waitMsg.style.display = isHost ? 'none' : 'block';
+    const progEl  = document.getElementById('draw-vote-progress');
+    if (voteBtn)  voteBtn.style.display  = isHost ? 'block' : 'none';
+    if (waitMsg)  waitMsg.style.display  = isHost ? 'none'  : 'block';
+    if (progEl)   progEl.style.display   = 'none';
+  });
+
+  socket.on('draw-voting-started', function() {
+    // Hide the pre-vote controls
+    var voteBtn = document.getElementById('draw-vote-btn-wrap');
+    var waitMsg = document.getElementById('draw-waiting-vote-msg');
+    var progEl  = document.getElementById('draw-vote-progress');
+    if (voteBtn) voteBtn.style.display = 'none';
+    if (waitMsg) waitMsg.style.display = 'none';
+    if (progEl) {
+      progEl.textContent = '🗳️ Voting started — tap a drawing to vote!';
+      progEl.style.display = 'block';
+    }
+
+    // Make every card except your own clickable
+    document.querySelectorAll('#draw-reveal-grid .drawing-card').forEach(function(card) {
+      var pid = card.getAttribute('data-playerid');
+      if (!pid || pid === myId) return;
+      card.classList.add('clickable');
+      card.onclick = function() {
+        document.querySelectorAll('#draw-reveal-grid .drawing-card').forEach(function(c) { c.classList.remove('my-vote'); });
+        card.classList.add('my-vote');
+        socket.emit('draw-vote', { targetId: pid });
+      };
+    });
+  });
+
+  socket.on('draw-vote-update', function(data) {
+    var tally = data.tally || {};
+    // Update vote progress text
+    var progEl = document.getElementById('draw-vote-progress');
+    if (progEl) progEl.textContent = '🗳️ ' + data.voteCount + ' / ' + data.totalCount + ' voted';
+    // Update badges on each card
+    document.querySelectorAll('#draw-reveal-grid .drawing-card').forEach(function(card) {
+      var pid   = card.getAttribute('data-playerid');
+      var badge = card.querySelector('.vote-badge');
+      if (!badge) return;
+      var count = tally[pid] || 0;
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'block' : 'none';
+    });
   });
 
   // ── COLLAB events ──
@@ -1384,6 +1469,11 @@ function initSocket() {
 
   socket.on('collab-stroke', function(stroke) {
     drawStrokeOnCollab(stroke);
+  });
+
+  socket.on('collab-fill', function(data) {
+    // Received from another player — apply fill to our canvas
+    drawStrokeOnCollab({ type: 'fill', x: data.x, y: data.y, color: data.color, w: data.w });
   });
 
   socket.on('collab-clear-player', function() {
@@ -1510,6 +1600,11 @@ function applyRoomUpdate(room) {
   }
 
   if (room.gameState === 'draw-reveal') {
+    if (active !== 'screen-draw-reveal') showScreen('draw-reveal');
+  }
+
+  if (room.gameState === 'draw-voting') {
+    // Stay on the reveal screen — draw-voting-started event handles UI transition
     if (active !== 'screen-draw-reveal') showScreen('draw-reveal');
   }
 
@@ -2447,15 +2542,55 @@ function showToast(msg, type = '') {
 }
 
 // ──────────────────────────────────────────
+// SHARED CANVAS HELPERS
+// ──────────────────────────────────────────
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+
+// Flood fill — BFS, works on any canvas context
+function floodFill(ctx, startX, startY, fillHex) {
+  var canvas = ctx.canvas;
+  var w = canvas.width, h = canvas.height;
+  if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
+  var imageData = ctx.getImageData(0, 0, w, h);
+  var data = imageData.data;
+  var fill = hexToRgb(fillHex);
+  var si = (startY * w + startX) * 4;
+  var tr = data[si], tg = data[si+1], tb = data[si+2];
+  // Already this colour — nothing to do
+  if (tr === fill[0] && tg === fill[1] && tb === fill[2]) return;
+  var tol = 32;
+  var visited = new Uint8Array(w * h);
+  var stack = [startX + startY * w];
+  while (stack.length) {
+    var pos = stack.pop();
+    if (visited[pos]) continue;
+    visited[pos] = 1;
+    var x = pos % w, y = (pos / w) | 0;
+    var i = pos * 4;
+    if (Math.abs(data[i]-tr)>tol || Math.abs(data[i+1]-tg)>tol || Math.abs(data[i+2]-tb)>tol) continue;
+    data[i]=fill[0]; data[i+1]=fill[1]; data[i+2]=fill[2]; data[i+3]=255;
+    if (x+1 < w)  stack.push(pos+1);
+    if (x-1 >= 0) stack.push(pos-1);
+    if (y+1 < h)  stack.push(pos+w);
+    if (y-1 >= 0) stack.push(pos-w);
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// ──────────────────────────────────────────
 // DRAW GAME (everyone draws simultaneously)
 // ──────────────────────────────────────────
 let drawCtx = null;
 let drawIsDrawing = false;
 let drawColor = '#000000';
 let drawSize = 10;
+let drawTool = 'pen';       // 'pen' | 'fill'
+let drawUndoStack = [];     // ImageData snapshots for undo
 let drawTimer = null;
 let drawTimeLeft = 30;
-const DRAW_COLORS = ['#000000','#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ec4899','#ffffff','#78716c'];
+const DRAW_COLORS = ['#000000','#92400e','#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ec4899','#ffffff','#78716c'];
 
 function initDrawCanvas() {
   const wrap = document.getElementById('draw-canvas-wrap');
@@ -2473,6 +2608,10 @@ function initDrawCanvas() {
   drawCtx.fillRect(0, 0, canvas.width, canvas.height);
   drawCtx.lineCap = 'round';
   drawCtx.lineJoin = 'round';
+  drawUndoStack = [];
+  drawTool = 'pen';
+  const fillBtn = document.getElementById('draw-fill-btn');
+  if (fillBtn) fillBtn.classList.remove('active');
 
   const swatchWrap = document.getElementById('draw-color-swatches');
   if (swatchWrap) {
@@ -2482,12 +2621,27 @@ function initDrawCanvas() {
   }
   updateBrushBtns('draw');
 
-  canvas.addEventListener('mousedown', e => { drawIsDrawing = true; drawDot(e); });
-  canvas.addEventListener('mousemove', e => { if (drawIsDrawing) drawLine(e); });
+  function onDrawStart(e, touch) {
+    const ev = touch || e;
+    if (drawTool === 'fill') {
+      const pos = getCanvasPos(ev, canvas);
+      drawUndoStack.push(drawCtx.getImageData(0, 0, canvas.width, canvas.height));
+      if (drawUndoStack.length > 30) drawUndoStack.shift();
+      floodFill(drawCtx, Math.round(pos.x), Math.round(pos.y), drawColor);
+    } else {
+      drawUndoStack.push(drawCtx.getImageData(0, 0, canvas.width, canvas.height));
+      if (drawUndoStack.length > 30) drawUndoStack.shift();
+      drawIsDrawing = true;
+      drawDot(ev, canvas);
+    }
+  }
+
+  canvas.addEventListener('mousedown', e => { onDrawStart(e); });
+  canvas.addEventListener('mousemove', e => { if (drawIsDrawing && drawTool === 'pen') drawLine(e); });
   canvas.addEventListener('mouseup', () => { drawIsDrawing = false; drawLastPos = null; });
   canvas.addEventListener('mouseleave', () => { drawIsDrawing = false; drawLastPos = null; });
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); drawIsDrawing = true; drawDot(e.touches[0], canvas); }, { passive: false });
-  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (drawIsDrawing) drawLine(e.touches[0], canvas); }, { passive: false });
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); onDrawStart(e, e.touches[0]); }, { passive: false });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (drawIsDrawing && drawTool === 'pen') drawLine(e.touches[0], canvas); }, { passive: false });
   canvas.addEventListener('touchend', () => { drawIsDrawing = false; drawLastPos = null; });
 }
 
@@ -2525,6 +2679,8 @@ function setDrawColor(c) {
   document.querySelectorAll('#draw-color-swatches .color-swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.color === c);
   });
+  // Picking a colour exits fill mode back to pen (feels natural)
+  if (drawTool === 'fill') setDrawTool('pen');
 }
 function setBrushSize(s) { drawSize = s; updateBrushBtns('draw'); }
 function updateBrushBtns(prefix) {
@@ -2540,8 +2696,31 @@ function updateBrushBtns(prefix) {
 function clearMyCanvas() {
   if (!drawCtx) return;
   const canvas = document.getElementById('draw-canvas');
+  drawUndoStack.push(drawCtx.getImageData(0, 0, canvas.width, canvas.height));
+  if (drawUndoStack.length > 30) drawUndoStack.shift();
   drawCtx.fillStyle = '#ffffff';
   drawCtx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawUndo() {
+  if (!drawCtx || !drawUndoStack.length) return;
+  drawCtx.putImageData(drawUndoStack.pop(), 0, 0);
+}
+
+function setDrawTool(t) {
+  drawTool = t;
+  const fillBtn = document.getElementById('draw-fill-btn');
+  if (fillBtn) fillBtn.classList.toggle('active', t === 'fill');
+  const canvas = document.getElementById('draw-canvas');
+  if (canvas) canvas.classList.toggle('fill-mode', t === 'fill');
+}
+
+function setCollabTool(t) {
+  collabTool = t;
+  const fillBtn = document.getElementById('collab-fill-btn');
+  if (fillBtn) fillBtn.classList.toggle('active', t === 'fill');
+  const canvas = document.getElementById('collab-canvas');
+  if (canvas) canvas.classList.toggle('fill-mode', t === 'fill');
 }
 
 function startDrawCountdown(seconds) {
@@ -2595,10 +2774,11 @@ function renderDrawReveal(drawings) {
   const grid = document.getElementById('draw-reveal-grid');
   if (!grid) return;
   grid.innerHTML = drawings.map(function(d) {
-    return '<div class="drawing-card ' + (d.id === myId ? 'is-you' : '') + '">' +
+    return '<div class="drawing-card ' + (d.id === myId ? 'is-you' : '') + '" data-playerid="' + d.id + '">' +
+      '<div class="vote-badge" style="display:none">0</div>' +
       (d.imageData
         ? '<img src="' + d.imageData + '" alt="' + d.name + '\'s drawing">'
-        : '<div style="aspect-ratio:1;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.85rem">No drawing</div>') +
+        : '<div style="aspect-ratio:1;background:#1a1a2e;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">No drawing</div>') +
       '<div class="drawing-name">' + d.name + (d.id === myId ? ' (you)' : '') + '</div>' +
       '</div>';
   }).join('');
@@ -2643,6 +2823,7 @@ let collabCtx = null;
 let collabIsDrawing = false;
 let collabColor = '#000000';
 let collabSize = 10;
+let collabTool = 'pen';     // 'pen' | 'fill'
 let collabCurrentDrawerId = null;
 let collabLastPos = null;
 let collabTurnOrder = [];
@@ -2664,6 +2845,9 @@ function initCollabCanvas() {
   collabCtx.fillRect(0, 0, canvas.width, canvas.height);
   collabCtx.lineCap = 'round';
   collabCtx.lineJoin = 'round';
+  collabTool = 'pen';
+  const collabFillBtn = document.getElementById('collab-fill-btn');
+  if (collabFillBtn) collabFillBtn.classList.remove('active');
 
   const swatchWrap = document.getElementById('collab-color-swatches');
   if (swatchWrap) {
@@ -2673,12 +2857,35 @@ function initCollabCanvas() {
   }
   updateBrushBtns('collab');
 
-  canvas.addEventListener('mousedown', function(e) { if (!isMyCollabTurn()) return; collabSegmentId = Date.now() + '-' + Math.random(); collabIsDrawing = true; collabDot(e); });
-  canvas.addEventListener('mousemove', function(e) { if (collabIsDrawing && isMyCollabTurn()) collabDrawLine(e); });
+  canvas.addEventListener('mousedown', function(e) {
+    if (!isMyCollabTurn()) return;
+    collabSegmentId = Date.now() + '-' + Math.random();
+    if (collabTool === 'fill') {
+      var pos = getCollabCanvasPos(e, canvas);
+      floodFill(collabCtx, Math.round(pos.x), Math.round(pos.y), collabColor);
+      socket.emit('collab-fill', { x: pos.x, y: pos.y, color: collabColor, w: canvas.width, segmentId: collabSegmentId });
+    } else {
+      collabIsDrawing = true;
+      collabDot(e);
+    }
+  });
+  canvas.addEventListener('mousemove', function(e) { if (collabIsDrawing && isMyCollabTurn() && collabTool === 'pen') collabDrawLine(e); });
   canvas.addEventListener('mouseup', function() { collabIsDrawing = false; collabLastPos = null; });
   canvas.addEventListener('mouseleave', function() { collabIsDrawing = false; collabLastPos = null; });
-  canvas.addEventListener('touchstart', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); collabSegmentId = Date.now() + '-' + Math.random(); collabIsDrawing = true; collabDot(e.touches[0], canvas); }, { passive: false });
-  canvas.addEventListener('touchmove', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); if (collabIsDrawing) collabDrawLine(e.touches[0], canvas); }, { passive: false });
+  canvas.addEventListener('touchstart', function(e) {
+    if (!isMyCollabTurn()) return;
+    e.preventDefault();
+    collabSegmentId = Date.now() + '-' + Math.random();
+    if (collabTool === 'fill') {
+      var pos = getCollabCanvasPos(e.touches[0], canvas);
+      floodFill(collabCtx, Math.round(pos.x), Math.round(pos.y), collabColor);
+      socket.emit('collab-fill', { x: pos.x, y: pos.y, color: collabColor, w: canvas.width, segmentId: collabSegmentId });
+    } else {
+      collabIsDrawing = true;
+      collabDot(e.touches[0], canvas);
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); if (collabIsDrawing && collabTool === 'pen') collabDrawLine(e.touches[0], canvas); }, { passive: false });
   canvas.addEventListener('touchend', function() { collabIsDrawing = false; collabLastPos = null; });
 }
 
@@ -2722,7 +2929,9 @@ function drawStrokeOnCollab(stroke) {
   if (!collabCtx) return;
   const canvas = document.getElementById('collab-canvas');
   const scale = canvas.width / (stroke.w || canvas.width);
-  if (stroke.type === 'dot') {
+  if (stroke.type === 'fill') {
+    floodFill(collabCtx, Math.round(stroke.x * scale), Math.round(stroke.y * scale), stroke.color);
+  } else if (stroke.type === 'dot') {
     collabCtx.beginPath();
     collabCtx.arc(stroke.x * scale, stroke.y * scale, stroke.size / 2 * scale, 0, Math.PI * 2);
     collabCtx.fillStyle = stroke.color;
@@ -2743,6 +2952,8 @@ function setCollabColor(c) {
   document.querySelectorAll('#collab-color-swatches .color-swatch').forEach(function(s) {
     s.classList.toggle('active', s.dataset.color === c);
   });
+  // Picking a colour exits fill mode back to pen
+  if (collabTool === 'fill') setCollabTool('pen');
 }
 function setCollabBrushSize(s) { collabSize = s; updateBrushBtns('collab'); }
 function collabUndo() { socket.emit('collab-undo'); }

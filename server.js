@@ -1886,15 +1886,18 @@ io.on('connection', (socket) => {
     socket.to(room.code).emit('collab-stroke', taggedStroke);
   });
 
-  // Host advances to next player's turn
+  // Current drawer OR host advances to next player's turn
   socket.on('collab-next-turn', () => {
     const room = rooms[socket.roomCode];
-    if (!room || room.host !== socket.id) return;
-    if (room.gameState !== 'collab-drawing') return;
+    if (!room || room.gameState !== 'collab-drawing') return;
     if (!room.collabTurnOrder || room.collabTurnOrder.length === 0) return;
+    const currentTurnId = room.collabTurnOrder[room.collabCurrentTurnIdx || 0]
+      ? room.collabTurnOrder[room.collabCurrentTurnIdx || 0].id : null;
+    // Allow if host OR the current drawer
+    if (socket.id !== room.host && socket.id !== currentTurnId) return;
     room.collabCurrentTurnIdx = ((room.collabCurrentTurnIdx || 0) + 1) % room.collabTurnOrder.length;
-    const currentTurnId = room.collabTurnOrder[room.collabCurrentTurnIdx].id;
-    io.to(room.code).emit('collab-turn-change', { currentTurnId });
+    const nextTurnId = room.collabTurnOrder[room.collabCurrentTurnIdx].id;
+    io.to(room.code).emit('collab-turn-change', { currentTurnId: nextTurnId });
   });
 
   // Host starts voting in collab mode
@@ -1907,18 +1910,29 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  // Current turn player clears their strokes from the canvas
-  socket.on('collab-clear', () => {
+  // Current turn player undoes their last drawn segment
+  socket.on('collab-undo', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'collab-drawing') return;
     const currentTurnId = room.collabTurnOrder && room.collabTurnOrder[room.collabCurrentTurnIdx || 0]
-      ? room.collabTurnOrder[room.collabCurrentTurnIdx || 0].id
-      : null;
+      ? room.collabTurnOrder[room.collabCurrentTurnIdx || 0].id : null;
     if (socket.id !== currentTurnId) return;
-    if (!room.collabStrokes) room.collabStrokes = [];
-    room.collabStrokes = room.collabStrokes.filter(s => s.playerId !== socket.id);
-    // Tell all clients to redraw from the remaining strokes
-    io.to(room.code).emit('collab-clear-player', { playerId: socket.id });
+    if (!room.collabStrokes || room.collabStrokes.length === 0) return;
+
+    // Find the last segmentId belonging to this player
+    let lastSeg = null;
+    for (let i = room.collabStrokes.length - 1; i >= 0; i--) {
+      if (room.collabStrokes[i].playerId === socket.id) {
+        lastSeg = room.collabStrokes[i].segmentId;
+        break;
+      }
+    }
+    if (!lastSeg) return; // nothing to undo
+
+    // Remove all strokes with that segmentId
+    room.collabStrokes = room.collabStrokes.filter(
+      s => !(s.playerId === socket.id && s.segmentId === lastSeg)
+    );
     io.to(room.code).emit('collab-full-state', { strokes: room.collabStrokes });
   });
 

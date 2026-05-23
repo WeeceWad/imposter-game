@@ -848,15 +848,20 @@
     <button class="brush-btn" id="collab-brush-s" onclick="setCollabBrushSize(4)">S</button>
     <button class="brush-btn" id="collab-brush-m" onclick="setCollabBrushSize(10)">M</button>
     <button class="brush-btn" id="collab-brush-l" onclick="setCollabBrushSize(20)">L</button>
-    <button class="btn btn-sm btn-outline" onclick="clearCollabStrokes()" style="margin-left:8px">🗑️ My Strokes</button>
+    <button class="btn btn-sm btn-outline" onclick="collabUndo()" style="margin-left:8px" title="Undo last stroke">↩️</button>
   </div>
+  <!-- Shown to the current drawer (any player) when it's their turn -->
+  <div id="collab-done-btn-wrap" style="width:100%; display:none">
+    <button class="btn btn-success" onclick="collabNextTurn()">✅ Done — Next Player</button>
+  </div>
+  <!-- Host-only extra controls -->
   <div id="collab-host-controls" style="width:100%; display:none">
     <div class="row">
-      <button class="btn btn-outline" onclick="collabNextTurn()">⏭️ Next Player</button>
+      <button class="btn btn-outline" onclick="collabNextTurn()">⏭️ Skip Turn</button>
       <button class="btn btn-danger" onclick="collabStartVote()">🗳️ Vote Now</button>
     </div>
   </div>
-  <div class="text-muted text-center" id="collab-non-host-hint" style="display:none">Waiting for host to manage turns...</div>
+  <div class="text-muted text-center" id="collab-non-host-hint" style="display:none"></div>
 </div>
 
 <!-- TOAST -->
@@ -2453,9 +2458,14 @@ let drawTimeLeft = 30;
 const DRAW_COLORS = ['#000000','#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ec4899','#ffffff','#78716c'];
 
 function initDrawCanvas() {
-  const canvas = document.getElementById('draw-canvas');
   const wrap = document.getElementById('draw-canvas-wrap');
-  if (!canvas || !wrap) return;
+  if (!wrap) return;
+  // Clone canvas to wipe all old event listeners, then re-insert
+  const old = document.getElementById('draw-canvas');
+  const canvas = old.cloneNode(false);
+  canvas.style.pointerEvents = 'auto';
+  old.parentNode.replaceChild(canvas, old);
+
   canvas.width = wrap.offsetWidth;
   canvas.height = wrap.offsetWidth;
   drawCtx = canvas.getContext('2d');
@@ -2636,11 +2646,17 @@ let collabSize = 10;
 let collabCurrentDrawerId = null;
 let collabLastPos = null;
 let collabTurnOrder = [];
+let collabSegmentId = null; // unique ID per mousedown→mouseup stroke group
 
 function initCollabCanvas() {
-  const canvas = document.getElementById('collab-canvas');
   const wrap = document.getElementById('collab-canvas-wrap');
-  if (!canvas || !wrap) return;
+  if (!wrap) return;
+  // Clone canvas to wipe all old event listeners, then re-insert
+  const old = document.getElementById('collab-canvas');
+  const canvas = old.cloneNode(false);
+  canvas.style.pointerEvents = 'auto';
+  old.parentNode.replaceChild(canvas, old);
+
   canvas.width = wrap.offsetWidth;
   canvas.height = wrap.offsetWidth;
   collabCtx = canvas.getContext('2d');
@@ -2657,11 +2673,11 @@ function initCollabCanvas() {
   }
   updateBrushBtns('collab');
 
-  canvas.addEventListener('mousedown', function(e) { if (!isMyCollabTurn()) return; collabIsDrawing = true; collabDot(e); });
+  canvas.addEventListener('mousedown', function(e) { if (!isMyCollabTurn()) return; collabSegmentId = Date.now() + '-' + Math.random(); collabIsDrawing = true; collabDot(e); });
   canvas.addEventListener('mousemove', function(e) { if (collabIsDrawing && isMyCollabTurn()) collabDrawLine(e); });
   canvas.addEventListener('mouseup', function() { collabIsDrawing = false; collabLastPos = null; });
   canvas.addEventListener('mouseleave', function() { collabIsDrawing = false; collabLastPos = null; });
-  canvas.addEventListener('touchstart', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); collabIsDrawing = true; collabDot(e.touches[0], canvas); }, { passive: false });
+  canvas.addEventListener('touchstart', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); collabSegmentId = Date.now() + '-' + Math.random(); collabIsDrawing = true; collabDot(e.touches[0], canvas); }, { passive: false });
   canvas.addEventListener('touchmove', function(e) { if (!isMyCollabTurn()) return; e.preventDefault(); if (collabIsDrawing) collabDrawLine(e.touches[0], canvas); }, { passive: false });
   canvas.addEventListener('touchend', function() { collabIsDrawing = false; collabLastPos = null; });
 }
@@ -2684,7 +2700,7 @@ function collabDot(e, canvas) {
   collabCtx.fillStyle = collabColor;
   collabCtx.fill();
   const cvs = document.getElementById('collab-canvas');
-  socket.emit('collab-stroke', { type: 'dot', x: pos.x, y: pos.y, color: collabColor, size: collabSize, w: cvs ? cvs.width : 400 });
+  socket.emit('collab-stroke', { type: 'dot', x: pos.x, y: pos.y, color: collabColor, size: collabSize, w: cvs ? cvs.width : 400, segmentId: collabSegmentId });
 }
 
 function collabDrawLine(e, canvas) {
@@ -2698,7 +2714,7 @@ function collabDrawLine(e, canvas) {
   collabCtx.lineCap = 'round';
   collabCtx.stroke();
   const cvs = document.getElementById('collab-canvas');
-  socket.emit('collab-stroke', { type: 'line', x0: collabLastPos.x, y0: collabLastPos.y, x: pos.x, y: pos.y, color: collabColor, size: collabSize, w: cvs ? cvs.width : 400 });
+  socket.emit('collab-stroke', { type: 'line', x0: collabLastPos.x, y0: collabLastPos.y, x: pos.x, y: pos.y, color: collabColor, size: collabSize, w: cvs ? cvs.width : 400, segmentId: collabSegmentId });
   collabLastPos = pos;
 }
 
@@ -2729,20 +2745,40 @@ function setCollabColor(c) {
   });
 }
 function setCollabBrushSize(s) { collabSize = s; updateBrushBtns('collab'); }
-function clearCollabStrokes() { socket.emit('collab-clear'); }
+function collabUndo() { socket.emit('collab-undo'); }
 
 function updateCollabTurn(currentTurnId, turnOrder) {
   collabCurrentDrawerId = currentTurnId;
   const drawer = turnOrder ? turnOrder.find(function(p) { return p.id === currentTurnId; }) : null;
   const drawerName = drawer ? drawer.name : '...';
   const isMe = currentTurnId === myId;
+
+  // Turn indicator banner
   const indicator = document.getElementById('collab-turn-indicator');
   if (indicator) {
     indicator.className = 'turn-indicator' + (isMe ? ' my-turn' : '');
     indicator.textContent = isMe ? '✏️ Your turn to draw!' : ('✏️ ' + drawerName + ' is drawing...');
   }
+
+  // Drawing tools — only current drawer
   const tools = document.getElementById('collab-tools');
   if (tools) tools.style.display = isMe ? 'flex' : 'none';
+
+  // Done button — shown to the current drawer only
+  const doneBtn = document.getElementById('collab-done-btn-wrap');
+  if (doneBtn) doneBtn.style.display = isMe ? 'block' : 'none';
+
+  // Host controls (skip + vote) — always shown to host
+  const hostCtrl = document.getElementById('collab-host-controls');
+  if (hostCtrl) hostCtrl.style.display = isHost ? 'block' : 'none';
+
+  // Hint for non-drawing non-host players
+  const hint = document.getElementById('collab-non-host-hint');
+  if (hint) {
+    hint.style.display = (!isMe && !isHost) ? 'block' : 'none';
+    hint.textContent = drawerName + ' is drawing...';
+  }
+
   const canvas = document.getElementById('collab-canvas');
   if (canvas) canvas.style.cursor = isMe ? 'crosshair' : 'not-allowed';
 }

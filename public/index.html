@@ -545,7 +545,7 @@
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px">
         <button class="btn btn-sm btn-outline" onclick="wvAutoAssign()" style="font-size:0.8rem">⚡ Auto Assign</button>
-        <button class="btn btn-sm btn-outline" onclick="wvDuoSetup()" style="font-size:0.8rem;border-color:#a855f7;color:#a855f7">🎮 Duo (1v1)</button>
+        <button class="btn btn-sm btn-outline" onclick="wvDuoSetup()" style="font-size:0.8rem;border-color:#a855f7;color:#a855f7">🎮 Duo Mode</button>
       </div>
       <div class="wv-team-strip" id="wv-lobby-teams" style="gap:14px"></div>
     </div>
@@ -1975,6 +1975,7 @@ function leaveRoom() {
   collabCtx = null; collabIsDrawing = false;
   collabCurrentDrawerId = null; collabTurnOrder = [];
   wvMyTeamIdx = -1; wvIsPsychic = false; wvDialPos = 50; wvLocked = false;
+  _wvActiveSvg = null; _wvActiveNeedle = null; wvDragging = false;
   clearInterval(wvClueTimer); clearInterval(wvGuessTimer);
   showScreen('home');
 }
@@ -3733,56 +3734,82 @@ function wvSetLabels(leftId, rightId, spectrum) {
   if (rEl) rEl.textContent = spectrum.right;
 }
 
+// Active dial state — module level so doc-level handlers can reach it
+let _wvActiveSvg = null;
+let _wvActiveNeedle = null;
+
 function wvInitDial(barWrapId, needleId, canMove) {
   const wrap = document.getElementById(barWrapId);
-  const needle = document.getElementById(needleId);
-  if (!wrap || !needle) return;
-
-  needle.classList.toggle('wv-needle-locked', !canMove);
-  if (!canMove) return;
-
+  if (!wrap) return;
   const svg = wrap.querySelector('svg');
   if (!svg) return;
+  const needle = svg.querySelector('#' + needleId);
+  if (!needle) return;
 
-  // Remove old listeners by replacing the svg node
-  const newSvg = svg.cloneNode(true);
-  svg.parentNode.replaceChild(newSvg, svg);
-  const liveNeedle = newSvg.querySelector('#' + needleId) || document.getElementById(needleId);
+  needle.classList.toggle('wv-needle-locked', !canMove);
+  _wvActiveSvg = canMove ? svg : null;
+  _wvActiveNeedle = canMove ? needle : null;
 
-  function getPosFromEvent(e) {
-    const rect = newSvg.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const vbX = (clientX - rect.left) / rect.width * 200;
-    const vbY = (clientY - rect.top) / rect.height * 108;
-    const dx = vbX - WV_CX;
-    const dy = WV_CY - vbY; // flip y
-    let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
-    angleDeg = Math.max(0, Math.min(180, angleDeg));
-    return (1 - angleDeg / 180) * 100;
-  }
+  if (!canMove) return;
 
-  function onMove(e) {
-    if (!wvDragging) return;
-    e.preventDefault();
-    const pos = getPosFromEvent(e);
-    wvDialPos = pos;
-    const pt = wvNeedlePoint(pos, WV_NEEDLE_LEN);
-    if (liveNeedle) { liveNeedle.setAttribute('x2', pt.x); liveNeedle.setAttribute('y2', pt.y); }
-    socket.emit('wavelength-dial', { position: pos });
-  }
-
-  function onDown(e) { if (wvLocked) return; wvDragging = true; onMove(e); }
-  function onUp() { wvDragging = false; }
-
-  newSvg.addEventListener('mousedown', onDown);
-  newSvg.addEventListener('mousemove', onMove);
-  newSvg.addEventListener('mouseup', onUp);
-  newSvg.addEventListener('mouseleave', onUp);
-  newSvg.addEventListener('touchstart', onDown, { passive: false });
-  newSvg.addEventListener('touchmove', onMove, { passive: false });
-  newSvg.addEventListener('touchend', onUp);
+  // Touch events must be on the element itself to use preventDefault
+  svg.addEventListener('touchstart', _wvTouchStart, { passive: false });
+  svg.addEventListener('touchmove', _wvTouchMove, { passive: false });
 }
+
+function _wvPosFromClient(clientX, clientY) {
+  if (!_wvActiveSvg) return 50;
+  const rect = _wvActiveSvg.getBoundingClientRect();
+  const vbX = (clientX - rect.left) / rect.width * 200;
+  const vbY = (clientY - rect.top) / rect.height * 108;
+  const dx = vbX - WV_CX;
+  const dy = WV_CY - vbY;
+  let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+  angleDeg = Math.max(0, Math.min(180, angleDeg));
+  return (1 - angleDeg / 180) * 100;
+}
+
+function _wvApplyPos(pos) {
+  wvDialPos = pos;
+  if (_wvActiveNeedle) {
+    const pt = wvNeedlePoint(pos, WV_NEEDLE_LEN);
+    _wvActiveNeedle.setAttribute('x2', pt.x);
+    _wvActiveNeedle.setAttribute('y2', pt.y);
+  }
+  socket.emit('wavelength-dial', { position: pos });
+}
+
+function _wvTouchStart(e) {
+  if (wvLocked) return;
+  wvDragging = true;
+  e.preventDefault();
+  _wvApplyPos(_wvPosFromClient(e.touches[0].clientX, e.touches[0].clientY));
+}
+
+function _wvTouchMove(e) {
+  if (!wvDragging) return;
+  e.preventDefault();
+  _wvApplyPos(_wvPosFromClient(e.touches[0].clientX, e.touches[0].clientY));
+}
+
+// Document-level mouse handlers (attached once, always active)
+document.addEventListener('mousedown', function(e) {
+  if (!_wvActiveSvg || wvLocked) return;
+  const svg = _wvActiveSvg;
+  const rect = svg.getBoundingClientRect();
+  // Only start drag if click is inside the SVG bounding box
+  if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
+  wvDragging = true;
+  _wvApplyPos(_wvPosFromClient(e.clientX, e.clientY));
+});
+
+document.addEventListener('mousemove', function(e) {
+  if (!wvDragging || !_wvActiveSvg) return;
+  _wvApplyPos(_wvPosFromClient(e.clientX, e.clientY));
+});
+
+document.addEventListener('mouseup', function() { wvDragging = false; });
+document.addEventListener('touchend', function() { wvDragging = false; });
 
 function wvShowZones(targetPos) {
   // Fill the SVG zone paths on the reveal dial
@@ -4027,6 +4054,9 @@ function initWavelengthSocketHandlers() {
   socket.on('wavelength-locked', ({ dial }) => {
     clearInterval(wvGuessTimer);
     wvLocked = true;
+    wvDragging = false;
+    _wvActiveSvg = null;
+    _wvActiveNeedle = null;
     wvDialPos = dial;
 
     const data = wvCurrentData || {};

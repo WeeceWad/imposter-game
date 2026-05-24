@@ -744,12 +744,24 @@ function startWavelengthTurn(room) {
   room.wvCurrentPsychicId = team.playerIds[psychicIdx];
 
   const psychicName = (room.players.find(p => p.id === room.wvCurrentPsychicId) || {}).name || '?';
+  // In duo mode, find the non-psychic player (the guesser)
+  const duoMode = !!room.settings.wvDuoMode;
+  let guesserId = null;
+  if (duoMode) {
+    const allIds = room.players.map(p => p.id);
+    guesserId = allIds.find(id => id !== room.wvCurrentPsychicId) || null;
+  }
+  const guesserName = guesserId ? ((room.players.find(p => p.id === guesserId) || {}).name || '?') : null;
+
   io.to(room.code).emit('wavelength-turn-start', {
     spectrum: room.wvSpectrum,
     teamIdx: room.wvCurrentTeamIdx,
     teamName: team.name,
     psychicId: room.wvCurrentPsychicId,
     psychicName,
+    guesserId,
+    guesserName,
+    duoMode,
     turnsDone: room.wvTurnsDone,
     totalTurns: room.wvTotalTurns,
     teams: getWvPublicTeams(room),
@@ -1870,29 +1882,34 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  // Active team member moves the dial (real-time, anyone on the active team except psychic)
+  // Move the dial (active team member, or in duo mode: anyone except psychic)
   socket.on('wavelength-dial', ({ position }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'wavelength-guessing') return;
     if (room.wvDialLocked) return;
-    const team = room.wvTeams[room.wvCurrentTeamIdx];
-    if (!team.playerIds.includes(socket.id)) return;
     if (socket.id === room.wvCurrentPsychicId) return;
+    if (!room.settings.wvDuoMode) {
+      const team = room.wvTeams[room.wvCurrentTeamIdx];
+      if (!team.playerIds.includes(socket.id)) return;
+    }
     const pos = Math.max(0, Math.min(100, Number(position) || 50));
     room.wvDial = pos;
     socket.to(room.code).emit('wavelength-dial-update', { position: pos, moverId: socket.id });
   });
 
-  // Active team locks in their dial position
+  // Lock in the dial (active team, or in duo mode: anyone except psychic)
   socket.on('wavelength-lock', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'wavelength-guessing') return;
     if (room.wvDialLocked) return;
-    const team = room.wvTeams[room.wvCurrentTeamIdx];
-    if (!team.playerIds.includes(socket.id)) return;
     if (socket.id === room.wvCurrentPsychicId) return;
+    if (!room.settings.wvDuoMode) {
+      const team = room.wvTeams[room.wvCurrentTeamIdx];
+      if (!team.playerIds.includes(socket.id)) return;
+    }
     room.wvDialLocked = true;
-    if (room.settings.wvOpposingBonus !== false) {
+    // No opposing bonus in duo mode
+    if (!room.settings.wvDuoMode && room.settings.wvOpposingBonus !== false) {
       room.gameState = 'wavelength-opposing';
       io.to(room.code).emit('wavelength-locked', { dial: room.wvDial });
       io.to(room.code).emit('room-update', sanitizeRoom(room));

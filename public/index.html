@@ -2931,6 +2931,7 @@ let wvClueTimer = null;     // client-side clue countdown interval
 let wvGuessTimer = null;    // client-side guess countdown interval
 let wvPointerActive = false;
 let wvDragging = false;
+let wvDuoMode = false;      // true = 2-player alternating mode, no teams
 
 // ──────────────────────────────────────────
 // DRAW GAME (everyone draws simultaneously)
@@ -3654,12 +3655,11 @@ function wvDuoSetup() {
   if (!currentRoom || !socket) return;
   const players = currentRoom.players;
   if (players.length < 2) return showToast('Need at least 2 players!', 'error');
-  // First 2 players go 1v1; rest unassigned
   const teams = [
     { name: players[0].name, playerIds: [players[0].id] },
     { name: players[1].name, playerIds: [players[1].id] }
   ];
-  socket.emit('update-settings', { settings: { wvTeams: teams } });
+  socket.emit('update-settings', { settings: { wvTeams: teams, wvDuoMode: true, wvOpposingBonus: false } });
 }
 
 function wvPickTeamForPlayer(playerId, playerName) {
@@ -3924,6 +3924,7 @@ function initWavelengthSocketHandlers() {
   socket.on('wavelength-turn-start', (data) => {
     wvCurrentData = data;
     wvIsPsychic = data.psychicId === myId;
+    wvDuoMode = !!data.duoMode;
     wvDialPos = 50;
     wvLocked = false;
     wvTargetPos = 50;
@@ -3933,7 +3934,7 @@ function initWavelengthSocketHandlers() {
 
     const s = data.settings || {};
 
-    // Figure out my team from the teams array
+    // Figure out my team (not relevant for duo but kept for score strips)
     if (data.teams) {
       wvMyTeamIdx = -1;
       data.teams.forEach((t, i) => {
@@ -3941,20 +3942,39 @@ function initWavelengthSocketHandlers() {
       });
     }
 
-    // Populate clue screen — clear any zones from previous turn
+    // Clear any zones from previous turn
     const clueBarWrap = document.getElementById('wv-bar-wrap-clue');
     if (clueBarWrap) {
       const clueSvg = clueBarWrap.querySelector('svg');
       if (clueSvg) clueSvg.querySelectorAll('.wv-dyn-zone').forEach(el => el.remove());
     }
-    wvSetBannerTeam('wv-turn-banner', data.teamIdx, data.teams);
+
+    // Banner
+    if (wvDuoMode) {
+      const banner = document.getElementById('wv-turn-banner');
+      if (banner) {
+        banner.textContent = wvIsPsychic ? '🧠 You\'re the Psychic!' : '🎯 ' + (data.psychicName || '?') + ' is giving a clue...';
+        banner.className = 'wv-turn-banner ' + (wvIsPsychic ? 'wv-team0-banner' : 'wv-team1-banner');
+      }
+    } else {
+      wvSetBannerTeam('wv-turn-banner', data.teamIdx, data.teams);
+    }
+
     wvSetLabels('wv-left-label-clue', 'wv-right-label-clue', data.spectrum);
     wvSetNeedle('wv-bar-wrap-clue', 'wv-needle-clue', 50);
-    wvRenderScoreStrip(data.teams, 'wv-score-strip-clue');
+
+    // Score strip — hide in duo mode (no meaningful team scores)
+    const scoreStripClue = document.getElementById('wv-score-strip-clue');
+    if (scoreStripClue) {
+      if (wvDuoMode) {
+        scoreStripClue.innerHTML = `<div style="width:100%;text-align:center;color:var(--muted);font-size:0.82rem">Round ${(data.turnsDone || 0) + 1} of ${data.totalTurns || 6}</div>`;
+      } else {
+        wvRenderScoreStrip(data.teams, 'wv-score-strip-clue');
+      }
+    }
 
     const clueInput = document.getElementById('wv-clue-input');
     if (clueInput) clueInput.value = '';
-
     const hint = document.getElementById('wv-clue-hint');
     if (hint) hint.textContent = s.wvOneWord ? 'One word only!' : '';
 
@@ -4012,15 +4032,32 @@ function initWavelengthSocketHandlers() {
   // Server payload: { clue }
   socket.on('wavelength-clue-given', ({ clue }) => {
     clearInterval(wvClueTimer);
-    if (wvCurrentData) wvCurrentData.lastClue = clue; // store for opposing screen
+    if (wvCurrentData) wvCurrentData.lastClue = clue;
     const data = wvCurrentData || {};
     const s = data.settings || {};
     const isActiveTeam = wvMyTeamIdx === data.teamIdx;
     const isPsychicNow = wvIsPsychic;
+    // In duo mode the non-psychic is always the guesser
+    const canGuess = wvDuoMode ? !isPsychicNow : (isActiveTeam && !isPsychicNow);
 
-    wvSetBannerTeam('wv-guess-banner', data.teamIdx, data.teams);
+    // Banner
+    if (wvDuoMode) {
+      const banner = document.getElementById('wv-guess-banner');
+      if (banner) {
+        banner.textContent = isPsychicNow ? '👀 Watch them guess...' : '🎯 Your turn to guess!';
+        banner.className = 'wv-turn-banner ' + (isPsychicNow ? 'wv-team0-banner' : 'wv-team1-banner');
+      }
+    } else {
+      wvSetBannerTeam('wv-guess-banner', data.teamIdx, data.teams);
+    }
+
     wvSetLabels('wv-left-label-guess', 'wv-right-label-guess', data.spectrum);
-    wvRenderScoreStrip(data.teams, 'wv-score-strip-guess');
+
+    const scoreStripGuess = document.getElementById('wv-score-strip-guess');
+    if (scoreStripGuess) {
+      if (wvDuoMode) scoreStripGuess.innerHTML = '';
+      else wvRenderScoreStrip(data.teams, 'wv-score-strip-guess');
+    }
 
     const clueDisp = document.getElementById('wv-clue-display-guess');
     if (clueDisp) clueDisp.textContent = '"' + clue + '"';
@@ -4031,11 +4068,11 @@ function initWavelengthSocketHandlers() {
     const needleGuess = document.getElementById('wv-needle-guess');
     if (needleGuess) needleGuess.classList.remove('wv-needle-locked');
 
-    document.getElementById('wv-active-team-controls').style.display = (isActiveTeam && !isPsychicNow) ? 'block' : 'none';
-    document.getElementById('wv-psychic-watch').style.display = isPsychicNow ? 'block' : 'none';
-    document.getElementById('wv-opposing-watch').style.display = (!isActiveTeam && !isPsychicNow) ? 'block' : 'none';
+    document.getElementById('wv-active-team-controls').style.display = canGuess ? 'block' : 'none';
+    document.getElementById('wv-psychic-watch').style.display = (isPsychicNow && !wvDuoMode) ? 'block' : 'none';
+    document.getElementById('wv-opposing-watch').style.display = (!canGuess && !isPsychicNow) ? 'block' : 'none';
 
-    if (isActiveTeam && !isPsychicNow) {
+    if (canGuess) {
       wvInitDial('wv-bar-wrap-guess', 'wv-needle-guess', true);
     }
 
@@ -4100,7 +4137,12 @@ function initWavelengthSocketHandlers() {
       if (el) el.style.display = 'none';
     });
     wvShowZones(data.target);
-    wvRenderScoreStrip(data.teams, 'wv-score-strip-rev');
+
+    const revStrip = document.getElementById('wv-score-strip-rev');
+    if (revStrip) {
+      if (wvDuoMode) revStrip.innerHTML = '';
+      else wvRenderScoreStrip(data.teams, 'wv-score-strip-rev');
+    }
 
     const clueRev = document.getElementById('wv-reveal-clue');
     if (clueRev) clueRev.textContent = '"' + (data.clue || '') + '"';
@@ -4109,22 +4151,11 @@ function initWavelengthSocketHandlers() {
     const scoreWrap = document.getElementById('wv-reveal-score-wrap');
     if (scoreWrap) {
       const scoreClass = 'wv-score-' + data.score;
-      const t = data.teams && data.teams[activeTeamIdx];
-      const tName = t ? (t.name || ('Team ' + (activeTeamIdx+1))) : 'Active Team';
+      const scoreLabels = { 4: '🎯 Perfect!', 3: '👍 Close!', 2: '😬 Not bad', 0: '😅 Miss!' };
       let html = `
         <div class="${scoreClass} wv-score-pill" style="margin:0 auto">${data.score}</div>
-        <div style="font-weight:700;font-size:1rem">${tName} scored ${data.score} point${data.score !== 1 ? 's' : ''}!</div>
+        <div style="font-weight:700;font-size:1rem">${wvDuoMode ? (scoreLabels[data.score] || '') : ''} ${wvDuoMode ? data.score + ' point' + (data.score !== 1 ? 's' : '') : ((data.teams && data.teams[activeTeamIdx] ? data.teams[activeTeamIdx].name : 'Team') + ' scored ' + data.score + ' point' + (data.score !== 1 ? 's' : '') + '!')}</div>
       `;
-      if (data.opposingBonus) {
-        const oppIdx = activeTeamIdx === 0 ? 1 : 0;
-        const oTeam = data.teams && data.teams[oppIdx];
-        const oName = oTeam ? (oTeam.name || ('Team ' + (oppIdx+1))) : 'Other team';
-        if (data.opposingCorrect) {
-          html += `<div style="color:#22c55e;font-size:0.9rem">✅ ${oName} guessed correctly! +1 bonus point</div>`;
-        } else {
-          html += `<div style="color:var(--muted);font-size:0.9rem">❌ ${oName} guessed wrong — no bonus</div>`;
-        }
-      }
       scoreWrap.innerHTML = html;
     }
 

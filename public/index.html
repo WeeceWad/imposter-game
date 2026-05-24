@@ -244,6 +244,50 @@
     .drawing-name { padding:6px 10px; font-size:0.8rem; font-weight:700; text-align:center; }
     .vote-badge { position:absolute; top:6px; right:6px; background:var(--danger); color:white; font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:20px; min-width:24px; text-align:center; pointer-events:none; z-index:2; }
     .draw-vote-progress { width:100%; text-align:center; color:var(--muted); font-size:0.88rem; padding:6px 0; font-weight:600; }
+
+    /* ─── WAVELENGTH ─── */
+    .wv-screen { justify-content:flex-start; padding-top:24px; overflow-y:auto; }
+    .wv-spectrum-wrap { width:100%; }
+    .wv-labels { display:flex; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .wv-label { font-size:0.78rem; font-weight:800; padding:5px 10px; border-radius:8px; text-align:center; max-width:44%; line-height:1.3; }
+    .wv-label-left  { background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.4); }
+    .wv-label-right { background:rgba(239,68,68,0.18); color:#f87171; border:1px solid rgba(239,68,68,0.4); }
+    .wv-bar-wrap { position:relative; width:100%; height:56px; margin:4px 0 10px; user-select:none; }
+    .wv-bar { position:absolute; inset:0; border-radius:28px; background:linear-gradient(to right,#3b82f6,#a855f7 50%,#ef4444); cursor:pointer; }
+    .wv-zone { position:absolute; top:0; height:100%; pointer-events:none; border-radius:28px; transition:opacity .4s; }
+    .wv-zone-2 { background:rgba(249,115,22,0.35); }
+    .wv-zone-3 { background:rgba(234,179,8,0.50); }
+    .wv-zone-4 { background:rgba(34,197,94,0.70); }
+    .wv-target-line { position:absolute; top:-10px; bottom:-10px; width:4px; background:#22c55e; border-radius:2px; transform:translateX(-50%); box-shadow:0 0 8px rgba(34,197,94,0.6); }
+    .wv-needle { position:absolute; top:50%; width:32px; height:32px; border-radius:50%; background:white; border:3px solid #0d0d14; box-shadow:0 2px 14px rgba(0,0,0,0.5); transform:translate(-50%,-50%); cursor:grab; z-index:5; touch-action:none; transition:transform .1s; }
+    .wv-needle:active { cursor:grabbing; transform:translate(-50%,-50%) scale(1.2); }
+    .wv-needle.locked { cursor:default; background:#d1d5db; }
+    .wv-clue-display { text-align:center; font-size:1.7rem; font-weight:900; padding:18px 16px; background:rgba(168,85,247,0.12); border:2px solid var(--accent); border-radius:14px; letter-spacing:0.5px; }
+    .wv-team-strip { display:flex; gap:10px; width:100%; }
+    .wv-team-box { flex:1; padding:12px 14px; border-radius:12px; border:2px solid var(--border); background:var(--surface); text-align:center; }
+    .wv-team-box.active-team { border-color:var(--accent2); background:rgba(168,85,247,0.1); }
+    .wv-team-name { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:4px; }
+    .wv-team-score { font-size:2rem; font-weight:900; }
+    .wv-score-pill { display:inline-flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:50%; font-size:1.5rem; font-weight:900; }
+    .wv-score-4 { background:rgba(34,197,94,0.18); color:#22c55e; border:2px solid #22c55e; }
+    .wv-score-3 { background:rgba(234,179,8,0.18); color:#eab308; border:2px solid #eab308; }
+    .wv-score-2 { background:rgba(249,115,22,0.18); color:#f97316; border:2px solid #f97316; }
+    .wv-score-0 { background:rgba(239,68,68,0.1); color:#ef4444; border:2px solid #ef4444; }
+    .wv-player-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px; background:var(--surface); border:1px solid var(--border); font-size:0.8rem; cursor:pointer; margin:3px; }
+    .wv-player-chip:hover { border-color:var(--accent2); }
+    .wv-player-chip.team0 { border-color:#3b82f6; color:#60a5fa; background:rgba(59,130,246,0.1); }
+    .wv-player-chip.team1 { border-color:#ef4444; color:#f87171; background:rgba(239,68,68,0.1); }
+    .wv-lobby-team { flex:1; padding:12px; border-radius:12px; border:2px solid var(--border); background:var(--surface); min-height:80px; }
+    .wv-lobby-team.team0 { border-color:#3b82f6; background:rgba(59,130,246,0.05); }
+    .wv-lobby-team.team1 { border-color:#ef4444; background:rgba(239,68,68,0.05); }
+    .wv-lobby-team-title { font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+    .wv-lobby-team.team0 .wv-lobby-team-title { color:#60a5fa; }
+    .wv-lobby-team.team1 .wv-lobby-team-title { color:#f87171; }
+    .wv-unassigned-pool { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+    .wv-unassigned-label { font-size:0.72rem; color:var(--muted); margin-bottom:4px; }
+    .wv-turn-banner { width:100%; padding:12px 16px; border-radius:12px; text-align:center; font-weight:800; font-size:0.95rem; }
+    .wv-team0-banner { background:rgba(59,130,246,0.15); border:2px solid #3b82f6; color:#60a5fa; }
+    .wv-team1-banner { background:rgba(239,68,68,0.15); border:2px solid #ef4444; color:#f87171; }
     .turn-indicator { padding:14px 20px; border-radius:14px; text-align:center; font-weight:800; font-size:1rem; width:100%; background:var(--surface); border:2px solid var(--border); }
     .turn-indicator.my-turn { background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2)); border-color:var(--accent2); color:var(--accent2); }
     .turn-list { display:flex; flex-direction:column; gap:6px; width:100%; }
@@ -313,8 +357,9 @@
       <button class="btn btn-sm" id="gametype-imposter-btn" onclick="setGameType('imposter')" style="flex:1;min-width:calc(33% - 8px)">🕵️ Imposter</button>
       <button class="btn btn-sm" id="gametype-whoami-btn" onclick="setGameType('whoami')" style="flex:1;min-width:calc(33% - 8px)">🤔 Who Am I?</button>
       <button class="btn btn-sm" id="gametype-spyfall-btn" onclick="setGameType('spyfall')" style="flex:1;min-width:calc(33% - 8px)">🔍 Spyfall</button>
-      <button class="btn btn-sm" id="gametype-draw-btn" onclick="setGameType('draw')" style="flex:1;min-width:calc(50% - 8px)">🎨 Draw</button>
-      <button class="btn btn-sm" id="gametype-collab-btn" onclick="setGameType('collab')" style="flex:1;min-width:calc(50% - 8px)">🖌️ Collab Draw</button>
+      <button class="btn btn-sm" id="gametype-draw-btn" onclick="setGameType('draw')" style="flex:1;min-width:calc(33% - 8px)">🎨 Draw</button>
+      <button class="btn btn-sm" id="gametype-collab-btn" onclick="setGameType('collab')" style="flex:1;min-width:calc(33% - 8px)">🖌️ Collab Draw</button>
+      <button class="btn btn-sm" id="gametype-wavelength-btn" onclick="setGameType('wavelength')" style="flex:1;min-width:calc(33% - 8px)">🌊 Wavelength</button>
     </div>
   </div>
 
@@ -419,6 +464,88 @@
       <div class="toggle-wrap">
         <div class="toggle" id="draw-blind-toggle" onclick="toggleDrawBlind()"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- WAVELENGTH SETTINGS (wavelength only) -->
+  <div id="host-wavelength-settings" class="card" style="width:100%; display:none">
+    <div class="card-title">Wavelength Settings</div>
+
+    <!-- Turns -->
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Turns per Team</div>
+        <div class="setting-desc">Each team gets this many turns</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm" id="wvturns-2-btn" onclick="setWvTurns(4)">2</button>
+        <button class="btn btn-sm" id="wvturns-3-btn" onclick="setWvTurns(6)">3</button>
+        <button class="btn btn-sm" id="wvturns-4-btn" onclick="setWvTurns(8)">4</button>
+        <button class="btn btn-sm" id="wvturns-5-btn" onclick="setWvTurns(10)">5</button>
+        <button class="btn btn-sm" id="wvturns-6-btn" onclick="setWvTurns(12)">6</button>
+      </div>
+    </div>
+
+    <!-- Opposing bonus -->
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Opposing Bonus 🎯</div>
+        <div class="setting-desc">Other team guesses left/right for +1 pt</div>
+      </div>
+      <div class="toggle-wrap">
+        <div class="toggle" id="wv-opposing-toggle" onclick="toggleWvOpposing()"></div>
+      </div>
+    </div>
+
+    <!-- One-word clue -->
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">One-Word Clues Only</div>
+        <div class="setting-desc">Psychic must give a single word clue</div>
+      </div>
+      <div class="toggle-wrap">
+        <div class="toggle" id="wv-oneword-toggle" onclick="toggleWvOneWord()"></div>
+      </div>
+    </div>
+
+    <!-- Clue timer -->
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Clue Timer</div>
+        <div class="setting-desc">Seconds for psychic to give clue</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm" id="wvclue-0-btn" onclick="setWvClueTimer(0)">Off</button>
+        <button class="btn btn-sm" id="wvclue-30-btn" onclick="setWvClueTimer(30)">30s</button>
+        <button class="btn btn-sm" id="wvclue-60-btn" onclick="setWvClueTimer(60)">60s</button>
+        <button class="btn btn-sm" id="wvclue-90-btn" onclick="setWvClueTimer(90)">90s</button>
+      </div>
+    </div>
+
+    <!-- Guess timer -->
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Guess Timer</div>
+        <div class="setting-desc">Seconds for team to lock the dial</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm" id="wvguess-0-btn" onclick="setWvGuessTimer(0)">Off</button>
+        <button class="btn btn-sm" id="wvguess-30-btn" onclick="setWvGuessTimer(30)">30s</button>
+        <button class="btn btn-sm" id="wvguess-60-btn" onclick="setWvGuessTimer(60)">60s</button>
+        <button class="btn btn-sm" id="wvguess-90-btn" onclick="setWvGuessTimer(90)">90s</button>
+      </div>
+    </div>
+
+    <!-- Team assignment -->
+    <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+      <div>
+        <div class="setting-label">Teams</div>
+        <div class="setting-desc">Tap a player to move them between teams</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:2px">
+        <button class="btn btn-sm btn-outline" onclick="wvAutoAssign()" style="font-size:0.8rem">⚡ Auto Assign</button>
+      </div>
+      <div class="wv-team-strip" id="wv-lobby-teams" style="gap:14px"></div>
     </div>
   </div>
 
@@ -875,6 +1002,137 @@
     </div>
   </div>
   <div class="text-muted text-center" id="collab-non-host-hint" style="display:none"></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WAVELENGTH — CLUE PHASE                  -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-wavelength-clue" class="screen wv-screen">
+  <div id="wv-turn-banner" class="wv-turn-banner wv-team0-banner">Team 1's Turn</div>
+  <div class="wv-team-strip" id="wv-score-strip-clue"></div>
+  <div class="card wv-spectrum-wrap">
+    <div class="wv-labels">
+      <div class="wv-label wv-label-left" id="wv-left-label-clue">—</div>
+      <div class="wv-label wv-label-right" id="wv-right-label-clue">—</div>
+    </div>
+    <div class="wv-bar-wrap" id="wv-bar-wrap-clue">
+      <div class="wv-bar"></div>
+      <div class="wv-needle locked" id="wv-needle-clue" style="left:50%"></div>
+    </div>
+  </div>
+  <!-- Psychic only: target zones visible -->
+  <div id="wv-psychic-zone" style="width:100%; display:none">
+    <div class="card text-center" style="border-color:var(--warn)">
+      <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🎯 Only you can see this</div>
+      <div style="font-size:0.9rem;color:var(--warn);font-weight:700;margin-bottom:14px">The target is in the highlighted zone</div>
+      <input id="wv-clue-input" type="text" placeholder="Your clue..." autocomplete="off" maxlength="80" style="text-align:center;font-size:1.1rem" />
+      <div id="wv-clue-hint" class="text-muted" style="font-size:0.78rem;margin-top:6px"></div>
+      <div style="height:12px"></div>
+      <button class="btn btn-primary" onclick="wvSubmitClue()">📡 Send Clue</button>
+    </div>
+  </div>
+  <!-- Others: waiting -->
+  <div id="wv-waiting-clue" class="card text-center" style="display:none">
+    <div style="font-size:2rem;margin-bottom:8px" class="pulse">🧠</div>
+    <div style="font-weight:700" id="wv-waiting-clue-name">The psychic is thinking...</div>
+    <div class="text-muted" style="margin-top:6px;font-size:0.85rem">They can see the target — wait for their clue</div>
+  </div>
+  <div id="wv-clue-timer-display" class="draw-timer-big" style="display:none">60</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WAVELENGTH — GUESS PHASE                  -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-wavelength-guess" class="screen wv-screen">
+  <div id="wv-guess-banner" class="wv-turn-banner wv-team0-banner">Team 1's Turn</div>
+  <div class="wv-team-strip" id="wv-score-strip-guess"></div>
+  <div class="card wv-spectrum-wrap">
+    <div class="wv-labels">
+      <div class="wv-label wv-label-left" id="wv-left-label-guess">—</div>
+      <div class="wv-label wv-label-right" id="wv-right-label-guess">—</div>
+    </div>
+    <div class="wv-bar-wrap" id="wv-bar-wrap-guess">
+      <div class="wv-bar"></div>
+      <div class="wv-needle" id="wv-needle-guess" style="left:50%"></div>
+    </div>
+  </div>
+  <div id="wv-clue-display-guess" class="wv-clue-display">...</div>
+  <div id="wv-active-team-controls" style="width:100%; display:none">
+    <div class="text-muted text-center" style="font-size:0.85rem;margin-bottom:8px">Move the dial then lock in your answer</div>
+    <button class="btn btn-primary" onclick="wvLockDial()">🔒 Lock In</button>
+  </div>
+  <div id="wv-psychic-watch" class="text-muted text-center" style="display:none;font-size:0.85rem">You gave the clue — watch your team guess!</div>
+  <div id="wv-opposing-watch" class="text-muted text-center" style="display:none;font-size:0.85rem">Watch the other team guess...</div>
+  <div id="wv-guess-timer-display" class="draw-timer-big" style="display:none">60</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WAVELENGTH — OPPOSING TEAM PHASE          -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-wavelength-opposing" class="screen wv-screen">
+  <div class="section-title text-center">🎯 Bonus Point!</div>
+  <div class="text-muted text-center" id="wv-opposing-sub">Is the target LEFT or RIGHT of the dial?</div>
+  <div class="card wv-spectrum-wrap">
+    <div class="wv-labels">
+      <div class="wv-label wv-label-left" id="wv-left-label-opp">—</div>
+      <div class="wv-label wv-label-right" id="wv-right-label-opp">—</div>
+    </div>
+    <div class="wv-bar-wrap" id="wv-bar-wrap-opp">
+      <div class="wv-bar"></div>
+      <div class="wv-needle locked" id="wv-needle-opp" style="left:50%"></div>
+    </div>
+  </div>
+  <div id="wv-clue-display-opp" class="wv-clue-display">...</div>
+  <div id="wv-opposing-btn-wrap" style="width:100%; display:none">
+    <div class="row">
+      <button class="btn btn-outline" style="flex:1;border-color:#3b82f6;color:#60a5fa" onclick="wvOpposingGuess('left')">⬅️ Left</button>
+      <button class="btn btn-outline" style="flex:1;border-color:#ef4444;color:#f87171" onclick="wvOpposingGuess('right')">Right ➡️</button>
+    </div>
+    <div style="height:8px"></div>
+    <div class="text-muted text-center" style="font-size:0.78rem">+1 point if correct!</div>
+  </div>
+  <div id="wv-opposing-wait" class="text-muted text-center pulse" style="display:none">Waiting for opposing team to guess...</div>
+  <div id="wv-opposing-host-skip" style="width:100%;display:none">
+    <button class="btn btn-ghost" onclick="wvSkipOpposing()">⏭ Skip</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WAVELENGTH — REVEAL                        -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-wavelength-reveal" class="screen wv-screen">
+  <div class="section-title text-center">🎯 Reveal</div>
+  <div class="card wv-spectrum-wrap">
+    <div class="wv-labels">
+      <div class="wv-label wv-label-left" id="wv-left-label-rev">—</div>
+      <div class="wv-label wv-label-right" id="wv-right-label-rev">—</div>
+    </div>
+    <div class="wv-bar-wrap" id="wv-bar-wrap-rev">
+      <div class="wv-bar"></div>
+      <div class="wv-zone wv-zone-2" id="wv-zone-2" style="display:none"></div>
+      <div class="wv-zone wv-zone-3" id="wv-zone-3" style="display:none"></div>
+      <div class="wv-zone wv-zone-4" id="wv-zone-4" style="display:none"></div>
+      <div class="wv-target-line" id="wv-target-line" style="display:none"></div>
+      <div class="wv-needle locked" id="wv-needle-rev" style="left:50%"></div>
+    </div>
+  </div>
+  <div id="wv-reveal-clue" class="wv-clue-display">...</div>
+  <div id="wv-reveal-score-wrap" class="card text-center" style="gap:10px"></div>
+  <div class="wv-team-strip" id="wv-score-strip-rev"></div>
+  <div id="wv-reveal-next-btn" style="width:100%;display:none">
+    <button class="btn btn-primary" onclick="wvNext()" id="wv-next-btn">▶️ Next Turn</button>
+  </div>
+  <div id="wv-reveal-wait-msg" class="text-muted text-center pulse" style="display:none">Waiting for host...</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- WAVELENGTH — END                           -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-wavelength-end" class="screen">
+  <div class="logo-eye">🌊</div>
+  <div class="section-title text-center">Game Over!</div>
+  <div id="wv-end-content" style="width:100%;display:flex;flex-direction:column;gap:14px;align-items:center"></div>
+  <button class="btn btn-primary" onclick="wvPlayAgain()" style="width:100%">🔄 Play Again</button>
 </div>
 
 <!-- TOAST -->
@@ -1488,6 +1746,9 @@ function initSocket() {
     collabCtx.fillRect(0, 0, canvas.width, canvas.height);
     (data.strokes || []).forEach(function(s) { drawStrokeOnCollab(s); });
   });
+
+  // Wavelength socket handlers
+  initWavelengthSocketHandlers();
 }
 
 // ──────────────────────────────────────────
@@ -1617,6 +1878,26 @@ function applyRoomUpdate(room) {
     }
   }
 
+  // ── WAVELENGTH STATES ──
+  const wvScreens = ['screen-wavelength-clue','screen-wavelength-guess','screen-wavelength-opposing','screen-wavelength-reveal','screen-wavelength-end'];
+  if (room.gameState && room.gameState.startsWith('wavelength-')) {
+    // Update score strips on whichever screen we're on if we get a room-update mid-game
+    if (room.wvPublic && room.wvPublic.teams) {
+      wvRenderScoreStrip(room.wvPublic.teams, 'wv-score-strip-clue');
+      wvRenderScoreStrip(room.wvPublic.teams, 'wv-score-strip-guess');
+      wvRenderScoreStrip(room.wvPublic.teams, 'wv-score-strip-rev');
+    }
+    // If we land on a wavelength state from lobby (e.g. rejoin), show clue screen
+    if (!wvScreens.includes(active)) {
+      // Server will follow up with wavelength-turn-start — just show a waiting card
+      showScreen('wavelength-clue');
+    }
+  }
+
+  if (room.gameState === 'lobby' && wvScreens.includes(active)) {
+    showScreen('lobby');
+  }
+
 }
 
 function showWaitingForRole() {
@@ -1664,6 +1945,8 @@ function leaveRoom() {
   clearInterval(drawTimer); drawTimer = null;
   collabCtx = null; collabIsDrawing = false;
   collabCurrentDrawerId = null; collabTurnOrder = [];
+  wvMyTeamIdx = -1; wvIsPsychic = false; wvDialPos = 50; wvLocked = false;
+  clearInterval(wvClueTimer); clearInterval(wvGuessTimer);
   showScreen('home');
 }
 
@@ -1770,10 +2053,11 @@ function renderLobbyData(room) {
   document.getElementById('lobby-player-count').textContent = room.players.length;
   const amHost = room.host === myId;
   const gameType = (room.settings && room.settings.gameType) || 'imposter';
-  const isWhoami  = gameType === 'whoami';
-  const isSpyfall = gameType === 'spyfall';
-  const isDraw    = gameType === 'draw';
-  const isCollab  = gameType === 'collab';
+  const isWhoami      = gameType === 'whoami';
+  const isSpyfall     = gameType === 'spyfall';
+  const isDraw        = gameType === 'draw';
+  const isCollab      = gameType === 'collab';
+  const isWavelength  = gameType === 'wavelength';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -1787,11 +2071,13 @@ function renderLobbyData(room) {
     const sfBtn     = document.getElementById('gametype-spyfall-btn');
     const drawBtn   = document.getElementById('gametype-draw-btn');
     const collabBtn = document.getElementById('gametype-collab-btn');
+    const wvBtn     = document.getElementById('gametype-wavelength-btn');
     if (impBtn)    impBtn.className    = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
-    if (wamBtn)    wamBtn.className    = 'btn btn-sm' + (isWhoami   ? ' btn-primary' : ' btn-outline');
-    if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall  ? ' btn-primary' : ' btn-outline');
-    if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw     ? ' btn-primary' : ' btn-outline');
-    if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab   ? ' btn-primary' : ' btn-outline');
+    if (wamBtn)    wamBtn.className    = 'btn btn-sm' + (isWhoami       ? ' btn-primary' : ' btn-outline');
+    if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall      ? ' btn-primary' : ' btn-outline');
+    if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw         ? ' btn-primary' : ' btn-outline');
+    if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab       ? ' btn-primary' : ' btn-outline');
+    if (wvBtn)     wvBtn.className     = 'btn btn-sm' + (isWavelength   ? ' btn-primary' : ' btn-outline');
 
     const isVideo     = room.settings.gameMode === 'video';
     const wordCats    = document.getElementById('host-categories');
@@ -1800,6 +2086,10 @@ function renderLobbyData(room) {
     const spyfallInfo = document.getElementById('host-spyfall-info');
     const blindRow    = document.getElementById('blind-row');
     const hostSettings = document.getElementById('host-settings');
+
+    // Always hide wavelength settings card unless wavelength mode
+    const wvSettingsCard = document.getElementById('host-wavelength-settings');
+    if (wvSettingsCard && !isWavelength) wvSettingsCard.style.display = 'none';
 
     // ── SPYFALL MODE ──
     if (isSpyfall) {
@@ -1843,6 +2133,25 @@ function renderLobbyData(room) {
       }
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Need at least 2 players';
+
+    // ── WAVELENGTH MODE ──
+    } else if (isWavelength) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettings5 = document.getElementById('host-draw-settings');
+      const drawCats5 = document.getElementById('host-draw-categories');
+      if (drawSettings5) drawSettings5.style.display = 'none';
+      if (drawCats5) drawCats5.style.display = 'none';
+      const wvSettings = document.getElementById('host-wavelength-settings');
+      if (wvSettings) {
+        wvSettings.style.display = 'block';
+        renderWvLobbySettings(room);
+      }
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 2 players (one per team)';
 
     // ── DRAW / COLLAB MODE ──
     } else if (isDraw || isCollab) {
@@ -2580,6 +2889,20 @@ function floodFill(ctx, startX, startY, fillHex) {
 }
 
 // ──────────────────────────────────────────
+// WAVELENGTH STATE
+// ──────────────────────────────────────────
+let wvMyTeamIdx = -1;       // which team am I on? (-1 = unassigned)
+let wvIsPsychic = false;    // am I the current psychic?
+let wvTargetPos = 50;       // target position (0-100), psychic only
+let wvDialPos = 50;         // current dial position (0-100)
+let wvLocked = false;       // dial locked?
+let wvCurrentData = null;   // last wavelength-turn-start data
+let wvClueTimer = null;     // client-side clue countdown interval
+let wvGuessTimer = null;    // client-side guess countdown interval
+let wvPointerActive = false;
+let wvDragging = false;
+
+// ──────────────────────────────────────────
 // DRAW GAME (everyone draws simultaneously)
 // ──────────────────────────────────────────
 let drawCtx = null;
@@ -3159,6 +3482,585 @@ function submitSpyfallGuess(location) {
   const grid = document.getElementById('spyfall-loc-grid');
   if (grid) grid.querySelectorAll('button').forEach(b => b.disabled = true);
   showToast('Guess submitted!', 'success');
+}
+
+// ══════════════════════════════════════════════════════
+// WAVELENGTH — LOBBY SETTINGS
+// ══════════════════════════════════════════════════════
+
+function setWvTurns(n) {
+  if (!socket) return;
+  socket.emit('update-settings', { settings: { wvTurns: n } });
+}
+
+function toggleWvOpposing() {
+  if (!currentRoom || !socket) return;
+  const cur = currentRoom.settings.wvOpposingBonus !== false;
+  socket.emit('update-settings', { settings: { wvOpposingBonus: !cur } });
+}
+
+function toggleWvOneWord() {
+  if (!currentRoom || !socket) return;
+  const cur = !!currentRoom.settings.wvOneWord;
+  socket.emit('update-settings', { settings: { wvOneWord: !cur } });
+}
+
+function setWvClueTimer(t) {
+  if (!socket) return;
+  socket.emit('update-settings', { settings: { wvClueTimer: t } });
+}
+
+function setWvGuessTimer(t) {
+  if (!socket) return;
+  socket.emit('update-settings', { settings: { wvGuessTimer: t } });
+}
+
+function wvAutoAssign() {
+  if (!currentRoom || !socket) return;
+  const players = currentRoom.players;
+  const pids = [[], []];
+  players.forEach((p, i) => pids[i % 2].push(p.id));
+  const teams = [
+    { name: 'Team 1', playerIds: pids[0] },
+    { name: 'Team 2', playerIds: pids[1] }
+  ];
+  socket.emit('update-settings', { settings: { wvTeams: teams } });
+}
+
+function wvMovePlayer(playerId, toTeam) {
+  if (!currentRoom || !socket) return;
+  const prev = currentRoom.settings.wvTeams || [
+    { name: 'Team 1', playerIds: [] },
+    { name: 'Team 2', playerIds: [] }
+  ];
+  const teams = prev.map((t, i) => ({
+    name: t.name || ('Team ' + (i+1)),
+    playerIds: [...(t.playerIds || [])].filter(id => id !== playerId)
+  }));
+  if (toTeam >= 0 && toTeam < 2) teams[toTeam].playerIds.push(playerId);
+  socket.emit('update-settings', { settings: { wvTeams: teams } });
+}
+
+function renderWvLobbySettings(room) {
+  const s = room.settings;
+
+  // Turns buttons (wvTurns = total turns, default 8 = 4 per team)
+  const turns = s.wvTurns || 8;
+  // Buttons are labeled per-team (2,3,4,5,6) but wvTurns is the total
+  // Server: wvTotalTurns = wvTurns = total turns for the whole game (teams alternate)
+  // Display: "turns per team" = wvTurns/2 approximately — keep as total turns
+  [4,6,8,10,12].forEach(n => {
+    const btn = document.getElementById('wvturns-' + (n/2) + '-btn');
+    if (btn) btn.className = 'btn btn-sm' + (turns === n ? ' btn-primary' : ' btn-outline');
+  });
+
+  // Toggles
+  const oppToggle = document.getElementById('wv-opposing-toggle');
+  if (oppToggle) oppToggle.className = 'toggle' + (s.wvOpposingBonus !== false ? ' on' : '');
+  const owToggle = document.getElementById('wv-oneword-toggle');
+  if (owToggle) owToggle.className = 'toggle' + (s.wvOneWord ? ' on' : '');
+
+  // Clue timer buttons
+  const ct = s.wvClueTimer || 0;
+  [0,30,60,90].forEach(t => {
+    const btn = document.getElementById('wvclue-' + t + '-btn');
+    if (btn) btn.className = 'btn btn-sm' + (ct === t ? ' btn-primary' : ' btn-outline');
+  });
+
+  // Guess timer buttons
+  const gt = s.wvGuessTimer || 0;
+  [0,30,60,90].forEach(t => {
+    const btn = document.getElementById('wvguess-' + t + '-btn');
+    if (btn) btn.className = 'btn btn-sm' + (gt === t ? ' btn-primary' : ' btn-outline');
+  });
+
+  // Team assignment
+  const teamsEl = document.getElementById('wv-lobby-teams');
+  if (!teamsEl) return;
+  const teamsDef = s.wvTeams || [
+    { name: 'Team 1', playerIds: [] },
+    { name: 'Team 2', playerIds: [] }
+  ];
+  const assignedIds = teamsDef.flatMap(t => t.playerIds || []);
+  const unassigned = room.players.filter(p => !assignedIds.includes(p.id));
+
+  let html = '';
+
+  // Unassigned pool
+  if (unassigned.length > 0) {
+    html += `<div style="width:100%;margin-bottom:6px">
+      <div class="wv-unassigned-label">Unassigned — tap to add to a team</div>
+      <div class="wv-unassigned-pool">` +
+      unassigned.map(p => `
+        <div class="wv-player-chip" onclick="wvPickTeamForPlayer('${p.id}','${p.name}')">
+          <span>👤</span>${p.name}
+        </div>
+      `).join('') +
+      `</div></div>`;
+  }
+
+  // Two team boxes
+  html += '<div style="display:flex;gap:10px;width:100%">';
+  [0, 1].forEach(ti => {
+    const color = ti === 0 ? 'team0' : 'team1';
+    const tDef = teamsDef[ti] || { name: ti === 0 ? 'Team 1' : 'Team 2', playerIds: [] };
+    const label = (ti === 0 ? '🔵 ' : '🔴 ') + (tDef.name || ('Team ' + (ti+1)));
+    const members = (tDef.playerIds || []).map(id => room.players.find(p => p.id === id)).filter(Boolean);
+    html += `<div class="wv-lobby-team ${color}">
+      <div class="wv-lobby-team-title">${label}</div>` +
+      members.map(p => `
+        <div class="wv-player-chip ${color}" onclick="wvMovePlayer('${p.id}',-1)" title="Remove from team">
+          ${p.name} ✕
+        </div>`).join('') +
+      (members.length === 0 ? `<div class="text-muted" style="font-size:0.8rem">No players yet</div>` : '') +
+      `</div>`;
+  });
+  html += '</div>';
+
+  teamsEl.innerHTML = html;
+}
+
+function wvPickTeamForPlayer(playerId, playerName) {
+  // Simple: show toast-style pick — assign to team with fewer players
+  if (!currentRoom) return;
+  const teams = currentRoom.settings.wvTeams || [[], []];
+  const t0 = (teams[0] || []).length;
+  const t1 = (teams[1] || []).length;
+  const target = t0 <= t1 ? 0 : 1;
+  wvMovePlayer(playerId, target);
+}
+
+// ══════════════════════════════════════════════════════
+// WAVELENGTH — IN-GAME HELPERS
+// ══════════════════════════════════════════════════════
+
+function wvRenderScoreStrip(teams, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el || !teams) return;
+  el.innerHTML = teams.map((t, i) => `
+    <div class="wv-team-box ${t.isActive ? 'active-team' : ''}">
+      <div class="wv-team-name">${i === 0 ? '🔵' : '🔴'} ${t.name || ('Team ' + (i+1))}</div>
+      <div class="wv-team-score">${t.score}</div>
+    </div>
+  `).join('');
+}
+
+function wvSetNeedle(barWrapId, needleId, pct) {
+  const needle = document.getElementById(needleId);
+  if (needle) needle.style.left = pct + '%';
+}
+
+function wvSetLabels(leftId, rightId, spectrum) {
+  if (!spectrum) return;
+  const lEl = document.getElementById(leftId);
+  const rEl = document.getElementById(rightId);
+  if (lEl) lEl.textContent = spectrum.left;
+  if (rEl) rEl.textContent = spectrum.right;
+}
+
+function wvInitDial(barWrapId, needleId, canMove) {
+  const wrap = document.getElementById(barWrapId);
+  const needle = document.getElementById(needleId);
+  if (!wrap || !needle) return;
+
+  if (!canMove) {
+    needle.classList.add('locked');
+    return;
+  }
+  needle.classList.remove('locked');
+
+  function getPercent(e) {
+    const rect = wrap.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    let pct = (clientX - rect.left) / rect.width * 100;
+    return Math.max(0, Math.min(100, pct));
+  }
+
+  function onMove(e) {
+    if (!wvDragging) return;
+    e.preventDefault();
+    const pct = getPercent(e);
+    wvDialPos = pct;
+    needle.style.left = pct + '%';
+    socket.emit('wavelength-dial', { position: pct });
+  }
+
+  function onDown(e) {
+    if (wvLocked) return;
+    wvDragging = true;
+    onMove(e);
+  }
+
+  function onUp() { wvDragging = false; }
+
+  // Remove old listeners via clone trick
+  const newWrap = wrap.cloneNode(true);
+  wrap.parentNode.replaceChild(newWrap, wrap);
+  const newNeedle = document.getElementById(needleId);
+
+  newWrap.addEventListener('mousedown', onDown);
+  newWrap.addEventListener('mousemove', onMove);
+  newWrap.addEventListener('mouseup', onUp);
+  newWrap.addEventListener('mouseleave', onUp);
+  newWrap.addEventListener('touchstart', onDown, { passive: false });
+  newWrap.addEventListener('touchmove', onMove, { passive: false });
+  newWrap.addEventListener('touchend', onUp);
+
+  // Also support dragging needle directly
+  if (newNeedle) {
+    newNeedle.addEventListener('mousedown', onDown);
+    newNeedle.addEventListener('touchstart', onDown, { passive: false });
+  }
+}
+
+function wvShowZones(targetPos) {
+  // Zones: ±8 = 4pts (green), ±16 = 3pts (yellow), ±24 = 2pts (orange)
+  const zone4 = document.getElementById('wv-zone-4');
+  const zone3 = document.getElementById('wv-zone-3');
+  const zone2 = document.getElementById('wv-zone-2');
+  const tLine = document.getElementById('wv-target-line');
+
+  const tp = targetPos; // 0–100
+  function pct(offset) { return Math.max(0, Math.min(100, tp + offset)); }
+
+  if (zone4) {
+    zone4.style.display = 'block';
+    zone4.style.left = pct(-8) + '%';
+    zone4.style.width = Math.min(16, 100 - pct(-8)) + '%';
+  }
+  if (zone3) {
+    zone3.style.display = 'block';
+    zone3.style.left = pct(-16) + '%';
+    zone3.style.width = Math.min(32, 100 - pct(-16)) + '%';
+  }
+  if (zone2) {
+    zone2.style.display = 'block';
+    zone2.style.left = pct(-24) + '%';
+    zone2.style.width = Math.min(48, 100 - pct(-24)) + '%';
+  }
+  if (tLine) {
+    tLine.style.display = 'block';
+    tLine.style.left = tp + '%';
+  }
+}
+
+function wvStartClueTimer(seconds) {
+  clearInterval(wvClueTimer);
+  const el = document.getElementById('wv-clue-timer-display');
+  if (!el || !seconds) { if (el) el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  let left = seconds;
+  el.textContent = left;
+  wvClueTimer = setInterval(() => {
+    left--;
+    el.textContent = left;
+    if (left <= 0) clearInterval(wvClueTimer);
+  }, 1000);
+}
+
+function wvStartGuessTimer(seconds) {
+  clearInterval(wvGuessTimer);
+  const el = document.getElementById('wv-guess-timer-display');
+  if (!el || !seconds) { if (el) el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  let left = seconds;
+  el.textContent = left;
+  wvGuessTimer = setInterval(() => {
+    left--;
+    el.textContent = left;
+    if (left <= 0) clearInterval(wvGuessTimer);
+  }, 1000);
+}
+
+function wvSetBannerTeam(elId, teamIdx, teams) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const name = (teams && teams[teamIdx]) ? (teams[teamIdx].name || ('Team ' + (teamIdx+1))) : ('Team ' + (teamIdx+1));
+  el.textContent = (teamIdx === 0 ? '🔵 ' : '🔴 ') + name + "'s Turn";
+  el.className = 'wv-turn-banner ' + (teamIdx === 0 ? 'wv-team0-banner' : 'wv-team1-banner');
+}
+
+// ══════════════════════════════════════════════════════
+// WAVELENGTH — ACTIONS (called from HTML)
+// ══════════════════════════════════════════════════════
+
+function wvSubmitClue() {
+  const inp = document.getElementById('wv-clue-input');
+  if (!inp || !socket) return;
+  const clue = inp.value.trim();
+  if (!clue) return showToast('Enter a clue first!', 'error');
+  socket.emit('wavelength-clue', { clue });
+  inp.value = '';
+}
+
+function wvLockDial() {
+  if (!socket || wvLocked) return;
+  socket.emit('wavelength-lock', { position: wvDialPos });
+}
+
+function wvOpposingGuess(dir) {
+  if (!socket) return;
+  socket.emit('wavelength-opposing', { direction: dir });
+  // Disable buttons
+  const wrap = document.getElementById('wv-opposing-btn-wrap');
+  if (wrap) wrap.querySelectorAll('button').forEach(b => b.disabled = true);
+}
+
+function wvSkipOpposing() {
+  if (!socket || !isHost) return;
+  socket.emit('wavelength-skip-opposing');
+}
+
+function wvNext() {
+  if (!socket || !isHost) return;
+  socket.emit('wavelength-next');
+}
+
+function wvPlayAgain() {
+  if (!socket) return;
+  socket.emit('play-again');
+}
+
+// ══════════════════════════════════════════════════════
+// WAVELENGTH — SOCKET HANDLERS (registered in initSocket)
+// ══════════════════════════════════════════════════════
+// These are called from initSocket() via initWavelengthSocketHandlers()
+
+function initWavelengthSocketHandlers() {
+
+  // Turn start — sent to all players
+  // Server payload: { spectrum, teamIdx, teamName, psychicId, psychicName, turnsDone, totalTurns, teams, settings }
+  socket.on('wavelength-turn-start', (data) => {
+    wvCurrentData = data;
+    wvIsPsychic = data.psychicId === myId;
+    wvDialPos = 50;
+    wvLocked = false;
+    wvTargetPos = 50;
+
+    clearInterval(wvClueTimer);
+    clearInterval(wvGuessTimer);
+
+    const s = data.settings || {};
+
+    // Figure out my team from the teams array
+    if (data.teams) {
+      wvMyTeamIdx = -1;
+      data.teams.forEach((t, i) => {
+        if (t.playerIds && t.playerIds.includes(myId)) wvMyTeamIdx = i;
+      });
+    }
+
+    // Populate clue screen — clear any zones from previous turn
+    const clueBarWrap = document.getElementById('wv-bar-wrap-clue');
+    if (clueBarWrap) clueBarWrap.querySelectorAll('.wv-zone,.wv-target-line').forEach(el => el.remove());
+    wvSetBannerTeam('wv-turn-banner', data.teamIdx, data.teams);
+    wvSetLabels('wv-left-label-clue', 'wv-right-label-clue', data.spectrum);
+    wvSetNeedle('wv-bar-wrap-clue', 'wv-needle-clue', 50);
+    wvRenderScoreStrip(data.teams, 'wv-score-strip-clue');
+
+    const clueInput = document.getElementById('wv-clue-input');
+    if (clueInput) clueInput.value = '';
+
+    const hint = document.getElementById('wv-clue-hint');
+    if (hint) hint.textContent = s.wvOneWord ? 'One word only!' : '';
+
+    if (wvIsPsychic) {
+      document.getElementById('wv-psychic-zone').style.display = 'block';
+      document.getElementById('wv-waiting-clue').style.display = 'none';
+    } else {
+      document.getElementById('wv-psychic-zone').style.display = 'none';
+      const waitEl = document.getElementById('wv-waiting-clue');
+      waitEl.style.display = 'block';
+      document.getElementById('wv-waiting-clue-name').textContent = (data.psychicName || 'The psychic') + ' is thinking...';
+    }
+
+    wvStartClueTimer(s.wvClueTimer || 0);
+    showScreen('wavelength-clue');
+  });
+
+  // Private: target position for psychic only
+  // Server payload: { target } (number 0–100)
+  socket.on('wavelength-your-target', ({ target }) => {
+    wvTargetPos = target;
+    const wrap = document.getElementById('wv-bar-wrap-clue');
+    if (!wrap) return;
+    // Clear old dynamic zones
+    wrap.querySelectorAll('.wv-zone,.wv-target-line').forEach(el => el.remove());
+    const zoneData = [
+      { cls: 'wv-zone wv-zone-2', lo: target - 24, w: 48 },
+      { cls: 'wv-zone wv-zone-3', lo: target - 16, w: 32 },
+      { cls: 'wv-zone wv-zone-4', lo: target - 8,  w: 16 },
+    ];
+    zoneData.forEach(z => {
+      const div = document.createElement('div');
+      div.className = z.cls;
+      const left = Math.max(0, z.lo);
+      div.style.left = left + '%';
+      div.style.width = Math.min(z.w, 100 - left) + '%';
+      div.style.display = 'block';
+      div.style.pointerEvents = 'none';
+      wrap.appendChild(div);
+    });
+    const tline = document.createElement('div');
+    tline.className = 'wv-target-line';
+    tline.style.left = target + '%';
+    tline.style.display = 'block';
+    wrap.appendChild(tline);
+  });
+
+  // Clue given — move to guess phase
+  // Server payload: { clue }
+  socket.on('wavelength-clue-given', ({ clue }) => {
+    clearInterval(wvClueTimer);
+    if (wvCurrentData) wvCurrentData.lastClue = clue; // store for opposing screen
+    const data = wvCurrentData || {};
+    const s = data.settings || {};
+    const isActiveTeam = wvMyTeamIdx === data.teamIdx;
+    const isPsychicNow = wvIsPsychic;
+
+    wvSetBannerTeam('wv-guess-banner', data.teamIdx, data.teams);
+    wvSetLabels('wv-left-label-guess', 'wv-right-label-guess', data.spectrum);
+    wvRenderScoreStrip(data.teams, 'wv-score-strip-guess');
+
+    const clueDisp = document.getElementById('wv-clue-display-guess');
+    if (clueDisp) clueDisp.textContent = '"' + clue + '"';
+
+    wvDialPos = 50;
+    wvLocked = false;
+    const needleGuess = document.getElementById('wv-needle-guess');
+    if (needleGuess) { needleGuess.style.left = '50%'; needleGuess.classList.remove('locked'); }
+
+    document.getElementById('wv-active-team-controls').style.display = (isActiveTeam && !isPsychicNow) ? 'block' : 'none';
+    document.getElementById('wv-psychic-watch').style.display = isPsychicNow ? 'block' : 'none';
+    document.getElementById('wv-opposing-watch').style.display = (!isActiveTeam && !isPsychicNow) ? 'block' : 'none';
+
+    if (isActiveTeam && !isPsychicNow) {
+      wvInitDial('wv-bar-wrap-guess', 'wv-needle-guess', true);
+    }
+
+    wvStartGuessTimer(s.wvGuessTimer || 0);
+    showScreen('wavelength-guess');
+  });
+
+  // Dial updated by any player on the active team
+  // Server payload: { position, moverId }
+  socket.on('wavelength-dial-update', ({ position }) => {
+    wvDialPos = position;
+    const needle = document.getElementById('wv-needle-guess');
+    if (needle) needle.style.left = position + '%';
+  });
+
+  // Dial locked — move to opposing phase (server payload: { dial })
+  socket.on('wavelength-locked', ({ dial }) => {
+    clearInterval(wvGuessTimer);
+    wvLocked = true;
+    wvDialPos = dial;
+
+    const data = wvCurrentData || {};
+    const opposingTeamIdx = (data.teamIdx === 0) ? 1 : 0;
+    const isOpposing = wvMyTeamIdx === opposingTeamIdx;
+
+    wvSetLabels('wv-left-label-opp', 'wv-right-label-opp', data.spectrum);
+    const oppNeedle = document.getElementById('wv-needle-opp');
+    if (oppNeedle) oppNeedle.style.left = dial + '%';
+    const clueOpp = document.getElementById('wv-clue-display-opp');
+    if (clueOpp) clueOpp.textContent = '"' + (data.lastClue || '...') + '"';
+
+    const subEl = document.getElementById('wv-opposing-sub');
+    const oTeam = data.teams && data.teams[opposingTeamIdx];
+    if (subEl) subEl.textContent = (oTeam ? (oTeam.name || ('Team ' + (opposingTeamIdx+1))) : 'Other team') + ': Is the target LEFT or RIGHT of the dial?';
+
+    const btnWrap = document.getElementById('wv-opposing-btn-wrap');
+    document.getElementById('wv-opposing-btn-wrap').style.display = isOpposing ? 'flex' : 'none';
+    document.getElementById('wv-opposing-wait').style.display = isOpposing ? 'none' : 'block';
+    if (btnWrap) btnWrap.querySelectorAll('button').forEach(b => b.disabled = false);
+    document.getElementById('wv-opposing-host-skip').style.display = (isHost && !isOpposing) ? 'block' : 'none';
+
+    showScreen('wavelength-opposing');
+    // If no opposing bonus, server won't emit this — it goes straight to wavelength-reveal
+  });
+
+  // Reveal — show zones and score
+  // Server payload: { target, dial, score, opposingBonus, opposingGuess, opposingCorrect, teams, spectrum, clue, isLastTurn }
+  socket.on('wavelength-reveal', (data) => {
+    clearInterval(wvClueTimer);
+    clearInterval(wvGuessTimer);
+
+    // Save clue for opposing screen reference
+    if (wvCurrentData) wvCurrentData.lastClue = data.clue;
+
+    wvSetLabels('wv-left-label-rev', 'wv-right-label-rev', data.spectrum);
+    const revNeedle = document.getElementById('wv-needle-rev');
+    if (revNeedle) revNeedle.style.left = data.dial + '%';
+
+    // Reset reveal zone elements to hidden before re-showing
+    ['wv-zone-2','wv-zone-3','wv-zone-4','wv-target-line'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    wvShowZones(data.target);
+    wvRenderScoreStrip(data.teams, 'wv-score-strip-rev');
+
+    const clueRev = document.getElementById('wv-reveal-clue');
+    if (clueRev) clueRev.textContent = '"' + (data.clue || '') + '"';
+
+    const activeTeamIdx = wvCurrentData ? wvCurrentData.teamIdx : 0;
+    const scoreWrap = document.getElementById('wv-reveal-score-wrap');
+    if (scoreWrap) {
+      const scoreClass = 'wv-score-' + data.score;
+      const t = data.teams && data.teams[activeTeamIdx];
+      const tName = t ? (t.name || ('Team ' + (activeTeamIdx+1))) : 'Active Team';
+      let html = `
+        <div class="${scoreClass} wv-score-pill" style="margin:0 auto">${data.score}</div>
+        <div style="font-weight:700;font-size:1rem">${tName} scored ${data.score} point${data.score !== 1 ? 's' : ''}!</div>
+      `;
+      if (data.opposingBonus) {
+        const oppIdx = activeTeamIdx === 0 ? 1 : 0;
+        const oTeam = data.teams && data.teams[oppIdx];
+        const oName = oTeam ? (oTeam.name || ('Team ' + (oppIdx+1))) : 'Other team';
+        if (data.opposingCorrect) {
+          html += `<div style="color:#22c55e;font-size:0.9rem">✅ ${oName} guessed correctly! +1 bonus point</div>`;
+        } else {
+          html += `<div style="color:var(--muted);font-size:0.9rem">❌ ${oName} guessed wrong — no bonus</div>`;
+        }
+      }
+      scoreWrap.innerHTML = html;
+    }
+
+    document.getElementById('wv-reveal-next-btn').style.display = isHost ? 'block' : 'none';
+    document.getElementById('wv-reveal-wait-msg').style.display = isHost ? 'none' : 'block';
+    const nextBtn = document.getElementById('wv-next-btn');
+    if (nextBtn) nextBtn.textContent = data.isLastTurn ? '🏁 See Final Scores' : '▶️ Next Turn';
+
+    showScreen('wavelength-reveal');
+  });
+
+  // Game end — server payload: { teams, winner }
+  socket.on('wavelength-end', (data) => {
+    const content = document.getElementById('wv-end-content');
+    if (content) {
+      const sorted = [...(data.teams || [])].sort((a, b) => b.score - a.score);
+      let html = '';
+      const winMsg = data.winner
+        ? (data.winner === null ? "🤝 It's a tie!" : data.winner + ' wins! 🎉')
+        : "🤝 It's a tie!";
+      html += `<div style="font-size:1.4rem;font-weight:900;color:var(--accent2);text-align:center">${winMsg}</div>`;
+      html += sorted.map((t, i) => `
+        <div class="wv-team-box" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px">
+          <div>
+            <div style="font-weight:800;font-size:1.1rem">${i === 0 ? '🥇' : '🥈'} ${t.name || ('Team ' + (i+1))}</div>
+            <div class="text-muted" style="font-size:0.82rem">${(t.playerNames || []).join(', ')}</div>
+          </div>
+          <div style="font-size:2.5rem;font-weight:900">${t.score}</div>
+        </div>
+      `).join('');
+      content.innerHTML = html;
+    }
+    // Only show play again for host
+    const playAgainBtn = document.querySelector('#screen-wavelength-end .btn-primary');
+    if (playAgainBtn) playAgainBtn.style.display = isHost ? 'block' : 'none';
+    showScreen('wavelength-end');
+  });
 }
 
 // Keep Render server awake — ping every 4 minutes

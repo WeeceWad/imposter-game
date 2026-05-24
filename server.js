@@ -437,6 +437,143 @@ const QUESTIONS = [
   { playerQ: "What's the best thing about your friendship group?", imposterQ: "What's an annoying habit that a lot of people seem to have?" }
 ];
 
+// ─────────────────────────────────────────────
+// WAVELENGTH SPECTRA (100+ opposing-concept pairs)
+// ─────────────────────────────────────────────
+const WAVELENGTH_SPECTRA = [
+  // Physical
+  { left: 'Freezing', right: 'Boiling' },
+  { left: 'Tiny', right: 'Enormous' },
+  { left: 'Silent', right: 'Deafening' },
+  { left: 'Featherlight', right: 'Incredibly Heavy' },
+  { left: 'Pitch Black', right: 'Blinding Bright' },
+  { left: 'Painless', right: 'Excruciating' },
+  { left: 'Soft', right: 'Rock Hard' },
+  { left: 'Smooth', right: 'Razor Sharp' },
+  { left: 'Slow', right: 'Lightning Fast' },
+  { left: 'Invisible', right: 'Impossible to Miss' },
+  { left: 'Worst Smell', right: 'Best Smell' },
+  { left: 'Most Disgusting Sound', right: 'Most Satisfying Sound' },
+  { left: 'Worst Thing to Step On', right: 'Most Comfortable Surface' },
+  { left: 'Most Uncomfortable', right: 'Incredibly Comfortable' },
+  // Value & quality
+  { left: 'Worthless', right: 'Priceless' },
+  { left: 'Terrible', right: 'Absolutely Perfect' },
+  { left: 'Useless', right: 'Incredibly Useful' },
+  { left: 'Overrated', right: 'Criminally Underrated' },
+  { left: 'Boring', right: 'Utterly Fascinating' },
+  { left: 'Forgettable', right: 'Iconic' },
+  { left: 'Cheap', right: 'Total Luxury' },
+  { left: 'Amateur', right: 'World Class' },
+  { left: 'Generic', right: 'Completely One of a Kind' },
+  { left: 'Cringe', right: 'Genuinely Cool' },
+  { left: 'Cliché', right: 'Totally Original' },
+  { left: 'Predictable', right: 'Completely Unexpected' },
+  // Morality & character
+  { left: 'Pure Evil', right: 'Pure Good' },
+  { left: 'Selfish', right: 'Completely Selfless' },
+  { left: 'Cowardly', right: 'Heroic' },
+  { left: 'Dishonest', right: 'Brutally Honest' },
+  { left: 'Easily Forgiven', right: 'Totally Unforgivable' },
+  { left: 'Harmless', right: 'Catastrophic' },
+  { left: 'Trustworthy', right: 'Completely Unreliable' },
+  { left: 'PC', right: 'Deeply Controversial' },
+  // Personality
+  { left: 'Total Introvert', right: 'Total Extrovert' },
+  { left: 'Deadpan Serious', right: 'Absolutely Hilarious' },
+  { left: 'Pessimistic', right: 'Wildly Optimistic' },
+  { left: 'Lazy', right: 'Complete Workaholic' },
+  { left: 'Timid', right: 'Fearlessly Bold' },
+  { left: 'Humble', right: 'Unbearably Arrogant' },
+  { left: 'Impulsive', right: 'Meticulously Calculated' },
+  { left: 'Rude', right: 'Incredibly Polite' },
+  // Difficulty & skill
+  { left: 'Anyone Can Do It', right: 'Nearly Impossible' },
+  { left: 'No Skill Needed', right: 'Takes Years to Master' },
+  { left: 'Total Beginner', right: 'World Expert' },
+  { left: 'Zero Effort', right: 'Maximum Effort' },
+  { left: 'Pure Luck', right: 'All Pure Skill' },
+  // Social & relationships
+  { left: 'Terrible Gift', right: 'Perfect Gift' },
+  { left: 'Worst Date Idea', right: 'Most Romantic Date Idea' },
+  { left: 'Universally Hated', right: 'Universally Loved' },
+  { left: 'Antisocial', right: 'Life of the Party' },
+  { left: 'Terrible First Impression', right: 'Perfect First Impression' },
+  { left: 'Deeply Awkward', right: 'Effortlessly Charming' },
+  { left: 'Terrible Icebreaker', right: 'Perfect Icebreaker' },
+  { left: 'Ruins the Mood', right: 'Sets the Mood Perfectly' },
+  // Food & drink
+  { left: 'Absolutely Disgusting', right: 'Absolutely Delicious' },
+  { left: 'Terribly Unhealthy', right: 'Incredibly Healthy' },
+  { left: 'Toddler Food', right: 'Fine Dining' },
+  { left: 'Boring Meal', right: 'Unforgettable Dining Experience' },
+  { left: 'Worst Hangover Food', right: 'Best Hangover Cure' },
+  // Jobs & activities
+  { left: 'Worst Job Imaginable', right: 'Absolute Dream Job' },
+  { left: 'Boring Hobby', right: 'Wildly Exciting Hobby' },
+  { left: 'Most Dreaded Task', right: 'Most Enjoyable Task' },
+  { left: 'Mindless Work', right: 'Deeply Creative Work' },
+  { left: 'Worst Paid', right: 'Extremely Lucrative' },
+  { left: 'Terrible Excuse to Miss Work', right: 'Bulletproof Excuse' },
+  // Emotions
+  { left: 'Deeply Depressing', right: 'Incredibly Uplifting' },
+  { left: 'Absolutely Terrifying', right: 'Totally Adorable' },
+  { left: 'Incredibly Stressful', right: 'Deeply Relaxing' },
+  { left: 'Deeply Embarrassing', right: 'Incredibly Impressive' },
+  { left: 'Infuriating', right: 'Strangely Calming' },
+  { left: 'Heartbreaking', right: 'Heartwarming' },
+  // Risk & stakes
+  { left: 'Completely Safe', right: 'Extremely Dangerous' },
+  { left: 'Zero Stakes', right: 'Life or Death' },
+  { left: 'Risk-Free', right: 'Total Gamble' },
+  // Time & age
+  { left: 'Ancient History', right: 'Far Future' },
+  { left: 'Strictly for Kids', right: 'Adults Only' },
+  { left: 'Flash in the Pan', right: 'Timeless Classic' },
+  { left: 'Done in a Second', right: 'Takes Forever' },
+  { left: 'Completely Out of Date', right: 'Cutting Edge' },
+  // Fame & impact
+  { left: 'Nobody Knows It Exists', right: 'Globally Famous' },
+  { left: 'Total Niche', right: 'Completely Mainstream' },
+  { left: 'Underground', right: 'Chart-Topping' },
+  { left: 'Totally Irrelevant', right: 'Life-Changing' },
+  { left: 'Unimpressive', right: 'Record-Breaking' },
+  // Intelligence & ideas
+  { left: 'Terrible Idea', right: 'Pure Genius Idea' },
+  { left: 'Common Sense', right: 'Requires a PhD' },
+  { left: 'Total Nonsense', right: 'Makes Perfect Sense' },
+  { left: 'Terrible Advice', right: 'Wise Advice' },
+  // Superpowers
+  { left: 'Most Useless Superpower', right: 'Best Superpower' },
+  { left: 'Party Trick', right: 'World-Changing Ability' },
+  // Nature & beauty
+  { left: 'Totally Man-Made', right: 'Completely Natural' },
+  { left: 'Hideous', right: 'Breathtakingly Beautiful' },
+  { left: 'Revolting Animal', right: 'Most Adorable Animal' },
+  // Pop culture & media
+  { left: 'Worst Film Ever Made', right: 'Greatest Film Ever Made' },
+  { left: 'Worst TV Show', right: 'Greatest TV Show' },
+  { left: 'Worst Song', right: 'Greatest Song' },
+  { left: 'Worst Villain', right: 'Most Terrifying Villain' },
+  { left: 'Worst Sequel', right: 'Perfect Sequel' },
+  // Funny situational
+  { left: 'Monday 6am', right: 'Friday 6pm' },
+  { left: 'Empty Stomach', right: 'Just Finished a Feast' },
+  { left: 'Dial-Up Internet', right: 'Instant Loading' },
+  { left: 'Worst Haircut of Your Life', right: 'Best Haircut of Your Life' },
+  { left: 'Worst Neighbour Possible', right: 'Neighbour of the Year' },
+  { left: 'Worst Teacher You Ever Had', right: 'Teacher Who Changed Your Life' },
+  { left: 'Bad Tattoo Idea', right: 'Tattoo You\'d Never Regret' },
+  { left: 'Traffic Jam', right: 'Clear Open Road' },
+  { left: 'Cold Shower on a Winter Morning', right: 'Perfect Hot Bath' },
+  { left: 'Worst Text to Wake Up To', right: 'Best Text to Wake Up To' },
+  { left: 'Worst Thing to Say on a First Date', right: 'Most Impressive Thing to Say' },
+  { left: 'Worst Kept Secret', right: 'Most Surprising Plot Twist' },
+  { left: 'Most Overused Phrase', right: 'Phrase That Always Works' },
+  { left: 'Worst Supervillain', right: 'Most Menacing Villain' },
+];
+
+
 // Cache YouTube results to preserve API quota
 const _videoCache = {};
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -571,6 +708,92 @@ function selectImposters(players, count) {
   return pool.slice(0, count).map(p => p.id);
 }
 
+// ─────────────────────────────────────────────
+// WAVELENGTH HELPERS
+// ─────────────────────────────────────────────
+function getWvPublicTeams(room) {
+  if (!room.wvTeams) return null;
+  return room.wvTeams.map((t, i) => ({
+    name: t.name,
+    score: t.score,
+    playerIds: t.playerIds,
+    playerNames: t.playerIds.map(id => (room.players.find(p => p.id === id) || {}).name).filter(Boolean),
+    isActive: i === (room.wvCurrentTeamIdx || 0)
+  }));
+}
+
+function startWavelengthTurn(room) {
+  // Pick an unused spectrum (reset pool when exhausted)
+  if (!room.wvUsedSpectraIdx) room.wvUsedSpectraIdx = new Set();
+  if (room.wvUsedSpectraIdx.size >= WAVELENGTH_SPECTRA.length) room.wvUsedSpectraIdx.clear();
+  let idx;
+  do { idx = Math.floor(Math.random() * WAVELENGTH_SPECTRA.length); }
+  while (room.wvUsedSpectraIdx.has(idx));
+  room.wvUsedSpectraIdx.add(idx);
+
+  room.wvSpectrum = WAVELENGTH_SPECTRA[idx];
+  room.wvTarget = 12 + Math.floor(Math.random() * 77); // 12–88, avoids extreme edges
+  room.wvClue = null;
+  room.wvDial = 50;
+  room.wvOpposingGuess = null;
+  room.wvDialLocked = false;
+  room.gameState = 'wavelength-clue';
+
+  const team = room.wvTeams[room.wvCurrentTeamIdx];
+  const psychicIdx = (team.psychicIdx || 0) % team.playerIds.length;
+  room.wvCurrentPsychicId = team.playerIds[psychicIdx];
+
+  const psychicName = (room.players.find(p => p.id === room.wvCurrentPsychicId) || {}).name || '?';
+  io.to(room.code).emit('wavelength-turn-start', {
+    spectrum: room.wvSpectrum,
+    teamIdx: room.wvCurrentTeamIdx,
+    teamName: team.name,
+    psychicId: room.wvCurrentPsychicId,
+    psychicName,
+    turnsDone: room.wvTurnsDone,
+    totalTurns: room.wvTotalTurns,
+    teams: getWvPublicTeams(room),
+    settings: { wvOpposingBonus: room.settings.wvOpposingBonus, wvOneWord: room.settings.wvOneWord, wvClueTimer: room.settings.wvClueTimer || 0, wvGuessTimer: room.settings.wvGuessTimer || 0 }
+  });
+  io.to(room.wvCurrentPsychicId).emit('wavelength-your-target', { target: room.wvTarget });
+}
+
+function resolveWavelengthTurn(room) {
+  const diff = Math.abs(room.wvDial - room.wvTarget);
+  let score = diff <= 8 ? 4 : diff <= 16 ? 3 : diff <= 24 ? 2 : 0;
+
+  let opposingBonus = 0;
+  let opposingCorrect = false;
+  if (room.wvOpposingGuess) {
+    const opposingIdx = 1 - room.wvCurrentTeamIdx;
+    opposingCorrect = (room.wvDial < room.wvTarget && room.wvOpposingGuess === 'right') ||
+                      (room.wvDial > room.wvTarget && room.wvOpposingGuess === 'left');
+    if (opposingCorrect) { opposingBonus = 1; room.wvTeams[opposingIdx].score += 1; }
+  }
+
+  room.wvTeams[room.wvCurrentTeamIdx].score += score;
+  // Advance psychic for next time this team plays
+  const team = room.wvTeams[room.wvCurrentTeamIdx];
+  team.psychicIdx = ((team.psychicIdx || 0) + 1) % team.playerIds.length;
+
+  room.wvTurnsDone++;
+  room.gameState = 'wavelength-reveal';
+
+  io.to(room.code).emit('wavelength-reveal', {
+    target: room.wvTarget,
+    dial: room.wvDial,
+    score,
+    opposingBonus,
+    opposingGuess: room.wvOpposingGuess,
+    opposingCorrect,
+    teams: getWvPublicTeams(room),
+    spectrum: room.wvSpectrum,
+    clue: room.wvClue,
+    isLastTurn: room.wvTurnsDone >= room.wvTotalTurns
+  });
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -585,7 +808,18 @@ function sanitizeRoom(room) {
     result: room.result || null,
     speakingOrder: room.speakingOrder || [],
     gameMode: room.settings ? room.settings.gameMode : 'word',
-    spyfallVoteCount: room.spyfallData ? Object.keys(room.spyfallData.votes || {}).length : 0
+    spyfallVoteCount: room.spyfallData ? Object.keys(room.spyfallData.votes || {}).length : 0,
+    wvPublic: (room.gameState && room.gameState.startsWith('wavelength-')) ? {
+      teams: getWvPublicTeams(room),
+      currentTeamIdx: room.wvCurrentTeamIdx || 0,
+      turnsDone: room.wvTurnsDone || 0,
+      totalTurns: room.wvTotalTurns || 8,
+      spectrum: room.wvSpectrum,
+      clue: room.wvClue,
+      dial: room.wvDial != null ? room.wvDial : 50,
+      psychicId: room.wvCurrentPsychicId,
+      dialLocked: !!room.wvDialLocked
+    } : null
   };
 }
 
@@ -1216,6 +1450,35 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // ── WAVELENGTH MODE ──
+    if (room.settings.gameType === 'wavelength') {
+      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players for Wavelength.' });
+      const t0 = (room.settings.wvTeams && room.settings.wvTeams[0]) || { name: 'Team 1', playerIds: [] };
+      const t1 = (room.settings.wvTeams && room.settings.wvTeams[1]) || { name: 'Team 2', playerIds: [] };
+      if (!t0.playerIds || t0.playerIds.length === 0 || !t1.playerIds || t1.playerIds.length === 0) {
+        return socket.emit('error', { message: 'Each team needs at least one player. Assign players to teams first.' });
+      }
+      room.wvTeams = [
+        { name: t0.name || 'Team 1', playerIds: [...t0.playerIds], score: 0, psychicIdx: 0 },
+        { name: t1.name || 'Team 2', playerIds: [...t1.playerIds], score: 0, psychicIdx: 0 }
+      ];
+      room.wvCurrentTeamIdx = 0;
+      room.wvTurnsDone = 0;
+      room.wvTotalTurns = room.settings.wvTurns || 8;
+      room.wvUsedSpectraIdx = new Set();
+      room.wvSpectrum = null;
+      room.wvTarget = null;
+      room.wvClue = null;
+      room.wvDial = 50;
+      room.wvDialLocked = false;
+      room.wvOpposingGuess = null;
+      room.wvCurrentPsychicId = null;
+      room.result = null;
+      startWavelengthTurn(room);
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
     // ── IMPOSTER MODE ──
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
     const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
@@ -1589,6 +1852,97 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
+  // ─────────────────────────────────────────────
+  // WAVELENGTH — SOCKET HANDLERS
+  // ─────────────────────────────────────────────
+
+  // Psychic submits their clue
+  socket.on('wavelength-clue', ({ clue }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'wavelength-clue') return;
+    if (socket.id !== room.wvCurrentPsychicId) return;
+    const clean = (clue || '').trim().slice(0, 80);
+    if (!clean) return socket.emit('error', { message: 'Enter a clue first!' });
+    if (room.settings.wvOneWord && clean.includes(' ')) return socket.emit('error', { message: 'One word only!' });
+    room.wvClue = clean;
+    room.gameState = 'wavelength-guessing';
+    io.to(room.code).emit('wavelength-clue-given', { clue: clean });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Active team member moves the dial (real-time, anyone on the active team except psychic)
+  socket.on('wavelength-dial', ({ position }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'wavelength-guessing') return;
+    if (room.wvDialLocked) return;
+    const team = room.wvTeams[room.wvCurrentTeamIdx];
+    if (!team.playerIds.includes(socket.id)) return;
+    if (socket.id === room.wvCurrentPsychicId) return;
+    const pos = Math.max(0, Math.min(100, Number(position) || 50));
+    room.wvDial = pos;
+    socket.to(room.code).emit('wavelength-dial-update', { position: pos, moverId: socket.id });
+  });
+
+  // Active team locks in their dial position
+  socket.on('wavelength-lock', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'wavelength-guessing') return;
+    if (room.wvDialLocked) return;
+    const team = room.wvTeams[room.wvCurrentTeamIdx];
+    if (!team.playerIds.includes(socket.id)) return;
+    if (socket.id === room.wvCurrentPsychicId) return;
+    room.wvDialLocked = true;
+    if (room.settings.wvOpposingBonus !== false) {
+      room.gameState = 'wavelength-opposing';
+      io.to(room.code).emit('wavelength-locked', { dial: room.wvDial });
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+    } else {
+      resolveWavelengthTurn(room);
+    }
+  });
+
+  // Opposing team guesses left or right for the bonus point
+  socket.on('wavelength-opposing', ({ direction }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'wavelength-opposing') return;
+    const opposingIdx = 1 - room.wvCurrentTeamIdx;
+    const opposingTeam = room.wvTeams[opposingIdx];
+    if (!opposingTeam.playerIds.includes(socket.id)) return;
+    if (room.wvOpposingGuess) return; // already submitted
+    if (!['left', 'right'].includes(direction)) return;
+    room.wvOpposingGuess = direction;
+    resolveWavelengthTurn(room);
+  });
+
+  // Host advances to next turn (or ends game)
+  socket.on('wavelength-next', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (room.gameState !== 'wavelength-reveal') return;
+    if (room.wvTurnsDone >= room.wvTotalTurns) {
+      // Game over
+      room.gameState = 'wavelength-end';
+      room.result = 'done';
+      const t0 = room.wvTeams[0], t1 = room.wvTeams[1];
+      const winner = t0.score > t1.score ? t0.name : t1.score > t0.score ? t1.name : null;
+      io.to(room.code).emit('wavelength-end', { teams: getWvPublicTeams(room), winner });
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+    } else {
+      // Switch teams and start next turn
+      room.wvCurrentTeamIdx = 1 - room.wvCurrentTeamIdx;
+      startWavelengthTurn(room);
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+    }
+  });
+
+  // Psychic can skip opposing phase (host shortcut)
+  socket.on('wavelength-skip-opposing', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (room.gameState !== 'wavelength-opposing') return;
+    resolveWavelengthTurn(room);
+  });
+
   // Play again
   socket.on('play-again', () => {
     const room = rooms[socket.roomCode];
@@ -1615,6 +1969,17 @@ io.on('connection', (socket) => {
     room.collabStrokes = [];
     room.collabTurnOrder = [];
     room.collabCurrentTurnIdx = 0;
+    room.wvTeams = null;
+    room.wvCurrentTeamIdx = 0;
+    room.wvTurnsDone = 0;
+    room.wvSpectrum = null;
+    room.wvTarget = null;
+    room.wvClue = null;
+    room.wvDial = 50;
+    room.wvDialLocked = false;
+    room.wvOpposingGuess = null;
+    room.wvCurrentPsychicId = null;
+    room.wvUsedSpectraIdx = new Set();
     io.to(room.code).emit('reset-game');
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
@@ -2042,6 +2407,13 @@ function _removePlayer(room, socketId, name) {
   if (!room) return;
   room.players = room.players.filter(p => p.id !== socketId);
   if (room.readyPlayers) room.readyPlayers.delete(socketId);
+  // Remove from wavelength team lists
+  if (room.settings && room.settings.wvTeams) {
+    room.settings.wvTeams.forEach(t => { t.playerIds = (t.playerIds || []).filter(id => id !== socketId); });
+  }
+  if (room.wvTeams) {
+    room.wvTeams.forEach(t => { t.playerIds = t.playerIds.filter(id => id !== socketId); });
+  }
   if (room.players.length === 0) { delete rooms[room.code]; return; }
   if (room.host === socketId) {
     room.host = room.players[0].id;

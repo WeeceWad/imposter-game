@@ -252,16 +252,17 @@
     .wv-label { font-size:0.78rem; font-weight:800; padding:5px 10px; border-radius:8px; text-align:center; max-width:44%; line-height:1.3; }
     .wv-label-left  { background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.4); }
     .wv-label-right { background:rgba(239,68,68,0.18); color:#f87171; border:1px solid rgba(239,68,68,0.4); }
-    .wv-bar-wrap { position:relative; width:100%; height:56px; margin:4px 0 10px; user-select:none; }
-    .wv-bar { position:absolute; inset:0; border-radius:28px; background:linear-gradient(to right,#3b82f6,#a855f7 50%,#ef4444); cursor:pointer; }
-    .wv-zone { position:absolute; top:0; height:100%; pointer-events:none; border-radius:28px; transition:opacity .4s; }
-    .wv-zone-2 { background:rgba(249,115,22,0.35); }
-    .wv-zone-3 { background:rgba(234,179,8,0.50); }
-    .wv-zone-4 { background:rgba(34,197,94,0.70); }
-    .wv-target-line { position:absolute; top:-10px; bottom:-10px; width:4px; background:#22c55e; border-radius:2px; transform:translateX(-50%); box-shadow:0 0 8px rgba(34,197,94,0.6); }
-    .wv-needle { position:absolute; top:50%; width:32px; height:32px; border-radius:50%; background:white; border:3px solid #0d0d14; box-shadow:0 2px 14px rgba(0,0,0,0.5); transform:translate(-50%,-50%); cursor:grab; z-index:5; touch-action:none; transition:transform .1s; }
-    .wv-needle:active { cursor:grabbing; transform:translate(-50%,-50%) scale(1.2); }
-    .wv-needle.locked { cursor:default; background:#d1d5db; }
+    /* ── SVG dial ── */
+    .wv-dial-outer { width:100%; max-width:380px; margin:0 auto 8px; user-select:none; touch-action:none; }
+    .wv-dial-svg { width:100%; height:auto; display:block; }
+    .wv-face-outer { fill:#0a0a18; }
+    .wv-face-inner { fill:#ede8de; }
+    .wv-base-line  { stroke:#0a0a18; stroke-width:2.5; }
+    .wv-needle-svg { stroke:#0a0a18; stroke-width:5; stroke-linecap:round; cursor:grab; }
+    .wv-needle-svg.wv-needle-locked { cursor:default; stroke:#6b7280; }
+    .wv-pivot-bg { fill:#0a0a18; }
+    .wv-pivot-fg { fill:#ede8de; }
+    .wv-target-svg { stroke:#22c55e; stroke-width:3; stroke-dasharray:6 3; pointer-events:none; }
     .wv-clue-display { text-align:center; font-size:1.7rem; font-weight:900; padding:18px 16px; background:rgba(168,85,247,0.12); border:2px solid var(--accent); border-radius:14px; letter-spacing:0.5px; }
     .wv-team-strip { display:flex; gap:10px; width:100%; }
     .wv-team-box { flex:1; padding:12px 14px; border-radius:12px; border:2px solid var(--border); background:var(--surface); text-align:center; }
@@ -542,8 +543,9 @@
         <div class="setting-label">Teams</div>
         <div class="setting-desc">Tap a player to move them between teams</div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:2px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px">
         <button class="btn btn-sm btn-outline" onclick="wvAutoAssign()" style="font-size:0.8rem">⚡ Auto Assign</button>
+        <button class="btn btn-sm btn-outline" onclick="wvDuoSetup()" style="font-size:0.8rem;border-color:#a855f7;color:#a855f7">🎮 Duo (1v1)</button>
       </div>
       <div class="wv-team-strip" id="wv-lobby-teams" style="gap:14px"></div>
     </div>
@@ -1015,9 +1017,16 @@
       <div class="wv-label wv-label-left" id="wv-left-label-clue">—</div>
       <div class="wv-label wv-label-right" id="wv-right-label-clue">—</div>
     </div>
-    <div class="wv-bar-wrap" id="wv-bar-wrap-clue">
-      <div class="wv-bar"></div>
-      <div class="wv-needle locked" id="wv-needle-clue" style="left:50%"></div>
+    <div class="wv-dial-outer" id="wv-bar-wrap-clue">
+      <svg viewBox="0 0 200 108" class="wv-dial-svg" preserveAspectRatio="xMidYMid meet">
+        <path class="wv-face-outer" d="M 5 101 A 95 95 0 0 1 195 101 Z"/>
+        <path class="wv-face-inner" d="M 15 101 A 85 85 0 0 1 185 101 Z"/>
+        <!-- psychic dynamic zones appended here via JS -->
+        <line class="wv-needle-svg wv-needle-locked" id="wv-needle-clue" x1="100" y1="101" x2="100" y2="18"/>
+        <circle class="wv-pivot-bg" cx="100" cy="101" r="10"/>
+        <circle class="wv-pivot-fg" cx="100" cy="101" r="6"/>
+        <line class="wv-base-line" x1="5" y1="102" x2="195" y2="102"/>
+      </svg>
     </div>
   </div>
   <!-- Psychic only: target zones visible -->
@@ -1051,9 +1060,15 @@
       <div class="wv-label wv-label-left" id="wv-left-label-guess">—</div>
       <div class="wv-label wv-label-right" id="wv-right-label-guess">—</div>
     </div>
-    <div class="wv-bar-wrap" id="wv-bar-wrap-guess">
-      <div class="wv-bar"></div>
-      <div class="wv-needle" id="wv-needle-guess" style="left:50%"></div>
+    <div class="wv-dial-outer" id="wv-bar-wrap-guess">
+      <svg viewBox="0 0 200 108" class="wv-dial-svg" preserveAspectRatio="xMidYMid meet">
+        <path class="wv-face-outer" d="M 5 101 A 95 95 0 0 1 195 101 Z"/>
+        <path class="wv-face-inner" d="M 15 101 A 85 85 0 0 1 185 101 Z"/>
+        <line class="wv-needle-svg" id="wv-needle-guess" x1="100" y1="101" x2="100" y2="18"/>
+        <circle class="wv-pivot-bg" cx="100" cy="101" r="10"/>
+        <circle class="wv-pivot-fg" cx="100" cy="101" r="6"/>
+        <line class="wv-base-line" x1="5" y1="102" x2="195" y2="102"/>
+      </svg>
     </div>
   </div>
   <div id="wv-clue-display-guess" class="wv-clue-display">...</div>
@@ -1077,9 +1092,15 @@
       <div class="wv-label wv-label-left" id="wv-left-label-opp">—</div>
       <div class="wv-label wv-label-right" id="wv-right-label-opp">—</div>
     </div>
-    <div class="wv-bar-wrap" id="wv-bar-wrap-opp">
-      <div class="wv-bar"></div>
-      <div class="wv-needle locked" id="wv-needle-opp" style="left:50%"></div>
+    <div class="wv-dial-outer" id="wv-bar-wrap-opp">
+      <svg viewBox="0 0 200 108" class="wv-dial-svg" preserveAspectRatio="xMidYMid meet">
+        <path class="wv-face-outer" d="M 5 101 A 95 95 0 0 1 195 101 Z"/>
+        <path class="wv-face-inner" d="M 15 101 A 85 85 0 0 1 185 101 Z"/>
+        <line class="wv-needle-svg wv-needle-locked" id="wv-needle-opp" x1="100" y1="101" x2="100" y2="18"/>
+        <circle class="wv-pivot-bg" cx="100" cy="101" r="10"/>
+        <circle class="wv-pivot-fg" cx="100" cy="101" r="6"/>
+        <line class="wv-base-line" x1="5" y1="102" x2="195" y2="102"/>
+      </svg>
     </div>
   </div>
   <div id="wv-clue-display-opp" class="wv-clue-display">...</div>
@@ -1107,13 +1128,21 @@
       <div class="wv-label wv-label-left" id="wv-left-label-rev">—</div>
       <div class="wv-label wv-label-right" id="wv-right-label-rev">—</div>
     </div>
-    <div class="wv-bar-wrap" id="wv-bar-wrap-rev">
-      <div class="wv-bar"></div>
-      <div class="wv-zone wv-zone-2" id="wv-zone-2" style="display:none"></div>
-      <div class="wv-zone wv-zone-3" id="wv-zone-3" style="display:none"></div>
-      <div class="wv-zone wv-zone-4" id="wv-zone-4" style="display:none"></div>
-      <div class="wv-target-line" id="wv-target-line" style="display:none"></div>
-      <div class="wv-needle locked" id="wv-needle-rev" style="left:50%"></div>
+    <div class="wv-dial-outer" id="wv-bar-wrap-rev">
+      <svg viewBox="0 0 200 108" class="wv-dial-svg" preserveAspectRatio="xMidYMid meet">
+        <path class="wv-face-outer" d="M 5 101 A 95 95 0 0 1 195 101 Z"/>
+        <path class="wv-face-inner" d="M 15 101 A 85 85 0 0 1 185 101 Z"/>
+        <!-- Score zone paths — filled by wvShowZones() -->
+        <path id="wv-zone-2" style="display:none" pointer-events="none"/>
+        <path id="wv-zone-3" style="display:none" pointer-events="none"/>
+        <path id="wv-zone-4" style="display:none" pointer-events="none"/>
+        <!-- Target line — shown on reveal -->
+        <line id="wv-target-line" class="wv-target-svg" x1="100" y1="101" x2="100" y2="18" style="display:none"/>
+        <line class="wv-needle-svg wv-needle-locked" id="wv-needle-rev" x1="100" y1="101" x2="100" y2="18"/>
+        <circle class="wv-pivot-bg" cx="100" cy="101" r="10"/>
+        <circle class="wv-pivot-fg" cx="100" cy="101" r="6"/>
+        <line class="wv-base-line" x1="5" y1="102" x2="195" y2="102"/>
+      </svg>
     </div>
   </div>
   <div id="wv-reveal-clue" class="wv-clue-display">...</div>
@@ -3620,6 +3649,18 @@ function renderWvLobbySettings(room) {
   teamsEl.innerHTML = html;
 }
 
+function wvDuoSetup() {
+  if (!currentRoom || !socket) return;
+  const players = currentRoom.players;
+  if (players.length < 2) return showToast('Need at least 2 players!', 'error');
+  // First 2 players go 1v1; rest unassigned
+  const teams = [
+    { name: players[0].name, playerIds: [players[0].id] },
+    { name: players[1].name, playerIds: [players[1].id] }
+  ];
+  socket.emit('update-settings', { settings: { wvTeams: teams } });
+}
+
 function wvPickTeamForPlayer(playerId, playerName) {
   // Simple: show toast-style pick — assign to team with fewer players
   if (!currentRoom) return;
@@ -3645,9 +3686,43 @@ function wvRenderScoreStrip(teams, containerId) {
   `).join('');
 }
 
-function wvSetNeedle(barWrapId, needleId, pct) {
+// ── SVG dial math helpers ──
+// Center of all dials is at SVG coordinate (100, 101), outer face radius 85
+const WV_CX = 100, WV_CY = 101, WV_R = 85, WV_NEEDLE_LEN = 78;
+
+function wvPosToAngleRad(pos) {
+  // pos 0 = left (180°), pos 100 = right (0°)
+  return (1 - pos / 100) * Math.PI;
+}
+
+function wvNeedlePoint(pos, len) {
+  const a = wvPosToAngleRad(pos);
+  return {
+    x: (WV_CX + len * Math.cos(a)).toFixed(2),
+    y: (WV_CY - len * Math.sin(a)).toFixed(2)
+  };
+}
+
+function wvDialWedge(p1, p2, rOuter) {
+  // Pie slice from center for positions p1..p2 (clamped to 0-100)
+  p1 = Math.max(0, p1); p2 = Math.min(100, p2);
+  if (p1 >= p2) return '';
+  const a1 = wvPosToAngleRad(p1);
+  const a2 = wvPosToAngleRad(p2);
+  const x1 = (WV_CX + rOuter * Math.cos(a1)).toFixed(2);
+  const y1 = (WV_CY - rOuter * Math.sin(a1)).toFixed(2);
+  const x2 = (WV_CX + rOuter * Math.cos(a2)).toFixed(2);
+  const y2 = (WV_CY - rOuter * Math.sin(a2)).toFixed(2);
+  // Sweep clockwise in SVG (flag=1) from a1 (larger angle = left side) to a2 (smaller = right side)
+  return `M ${WV_CX} ${WV_CY} L ${x1} ${y1} A ${rOuter} ${rOuter} 0 0 1 ${x2} ${y2} Z`;
+}
+
+function wvSetNeedle(barWrapId, needleId, pos) {
   const needle = document.getElementById(needleId);
-  if (needle) needle.style.left = pct + '%';
+  if (!needle) return;
+  const pt = wvNeedlePoint(pos, WV_NEEDLE_LEN);
+  needle.setAttribute('x2', pt.x);
+  needle.setAttribute('y2', pt.y);
 }
 
 function wvSetLabels(leftId, rightId, spectrum) {
@@ -3663,84 +3738,73 @@ function wvInitDial(barWrapId, needleId, canMove) {
   const needle = document.getElementById(needleId);
   if (!wrap || !needle) return;
 
-  if (!canMove) {
-    needle.classList.add('locked');
-    return;
-  }
-  needle.classList.remove('locked');
+  needle.classList.toggle('wv-needle-locked', !canMove);
+  if (!canMove) return;
 
-  function getPercent(e) {
-    const rect = wrap.getBoundingClientRect();
+  const svg = wrap.querySelector('svg');
+  if (!svg) return;
+
+  // Remove old listeners by replacing the svg node
+  const newSvg = svg.cloneNode(true);
+  svg.parentNode.replaceChild(newSvg, svg);
+  const liveNeedle = newSvg.querySelector('#' + needleId) || document.getElementById(needleId);
+
+  function getPosFromEvent(e) {
+    const rect = newSvg.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    let pct = (clientX - rect.left) / rect.width * 100;
-    return Math.max(0, Math.min(100, pct));
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const vbX = (clientX - rect.left) / rect.width * 200;
+    const vbY = (clientY - rect.top) / rect.height * 108;
+    const dx = vbX - WV_CX;
+    const dy = WV_CY - vbY; // flip y
+    let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+    angleDeg = Math.max(0, Math.min(180, angleDeg));
+    return (1 - angleDeg / 180) * 100;
   }
 
   function onMove(e) {
     if (!wvDragging) return;
     e.preventDefault();
-    const pct = getPercent(e);
-    wvDialPos = pct;
-    needle.style.left = pct + '%';
-    socket.emit('wavelength-dial', { position: pct });
+    const pos = getPosFromEvent(e);
+    wvDialPos = pos;
+    const pt = wvNeedlePoint(pos, WV_NEEDLE_LEN);
+    if (liveNeedle) { liveNeedle.setAttribute('x2', pt.x); liveNeedle.setAttribute('y2', pt.y); }
+    socket.emit('wavelength-dial', { position: pos });
   }
 
-  function onDown(e) {
-    if (wvLocked) return;
-    wvDragging = true;
-    onMove(e);
-  }
-
+  function onDown(e) { if (wvLocked) return; wvDragging = true; onMove(e); }
   function onUp() { wvDragging = false; }
 
-  // Remove old listeners via clone trick
-  const newWrap = wrap.cloneNode(true);
-  wrap.parentNode.replaceChild(newWrap, wrap);
-  const newNeedle = document.getElementById(needleId);
-
-  newWrap.addEventListener('mousedown', onDown);
-  newWrap.addEventListener('mousemove', onMove);
-  newWrap.addEventListener('mouseup', onUp);
-  newWrap.addEventListener('mouseleave', onUp);
-  newWrap.addEventListener('touchstart', onDown, { passive: false });
-  newWrap.addEventListener('touchmove', onMove, { passive: false });
-  newWrap.addEventListener('touchend', onUp);
-
-  // Also support dragging needle directly
-  if (newNeedle) {
-    newNeedle.addEventListener('mousedown', onDown);
-    newNeedle.addEventListener('touchstart', onDown, { passive: false });
-  }
+  newSvg.addEventListener('mousedown', onDown);
+  newSvg.addEventListener('mousemove', onMove);
+  newSvg.addEventListener('mouseup', onUp);
+  newSvg.addEventListener('mouseleave', onUp);
+  newSvg.addEventListener('touchstart', onDown, { passive: false });
+  newSvg.addEventListener('touchmove', onMove, { passive: false });
+  newSvg.addEventListener('touchend', onUp);
 }
 
 function wvShowZones(targetPos) {
-  // Zones: ±8 = 4pts (green), ±16 = 3pts (yellow), ±24 = 2pts (orange)
-  const zone4 = document.getElementById('wv-zone-4');
-  const zone3 = document.getElementById('wv-zone-3');
-  const zone2 = document.getElementById('wv-zone-2');
+  // Fill the SVG zone paths on the reveal dial
+  const zones = [
+    { id: 'wv-zone-2', p1: targetPos - 24, p2: targetPos + 24, fill: 'rgba(249,115,22,0.60)' },
+    { id: 'wv-zone-3', p1: targetPos - 16, p2: targetPos + 16, fill: 'rgba(234,179,8,0.72)' },
+    { id: 'wv-zone-4', p1: targetPos - 8,  p2: targetPos + 8,  fill: 'rgba(34,197,94,0.88)'  },
+  ];
+  zones.forEach(z => {
+    const el = document.getElementById(z.id);
+    if (!el) return;
+    const d = wvDialWedge(z.p1, z.p2, WV_R);
+    if (d) { el.setAttribute('d', d); el.setAttribute('fill', z.fill); el.style.display = ''; }
+  });
   const tLine = document.getElementById('wv-target-line');
-
-  const tp = targetPos; // 0–100
-  function pct(offset) { return Math.max(0, Math.min(100, tp + offset)); }
-
-  if (zone4) {
-    zone4.style.display = 'block';
-    zone4.style.left = pct(-8) + '%';
-    zone4.style.width = Math.min(16, 100 - pct(-8)) + '%';
-  }
-  if (zone3) {
-    zone3.style.display = 'block';
-    zone3.style.left = pct(-16) + '%';
-    zone3.style.width = Math.min(32, 100 - pct(-16)) + '%';
-  }
-  if (zone2) {
-    zone2.style.display = 'block';
-    zone2.style.left = pct(-24) + '%';
-    zone2.style.width = Math.min(48, 100 - pct(-24)) + '%';
-  }
   if (tLine) {
-    tLine.style.display = 'block';
-    tLine.style.left = tp + '%';
+    const pt = wvNeedlePoint(targetPos, WV_R);
+    tLine.setAttribute('x1', String(WV_CX));
+    tLine.setAttribute('y1', String(WV_CY));
+    tLine.setAttribute('x2', pt.x);
+    tLine.setAttribute('y2', pt.y);
+    tLine.style.display = '';
   }
 }
 
@@ -3852,7 +3916,10 @@ function initWavelengthSocketHandlers() {
 
     // Populate clue screen — clear any zones from previous turn
     const clueBarWrap = document.getElementById('wv-bar-wrap-clue');
-    if (clueBarWrap) clueBarWrap.querySelectorAll('.wv-zone,.wv-target-line').forEach(el => el.remove());
+    if (clueBarWrap) {
+      const clueSvg = clueBarWrap.querySelector('svg');
+      if (clueSvg) clueSvg.querySelectorAll('.wv-dyn-zone').forEach(el => el.remove());
+    }
     wvSetBannerTeam('wv-turn-banner', data.teamIdx, data.teams);
     wvSetLabels('wv-left-label-clue', 'wv-right-label-clue', data.spectrum);
     wvSetNeedle('wv-bar-wrap-clue', 'wv-needle-clue', 50);
@@ -3884,28 +3951,34 @@ function initWavelengthSocketHandlers() {
     wvTargetPos = target;
     const wrap = document.getElementById('wv-bar-wrap-clue');
     if (!wrap) return;
+    const svg = wrap.querySelector('svg');
+    if (!svg) return;
     // Clear old dynamic zones
-    wrap.querySelectorAll('.wv-zone,.wv-target-line').forEach(el => el.remove());
-    const zoneData = [
-      { cls: 'wv-zone wv-zone-2', lo: target - 24, w: 48 },
-      { cls: 'wv-zone wv-zone-3', lo: target - 16, w: 32 },
-      { cls: 'wv-zone wv-zone-4', lo: target - 8,  w: 16 },
+    svg.querySelectorAll('.wv-dyn-zone').forEach(el => el.remove());
+    const NS = 'http://www.w3.org/2000/svg';
+    const zoneDefs = [
+      { p1: target - 24, p2: target + 24, fill: 'rgba(249,115,22,0.45)' },
+      { p1: target - 16, p2: target + 16, fill: 'rgba(234,179,8,0.60)'  },
+      { p1: target - 8,  p2: target + 8,  fill: 'rgba(34,197,94,0.80)'  },
     ];
-    zoneData.forEach(z => {
-      const div = document.createElement('div');
-      div.className = z.cls;
-      const left = Math.max(0, z.lo);
-      div.style.left = left + '%';
-      div.style.width = Math.min(z.w, 100 - left) + '%';
-      div.style.display = 'block';
-      div.style.pointerEvents = 'none';
-      wrap.appendChild(div);
+    const pivotEl = svg.querySelector('.wv-pivot-bg');
+    zoneDefs.forEach(z => {
+      const d = wvDialWedge(z.p1, z.p2, WV_R);
+      if (!d) return;
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', z.fill);
+      path.setAttribute('class', 'wv-dyn-zone');
+      path.style.pointerEvents = 'none';
+      svg.insertBefore(path, pivotEl);
     });
-    const tline = document.createElement('div');
-    tline.className = 'wv-target-line';
-    tline.style.left = target + '%';
-    tline.style.display = 'block';
-    wrap.appendChild(tline);
+    // Target line
+    const tl = document.createElementNS(NS, 'line');
+    const pt = wvNeedlePoint(target, WV_R);
+    tl.setAttribute('x1', String(WV_CX)); tl.setAttribute('y1', String(WV_CY));
+    tl.setAttribute('x2', pt.x); tl.setAttribute('y2', pt.y);
+    tl.setAttribute('class', 'wv-target-svg wv-dyn-zone');
+    svg.insertBefore(tl, pivotEl);
   });
 
   // Clue given — move to guess phase
@@ -3927,8 +4000,9 @@ function initWavelengthSocketHandlers() {
 
     wvDialPos = 50;
     wvLocked = false;
+    wvSetNeedle('wv-bar-wrap-guess', 'wv-needle-guess', 50);
     const needleGuess = document.getElementById('wv-needle-guess');
-    if (needleGuess) { needleGuess.style.left = '50%'; needleGuess.classList.remove('locked'); }
+    if (needleGuess) needleGuess.classList.remove('wv-needle-locked');
 
     document.getElementById('wv-active-team-controls').style.display = (isActiveTeam && !isPsychicNow) ? 'block' : 'none';
     document.getElementById('wv-psychic-watch').style.display = isPsychicNow ? 'block' : 'none';
@@ -3946,8 +4020,7 @@ function initWavelengthSocketHandlers() {
   // Server payload: { position, moverId }
   socket.on('wavelength-dial-update', ({ position }) => {
     wvDialPos = position;
-    const needle = document.getElementById('wv-needle-guess');
-    if (needle) needle.style.left = position + '%';
+    wvSetNeedle('wv-bar-wrap-guess', 'wv-needle-guess', position);
   });
 
   // Dial locked — move to opposing phase (server payload: { dial })
@@ -3961,8 +4034,7 @@ function initWavelengthSocketHandlers() {
     const isOpposing = wvMyTeamIdx === opposingTeamIdx;
 
     wvSetLabels('wv-left-label-opp', 'wv-right-label-opp', data.spectrum);
-    const oppNeedle = document.getElementById('wv-needle-opp');
-    if (oppNeedle) oppNeedle.style.left = dial + '%';
+    wvSetNeedle('wv-bar-wrap-opp', 'wv-needle-opp', dial);
     const clueOpp = document.getElementById('wv-clue-display-opp');
     if (clueOpp) clueOpp.textContent = '"' + (data.lastClue || '...') + '"';
 
@@ -3990,10 +4062,9 @@ function initWavelengthSocketHandlers() {
     if (wvCurrentData) wvCurrentData.lastClue = data.clue;
 
     wvSetLabels('wv-left-label-rev', 'wv-right-label-rev', data.spectrum);
-    const revNeedle = document.getElementById('wv-needle-rev');
-    if (revNeedle) revNeedle.style.left = data.dial + '%';
+    wvSetNeedle('wv-bar-wrap-rev', 'wv-needle-rev', data.dial);
 
-    // Reset reveal zone elements to hidden before re-showing
+    // Hide zones before re-drawing
     ['wv-zone-2','wv-zone-3','wv-zone-4','wv-target-line'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';

@@ -1336,6 +1336,9 @@ function initSocket() {
   socket.on('game-over', (data) => {
     console.log('[IMPOSTER] game-over received', JSON.stringify(data).slice(0, 200));
     gameIsOver = true;
+    // Clear any stale content from a previous game before showing the screen
+    const gcEl = document.getElementById('gameover-content');
+    if (gcEl) gcEl.innerHTML = '';
     // Show screen FIRST so it's never black
     showScreen('gameover');
     try {
@@ -1415,6 +1418,8 @@ function initSocket() {
 
   socket.on('word-revealed-early', (data) => {
     gameIsOver = true;
+    const gcEl2 = document.getElementById('gameover-content');
+    if (gcEl2) gcEl2.innerHTML = '';
     renderEarlyReveal(data);
     showScreen('gameover');
     document.getElementById('play-again-btn').style.display = isHost ? 'block' : 'none';

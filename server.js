@@ -1984,6 +1984,12 @@ io.on('connection', (socket) => {
     room.wvOpposingGuess = null;
     room.wvCurrentPsychicId = null;
     room.wvUsedSpectraIdx = new Set();
+    // Reset game mode back to word so video mode doesn't persist into the next game
+    if (room.settings.gameMode && room.settings.gameMode !== 'word') {
+      room.settings.gameMode = 'word';
+    }
+    room.currentPlayerVideo = null;
+    room.currentImposterVideo = null;
     io.to(room.code).emit('reset-game');
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });

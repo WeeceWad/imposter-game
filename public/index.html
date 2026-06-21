@@ -627,16 +627,18 @@
   </div>
 
   <div class="card text-center" style="width:100%">
-    <div class="text-muted" style="margin-bottom:6px; font-size:0.8rem">VOTE FOR THE IMPOSTER</div>
+    <div class="text-muted" style="margin-bottom:6px; font-size:0.8rem" id="vote-header-text">VOTE FOR THE IMPOSTER</div>
     <div class="progress-bar-wrap">
       <div class="progress-bar" id="vote-bar" style="width:0%; background:linear-gradient(90deg,#ef4444,#dc2626)"></div>
     </div>
     <div style="margin-top:8px; font-size:0.85rem; color:var(--muted)" id="vote-count-text">0 / 0 voted</div>
-    <div style="margin-top:4px; font-size:0.78rem; color:var(--muted)" id="vote-threshold-text"></div>
   </div>
 
   <div id="voting-player-list" class="player-list" style="width:100%"></div>
   <div id="my-vote-indicator" class="text-muted text-center" style="width:100%; font-size:0.85rem"></div>
+  <div id="vote-submit-wrap" style="width:100%; display:none">
+    <button class="btn btn-danger" id="vote-submit-btn" onclick="submitVotes()" disabled>🗳️ Confirm Votes (0 selected)</button>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -1176,7 +1178,8 @@ let socket = null;
 let myId = null;
 let myRole = null;
 let myWord = null;
-let myVote = null;
+let myVote = null;      // kept for compat checks
+let myVotes = [];       // array of selected target IDs for multi-vote
 let currentRoom = null;
 let myWhoamiCategoryName = null;
 let isHost = false;
@@ -1429,7 +1432,7 @@ function initSocket() {
   });
 
   socket.on('reset-game', () => {
-    myRole = null; myWord = null; myVote = null; myCategory = null;
+    myRole = null; myWord = null; myVote = null; myVotes = []; myCategory = null;
     myWhoamiCategoryName = null;
     mySfRole = null; mySfVote = null;
     gameIsOver = false;
@@ -1838,7 +1841,7 @@ function applyRoomUpdate(room) {
 
   if (room.gameState === 'voting') {
     if (active !== 'screen-voting') {
-      myVote = null;
+      myVote = null; myVotes = [];
       showScreen('voting');
     }
   }
@@ -1973,7 +1976,7 @@ function joinRoom() {
 
 function leaveRoom() {
   if (socket) { socket.disconnect(); socket = null; }
-  myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myPlayerName = null;
+  myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myVotes = []; myPlayerName = null;
   mySfRole = null; mySfVote = null; gameIsOver = false;
   drawCtx = null; drawIsDrawing = false;
   clearInterval(drawTimer); drawTimer = null;
@@ -2555,17 +2558,20 @@ function startVoting() {
 function renderVotingData(room) {
   document.getElementById('voting-room-code').textContent = room.code;
 
+  const imposterCount = room.settings?.imposterCount || 1;
   const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
   const voteCount = room.voteCount || 0;
   const total = activePlayers.length;
   document.getElementById('vote-bar').style.width = `${(voteCount/total)*100}%`;
-  document.getElementById('vote-count-text').textContent = `${voteCount} / ${total} voted`;
-  const req = room.settings?.imposterCount || 1;
-  const threshEl = document.getElementById('vote-threshold-text');
-  if (threshEl) threshEl.textContent = req > 1 ? `Need ${req} votes on one person to eliminate` : '';
+  document.getElementById('vote-count-text').textContent = `${voteCount} / ${total} submitted`;
+
+  const headerEl = document.getElementById('vote-header-text');
+  if (headerEl) headerEl.textContent = imposterCount > 1
+    ? `VOTE FOR ${imposterCount} IMPOSTERS — SELECT ${imposterCount}`
+    : 'VOTE FOR THE IMPOSTER';
 
   const imEliminated = room.eliminatedPlayers.includes(myId);
-  const iAmVotable = !imEliminated;
+  const alreadySubmitted = !!myVote; // myVote set to sentinel after submitting
 
   const list = document.getElementById('voting-player-list');
   list.innerHTML = activePlayers
@@ -2576,30 +2582,70 @@ function renderVotingData(room) {
           <div class="player-avatar">${p.name[0].toUpperCase()}</div>
           <div class="player-name">${p.name} <small>(you)</small></div>
         </div>`;
-      const isMyVote = myVote === p.id;
+      const selected = myVotes.includes(p.id);
+      const disabled = alreadySubmitted || imEliminated;
       return `
-        <div class="vote-player ${isMyVote ? 'voted' : ''}" onclick="castVote('${p.id}')">
+        <div class="vote-player ${selected ? 'voted' : ''}" ${!disabled ? `onclick="castVote('${p.id}')"` : 'style="opacity:0.6;cursor:not-allowed"'}>
           <div class="player-avatar">${p.name[0].toUpperCase()}</div>
           <div class="player-name">${p.name}</div>
-          ${isMyVote ? '<span class="vote-count-badge">YOUR VOTE</span>' : ''}
+          ${selected ? '<span class="vote-count-badge">✓ SELECTED</span>' : ''}
         </div>`;
     }).join('');
 
   const indicator = document.getElementById('my-vote-indicator');
-  if (myVote) {
-    const votedPlayer = room.players.find(p => p.id === myVote);
-    indicator.textContent = `You voted for: ${votedPlayer?.name || '?'}`;
+  const submitWrap = document.getElementById('vote-submit-wrap');
+  const submitBtn = document.getElementById('vote-submit-btn');
+
+  if (imEliminated) {
+    indicator.textContent = 'You are eliminated and cannot vote';
+    if (submitWrap) submitWrap.style.display = 'none';
+  } else if (alreadySubmitted) {
+    indicator.textContent = `✅ Votes submitted — waiting for others...`;
+    if (submitWrap) submitWrap.style.display = 'none';
+  } else if (imposterCount === 1) {
+    // Single imposter: tap to instantly vote (no confirm needed)
+    indicator.textContent = 'Tap a player to vote them out';
+    if (submitWrap) submitWrap.style.display = 'none';
   } else {
-    indicator.textContent = imEliminated ? 'You are eliminated and cannot vote' : 'Tap a player to vote for them';
+    // Multi-imposter: show selection count and confirm button
+    indicator.textContent = `${myVotes.length} / ${imposterCount} selected`;
+    if (submitWrap) submitWrap.style.display = 'block';
+    if (submitBtn) {
+      submitBtn.textContent = `🗳️ Confirm Votes (${myVotes.length}/${imposterCount} selected)`;
+      submitBtn.disabled = myVotes.length === 0;
+    }
   }
 }
 
 function updateVoting(room) { renderVotingData(room); }
 
 function castVote(targetId) {
-  if (myVote) return; // already voted
-  myVote = targetId;
-  socket.emit('vote', { targetId });
+  if (myVote) return; // already submitted
+  const imposterCount = currentRoom?.settings?.imposterCount || 1;
+
+  if (imposterCount === 1) {
+    // Single imposter: instant submit on tap
+    myVote = 'submitted';
+    myVotes = [targetId];
+    socket.emit('vote', { targetIds: [targetId] });
+    renderVotingData(currentRoom);
+    return;
+  }
+
+  // Multi-imposter: toggle selection
+  const idx = myVotes.indexOf(targetId);
+  if (idx >= 0) {
+    myVotes.splice(idx, 1);
+  } else if (myVotes.length < imposterCount) {
+    myVotes.push(targetId);
+  }
+  renderVotingData(currentRoom);
+}
+
+function submitVotes() {
+  if (myVote || myVotes.length === 0) return;
+  myVote = 'submitted';
+  socket.emit('vote', { targetIds: myVotes });
   renderVotingData(currentRoom);
 }
 
@@ -2607,31 +2653,36 @@ function castVote(targetId) {
 // ELIMINATION
 // ──────────────────────────────────────────
 function renderElimination(data) {
-  const { eliminated, gameState, remainingImposters } = data;
-  const isElimImposter = eliminated.isImposter;
+  const { eliminated: elimRaw, gameState, remainingImposters, totalVotes } = data;
+  // Normalise: server now always sends an array
+  const eliminated = Array.isArray(elimRaw) ? elimRaw : [elimRaw];
+  const allImposters = eliminated.every(e => e.isImposter);
+  const anyImposter = eliminated.some(e => e.isImposter);
 
   let html = '';
 
   // Who was voted out
+  const names = eliminated.map(e => e.name).join(' & ');
   html += `
     <div class="result-banner fade-in">
-      <span class="result-emoji">${isElimImposter ? '🎯' : '😬'}</span>
-      <div class="result-title">${eliminated.name} was voted out</div>
-      <div class="result-sub">${eliminated.voteCount} of ${eliminated.totalVotes} votes</div>
+      <span class="result-emoji">${allImposters ? '🎯' : '😬'}</span>
+      <div class="result-title">${names} ${eliminated.length > 1 ? 'were' : 'was'} voted out</div>
     </div>
   `;
 
-  // Reveal if imposter or not
-  html += `
-    <div class="card text-center fade-in" style="border-color:${isElimImposter ? 'var(--danger)' : 'var(--success)'}">
-      <div style="font-size:2rem; margin-bottom:8px">${isElimImposter ? '🔪' : '✅'}</div>
-      <div style="font-size:1.2rem; font-weight:800; color:${isElimImposter ? '#fca5a5' : '#86efac'}">
-        ${eliminated.name} was ${isElimImposter ? 'the imposter! 🎉' : 'innocent 😬'}
-    </div>
-  `;
+  // Reveal each eliminated player
+  eliminated.forEach(e => {
+    html += `
+      <div class="card text-center fade-in" style="border-color:${e.isImposter ? 'var(--danger)' : 'var(--success)'}">
+        <div style="font-size:2rem; margin-bottom:8px">${e.isImposter ? '🔪' : '✅'}</div>
+        <div style="font-size:1.2rem; font-weight:800; color:${e.isImposter ? '#fca5a5' : '#86efac'}">
+          ${e.name} was ${e.isImposter ? 'the imposter! 🎉' : 'innocent 😬'}
+        </div>
+      </div>`;
+  });
 
-  // If imposter was caught, show remaining
-  if (isElimImposter && remainingImposters !== undefined) {
+  // If any imposter was caught, show remaining count
+  if (anyImposter && remainingImposters !== undefined) {
     if (remainingImposters > 0) {
       html += `
         <div class="card fade-in" style="width:100%; border-color:var(--warning); background:rgba(251,191,36,0.08)">
@@ -2796,10 +2847,13 @@ function renderGameOver(data) {
         });
       }
 
-      html += `<div style="margin-top:10px;padding:10px;border-radius:8px;background:${round.eliminated.isImposter ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};border:1px solid ${round.eliminated.isImposter ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}">
-        <span style="font-size:0.82rem;font-weight:700">
-          ${round.eliminated.isImposter ? '🔪' : '😬'} ${round.eliminated.name} was voted out — ${round.eliminated.isImposter ? 'was the imposter!' : 'was innocent'}
-        </span>
+      // eliminated is always an array now
+      const elimArr = Array.isArray(round.eliminated) ? round.eliminated : [round.eliminated];
+      const allElimImp = elimArr.every(e => e.isImposter);
+      html += `<div style="margin-top:10px;padding:10px;border-radius:8px;background:${allElimImp ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};border:1px solid ${allElimImp ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}">
+        ${elimArr.map(e => `<div style="font-size:0.82rem;font-weight:700">
+          ${e.isImposter ? '🔪' : '😬'} ${e.name} — ${e.isImposter ? 'imposter!' : 'innocent'}
+        </div>`).join('')}
       </div>`;
 
       if (i < votingHistory.length - 1) {

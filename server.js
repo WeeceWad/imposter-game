@@ -824,8 +824,9 @@ function sanitizeRoom(room) {
 
 function tallyVotes(votes) {
   const tally = {};
-  Object.values(votes).forEach(id => {
-    tally[id] = (tally[id] || 0) + 1;
+  Object.values(votes).forEach(targets => {
+    const arr = Array.isArray(targets) ? targets : [targets];
+    arr.forEach(id => { tally[id] = (tally[id] || 0) + 1; });
   });
   return tally;
 }
@@ -873,89 +874,59 @@ function revealDrawings(room) {
 }
 
 function resolveVotes(room) {
-  const tally = tallyVotes(room.votes);
+  const imposterCount = room.settings.imposterCount || 1;
   const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+  const tally = tallyVotes(room.votes);
 
   if (Object.keys(tally).length === 0) {
-    room.gameState = 'game-over';
-    room.result = 'players-win';
-    io.to(room.code).emit('game-over', buildResultPayload(room));
-    io.to(room.code).emit('room-update', sanitizeRoom(room));
-    return;
-  }
-
-  const maxVotes = Math.max(...Object.values(tally));
-  const requiredVotes = room.settings.imposterCount || 1;
-
-  // Not enough votes on any one person — round fails, back to discussion
-  if (maxVotes < requiredVotes) {
     room.gameState = 'discussion';
     room.votes = {};
-    io.to(room.code).emit('vote-failed', { requiredVotes, maxVotes });
+    io.to(room.code).emit('vote-failed', { requiredVotes: imposterCount, maxVotes: 0 });
     io.to(room.code).emit('room-update', sanitizeRoom(room));
     return;
   }
 
-  const topVotedIds = Object.keys(tally).filter(id => tally[id] === maxVotes);
-  const eliminatedId = topVotedIds[Math.floor(Math.random() * topVotedIds.length)];
-  const eliminatedPlayer = room.players.find(p => p.id === eliminatedId);
-  if (!eliminatedPlayer) return;
+  // Eliminate top N most-voted players (N = imposterCount)
+  const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([id]) => id);
+  const toEliminateIds = sorted.slice(0, imposterCount);
 
-  const isImposter = room.imposters.includes(eliminatedId);
+  const eliminatedPlayers = toEliminateIds.map(id => {
+    const p = room.players.find(pl => pl.id === id);
+    return { id, name: p ? p.name : 'Unknown', isImposter: room.imposters.includes(id), voteCount: tally[id] || 0 };
+  });
 
+  // Build voting history — eliminated is always an array
   if (!room.votingHistory) room.votingHistory = [];
   const individualVotes = {};
-  Object.entries(room.votes).forEach(([voterId, targetId]) => {
+  Object.entries(room.votes).forEach(([voterId, targets]) => {
     const voter = room.players.find(p => p.id === voterId);
-    const target = room.players.find(p => p.id === targetId);
-    if (voter && target) individualVotes[voter.name] = target.name;
+    const arr = Array.isArray(targets) ? targets : [targets];
+    if (voter) {
+      const names = arr.map(id => (room.players.find(p => p.id === id) || {}).name).filter(Boolean);
+      individualVotes[voter.name] = names.join(' & ') || '?';
+    }
   });
   room.votingHistory.push({
     round: room.votingHistory.length + 1,
-    eliminated: { name: eliminatedPlayer.name, isImposter },
+    eliminated: eliminatedPlayers.map(e => ({ name: e.name, isImposter: e.isImposter })),
     individualVotes
   });
 
-  room.eliminatedPlayers.push(eliminatedId);
-  room.lastEliminated = eliminatedId;
+  toEliminateIds.forEach(id => { room.eliminatedPlayers.push(id); });
+  room.lastEliminated = toEliminateIds[0];
 
-  const remainingPlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
   const remainingImposters = room.imposters.filter(id => !room.eliminatedPlayers.includes(id));
-  const remainingInnocents = remainingPlayers.filter(p => !room.imposters.includes(p.id));
-
-  const elimResult = {
-    eliminated: {
-      name: eliminatedPlayer.name,
-      isImposter,
-      voteCount: tally[eliminatedId] || 0,
-      totalVotes: activePlayers.length
-    },
-    remainingImposters: remainingImposters.length
-  };
-
+  const allCaughtAreImposters = eliminatedPlayers.every(e => e.isImposter);
   const isWordMode = !room.settings.gameMode || room.settings.gameMode === 'word';
 
-  if (isImposter) {
-    if (remainingImposters.length === 0) {
-      if (isWordMode && room.currentWord) {
-        room.gameState = 'imposter-guess';
-        io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'imposter-guess' });
-        io.to(eliminatedId).emit('make-guess', { category: room.currentCategory });
-      } else {
-        room.gameState = 'game-over';
-        room.result = 'players-win';
-        io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
-        setTimeout(() => {
-          io.to(room.code).emit('game-over', buildResultPayload(room));
-          io.to(room.code).emit('room-update', sanitizeRoom(room));
-        }, 2500);
-      }
-    } else {
-      room.gameState = 'elimination';
-      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'elimination' });
-    }
-  } else {
-    // An innocent was voted out — imposters win immediately
+  const elimResult = {
+    eliminated: eliminatedPlayers,
+    remainingImposters: remainingImposters.length,
+    totalVotes: activePlayers.length
+  };
+
+  if (!allCaughtAreImposters) {
+    // At least one innocent eliminated — imposters win
     room.gameState = 'game-over';
     room.result = 'imposters-win';
     io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
@@ -963,6 +934,28 @@ function resolveVotes(room) {
       io.to(room.code).emit('game-over', buildResultPayload(room));
       io.to(room.code).emit('room-update', sanitizeRoom(room));
     }, 2500);
+  } else if (remainingImposters.length === 0) {
+    // All imposters caught
+    if (isWordMode && room.currentWord) {
+      room.gameState = 'imposter-guess';
+      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'imposter-guess' });
+      // Any caught imposter can attempt the word guess
+      toEliminateIds.filter(id => room.imposters.includes(id)).forEach(id => {
+        io.to(id).emit('make-guess', { category: room.currentCategory });
+      });
+    } else {
+      room.gameState = 'game-over';
+      room.result = 'players-win';
+      io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'game-over' });
+      setTimeout(() => {
+        io.to(room.code).emit('game-over', buildResultPayload(room));
+        io.to(room.code).emit('room-update', sanitizeRoom(room));
+      }, 2500);
+    }
+  } else {
+    // Some imposters still free — continue game
+    room.gameState = 'elimination';
+    io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'elimination' });
   }
 
   io.to(room.code).emit('room-update', sanitizeRoom(room));
@@ -1638,24 +1631,33 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  // Cast vote
-  socket.on('vote', ({ targetId }) => {
+  // Cast vote — targetIds is an array of player IDs (one per imposter slot)
+  socket.on('vote', ({ targetIds }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'voting') return;
-    if (room.eliminatedPlayers.includes(socket.id)) return; // eliminated can't vote
-    room.votes[socket.id] = targetId;
+    if (room.eliminatedPlayers.includes(socket.id)) return;
+
+    const imposterCount = room.settings.imposterCount || 1;
+    const validIds = (Array.isArray(targetIds) ? targetIds : [targetIds])
+      .filter(id => id && id !== socket.id && !room.eliminatedPlayers.includes(id))
+      .slice(0, imposterCount);
+    if (validIds.length === 0) return;
+
+    room.votes[socket.id] = validIds;
 
     const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+    // Only wait for currently connected players — prevents stuck votes on disconnect
+    const connectedActive = activePlayers.filter(p => io.sockets.sockets.has(p.id));
+    const submittedCount = Object.keys(room.votes).length;
+
     io.to(room.code).emit('vote-update', {
-      voteCount: Object.keys(room.votes).length,
-      totalCount: activePlayers.length
+      voteCount: submittedCount,
+      totalCount: connectedActive.length
     });
 
-    // All active players voted?
-    if (Object.keys(room.votes).length >= activePlayers.length) {
+    if (submittedCount >= connectedActive.length) {
       try { resolveVotes(room); } catch(e) {
         console.error('resolveVotes error:', e);
-        // Emergency fallback: end the game so players aren't stuck
         room.gameState = 'game-over';
         room.result = 'players-win';
         io.to(room.code).emit('game-over', buildResultPayload(room));
@@ -2050,7 +2052,9 @@ io.on('connection', (socket) => {
     if (room.votes) {
       const newVotes = {};
       Object.entries(room.votes).forEach(([k, v]) => {
-        newVotes[k === oldId ? socket.id : k] = v === oldId ? socket.id : v;
+        const newKey = k === oldId ? socket.id : k;
+        const newVal = Array.isArray(v) ? v.map(id => id === oldId ? socket.id : id) : (v === oldId ? socket.id : v);
+        newVotes[newKey] = newVal;
       });
       room.votes = newVotes;
     }
@@ -2405,6 +2409,15 @@ io.on('connection', (socket) => {
     // Unified lobby room (imposter / whoami / spyfall)
     const room = rooms[socket.roomCode];
     if (room) {
+      // If a player disconnects mid-vote, check if the remaining connected players
+      // have all voted and resolve immediately so the game doesn't get stuck
+      if (room.gameState === 'voting') {
+        const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+        const connectedActive = activePlayers.filter(p => p.id !== socket.id && io.sockets.sockets.has(p.id));
+        if (connectedActive.length > 0 && Object.keys(room.votes).length >= connectedActive.length) {
+          try { resolveVotes(room); } catch(e) { console.error('resolveVotes (dc) error:', e); }
+        }
+      }
       if (!room._dcTimers) room._dcTimers = {};
       // Give generous grace periods — mobile browsers suspend sockets when backgrounded
       const delay = room.gameState !== 'lobby' ? 300000 : 120000; // 5 min in-game, 2 min lobby

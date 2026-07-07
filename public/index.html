@@ -2003,7 +2003,7 @@ function renderCategoryGrid() {
   if (!categories.length) return;
   const grid = document.getElementById('category-grid');
   const selected = currentRoom?.settings?.selectedCategories || ['movies','tvShows','videoGames','gameCharacters'];
-  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸' };
+  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸', randomWords:'🎲' };
   grid.innerHTML = categories.map(c => `
     <div class="cat-chip ${selected.includes(c.key) ? 'selected' : ''}" onclick="toggleCategory('${c.key}')" id="cat-${c.key}">
       <span class="cat-emoji">${emojiMap[c.key]||'📦'}</span>

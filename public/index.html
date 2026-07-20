@@ -2160,7 +2160,8 @@ function renderLobbyData(room) {
         const WHOAMI_CAT_DEFS = [
           { key: 'famous',      label: '🌟 Famous People' },
           { key: 'famousBands', label: '🎸 Famous People w/ Bands' },
-          { key: 'fictional',   label: '🦸 Fictional Characters' }
+          { key: 'fictional',   label: '🦸 Fictional Characters' },
+          { key: 'videoGames',  label: '🎮 Video Games' }
         ];
         const selWam = room.settings.whoamiCategory || 'famous';
         whoamiGrid.innerHTML = WHOAMI_CAT_DEFS.map(c => `

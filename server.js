@@ -435,6 +435,187 @@ const CATEGORIES = {
   }
 };
 
+// ─────────────────────────────────────────────
+// BLIND RANKING — PRESET PLAYLISTS & PARSER
+// ─────────────────────────────────────────────
+const PRESET_PLAYLISTS = {
+  tophits: {
+    name: "🎵 Top Hits & Chart Toppers",
+    tracks: [
+      { title: "Blinding Lights", artist: "The Weeknd", artwork: "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5a8636" },
+      { title: "As It Was", artist: "Harry Styles", artwork: "https://i.scdn.co/image/ab67616d0000b273b46f74097655d0703c64a400" },
+      { title: "Shape of You", artist: "Ed Sheeran", artwork: "https://i.scdn.co/image/ab67616d0000b273ba5d9070711339e325093610" },
+      { title: "Cruel Summer", artist: "Taylor Swift", artwork: "https://i.scdn.co/image/ab67616d0000b273e787cffcb670b28045435e16" },
+      { title: "Levitating", artist: "Dua Lipa", artwork: "https://i.scdn.co/image/ab67616d0000b273f6a2d9c0203f90f2305370d0" },
+      { title: "Starboy", artist: "The Weeknd ft. Daft Punk", artwork: "https://i.scdn.co/image/ab67616d0000b2734718e2412e7ef14757781119" },
+      { title: "Flowers", artist: "Miley Cyrus", artwork: "https://i.scdn.co/image/ab67616d0000b273f42004b0f43dcb940e53a3f5" },
+      { title: "Stay", artist: "The Kid LAROI & Justin Bieber", artwork: "https://i.scdn.co/image/ab67616d0000b273fc918b95083c27e1f4e1f7d5" },
+      { title: "Bad Guy", artist: "Billie Eilish", artwork: "https://i.scdn.co/image/ab67616d0000b27350a3147b4edd777335789fdb" },
+      { title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", artwork: "https://i.scdn.co/image/ab67616d0000b273e8fa0e9d1e4344d673998d5f" },
+      { title: "Dance Monkey", artist: "Tones and I", artwork: "https://i.scdn.co/image/ab67616d0000b2731d97ca7376f835055f828120" },
+      { title: "Watermelon Sugar", artist: "Harry Styles", artwork: "https://i.scdn.co/image/ab67616d0000b2737748706225e272b40994f090" },
+      { title: "Rolling in the Deep", artist: "Adele", artwork: "https://i.scdn.co/image/ab67616d0000b2732118bf9b198b05a95ded6300" },
+      { title: "Montero", artist: "Lil Nas X", artwork: "https://i.scdn.co/image/ab67616d0000b273be82673b5f70146033333333" }
+    ]
+  },
+  rock: {
+    name: "🎸 90s & 2000s Rock",
+    tracks: [
+      { title: "Mr. Brightside", artist: "The Killers", artwork: "https://i.scdn.co/image/ab67616d0000b273cbd7498c253457a419eb502b" },
+      { title: "Smells Like Teen Spirit", artist: "Nirvana", artwork: "https://i.scdn.co/image/ab67616d0000b273e178a38287c5eb871143c7b6" },
+      { title: "Wonderwall", artist: "Oasis", artwork: "https://i.scdn.co/image/ab67616d0000b273d6b0521e42c26210f69a531e" },
+      { title: "In The End", artist: "Linkin Park", artwork: "https://i.scdn.co/image/ab67616d0000b273e2f039ad9015a85532dd63f0" },
+      { title: "Seven Nation Army", artist: "The White Stripes", artwork: "https://i.scdn.co/image/ab67616d0000b2732958fb47071cb29837fb89d0" },
+      { title: "Sex on Fire", artist: "Kings of Leon", artwork: "https://i.scdn.co/image/ab67616d0000b27361a4c9b2f3e82aa83ab60d3d" },
+      { title: "Bohemian Rhapsody", artist: "Queen", artwork: "https://i.scdn.co/image/ab67616d0000b273ce4f1737bc8a646c8c4ab25a" },
+      { title: "Sweet Child O' Mine", artist: "Guns N' Roses", artwork: "https://i.scdn.co/image/ab67616d0000b27321e100e470a24eb5ef74a589" },
+      { title: "Welcome to the Black Parade", artist: "My Chemical Romance", artwork: "https://i.scdn.co/image/ab67616d0000b2731557088b394142f36d44ef4a" },
+      { title: "American Idiot", artist: "Green Day", artwork: "https://i.scdn.co/image/ab67616d0000b27317e0766ff31562b700f1350a" },
+      { title: "Sugar, We're Goin Down", artist: "Fall Out Boy", artwork: "https://i.scdn.co/image/ab67616d0000b27319c5cc3a8b417e25e98544ab" },
+      { title: "All Star", artist: "Smash Mouth", artwork: "https://i.scdn.co/image/ab67616d0000b27357ddc0757d54b4f59e99c80d" }
+    ]
+  },
+  gaming: {
+    name: "👾 Video Game Soundtracks",
+    tracks: [
+      { title: "Sweden", artist: "C418 (Minecraft)", artwork: "https://i.scdn.co/image/ab67616d0000b273891df4545d9472e90e796068" },
+      { title: "Megalovania", artist: "Toby Fox (Undertale)", artwork: "https://i.scdn.co/image/ab67616d0000b273e970b89b4f98efae44bfa2e9" },
+      { title: "Super Mario Bros. Theme", artist: "Koji Kondo", artwork: "https://i.scdn.co/image/ab67616d0000b27341db7ab781531640fa889417" },
+      { title: "Gerudo Valley", artist: "Koji Kondo (Zelda OOT)", artwork: "https://i.scdn.co/image/ab67616d0000b273df85e135be3e7fbd1a72d7f8" },
+      { title: "Dragonborn (Skyrim Theme)", artist: "Jeremy Soule", artwork: "https://i.scdn.co/image/ab67616d0000b2738f6d634289ea6ab38479e002" },
+      { title: "Halo Main Theme", artist: "Martin O'Donnell", artwork: "https://i.scdn.co/image/ab67616d0000b273e226462719a86b1cce8e21bd" },
+      { title: "Tetris Theme (Korobeiniki)", artist: "Hirokazu Tanaka", artwork: "https://i.scdn.co/image/ab67616d0000b273618f504d603a118f1a14b3ff" },
+      { title: "BFG Division", artist: "Mick Gordon (DOOM)", artwork: "https://i.scdn.co/image/ab67616d0000b273ae847efbfab83437e6f80993" },
+      { title: "Still Alive", artist: "Jonathan Coulton (Portal)", artwork: "https://i.scdn.co/image/ab67616d0000b273bebc00f2824cfabcf60b0e51" },
+      { title: "Gotta Catch 'Em All", artist: "Jason Paige (Pokémon)", artwork: "https://i.scdn.co/image/ab67616d0000b2735740445d4ce262444ffbdf8e" },
+      { title: "Green Hill Zone", artist: "Masato Nakamura (Sonic)", artwork: "https://i.scdn.co/image/ab67616d0000b273579199d701df9305ff6412b1" }
+    ]
+  },
+  disney: {
+    name: "🏰 Disney Classics",
+    tracks: [
+      { title: "Let It Go", artist: "Idina Menzel (Frozen)", artwork: "https://i.scdn.co/image/ab67616d0000b273ca35c91b5c4689bb53b49915" },
+      { title: "A Whole New World", artist: "Zayn & Zhavia Ward (Aladdin)", artwork: "https://i.scdn.co/image/ab67616d0000b273aa77dcadad9f57ebbf7ee784" },
+      { title: "We Don't Talk About Bruno", artist: "Encanto Cast", artwork: "https://i.scdn.co/image/ab67616d0000b273010b42f65a1b5c879308ed4f" },
+      { title: "Under the Sea", artist: "Samuel E. Wright (Little Mermaid)", artwork: "https://i.scdn.co/image/ab67616d0000b2738a19213bc5409cb3308ec396" },
+      { title: "How Far I'll Go", artist: "Auli'i Cravalho (Moana)", artwork: "https://i.scdn.co/image/ab67616d0000b273d42b93bd20f8cddaeae3cfd5" },
+      { title: "You've Got a Friend in Me", artist: "Randy Newman (Toy Story)", artwork: "https://i.scdn.co/image/ab67616d0000b27339d2ec05b38ed3aeead17bc3" },
+      { title: "I'll Make a Man Out of You", artist: "Donny Osmond (Mulan)", artwork: "https://i.scdn.co/image/ab67616d0000b273617be8ed4db5326bb1d6efee" },
+      { title: "Hakuna Matata", artist: "Nathan Lane (The Lion King)", artwork: "https://i.scdn.co/image/ab67616d0000b27364b6ffdd88e13ca40fcaae73" },
+      { title: "Remember Me", artist: "Gael García Bernal (Coco)", artwork: "https://i.scdn.co/image/ab67616d0000b273c50bf37b8bfcaaa0ee327f30" },
+      { title: "Life is a Highway", artist: "Rascal Flatts (Cars)", artwork: "https://i.scdn.co/image/ab67616d0000b27338efac039ec7ea7ecb6b9077" }
+    ]
+  },
+  tiktok: {
+    name: "📱 TikTok & Viral Hits",
+    tracks: [
+      { title: "Espresso", artist: "Sabrina Carpenter", artwork: "https://i.scdn.co/image/ab67616d0000b273fd8d7a049444ea595447171e" },
+      { title: "360", artist: "Charli XCX", artwork: "https://i.scdn.co/image/ab67616d0000b2738978b87fcf3098197779f743" },
+      { title: "Not Like Us", artist: "Kendrick Lamar", artwork: "https://i.scdn.co/image/ab67616d0000b2731ea0c82800dd782d49931b6f" },
+      { title: "Good Luck, Babe!", artist: "Chappell Roan", artwork: "https://i.scdn.co/image/ab67616d0000b2730303f83c18b6ec4210a4fa14" },
+      { title: "Cupid", artist: "FIFTY FIFTY", artwork: "https://i.scdn.co/image/ab67616d0000b27337e3d00f6071987d6050b1d3" },
+      { title: "Golden Hour", artist: "JVKE", artwork: "https://i.scdn.co/image/ab67616d0000b273955681be15c928236d6a267e" },
+      { title: "Heat Waves", artist: "Glass Animals", artwork: "https://i.scdn.co/image/ab67616d0000b2739e495fb707973fdb14a4b1ca" },
+      { title: "Running Up That Hill", artist: "Kate Bush", artwork: "https://i.scdn.co/image/ab67616d0000b273a7027d14d2a1b9fb54d6eb29" },
+      { title: "Murder on the Dancefloor", artist: "Sophie Ellis-Bextor", artwork: "https://i.scdn.co/image/ab67616d0000b273180eb6d0e6c1341c2aebff7d" },
+      { title: "Sunroof", artist: "Nicky Youre", artwork: "https://i.scdn.co/image/ab67616d0000b2733842603848b8ef4d61994b79" }
+    ]
+  },
+  anime: {
+    name: "🎌 Anime Openings",
+    tracks: [
+      { title: "A Cruel Angel's Thesis", artist: "Yoko Takahashi (Evangelion)", artwork: "https://i.scdn.co/image/ab67616d0000b273426e85e05dd6ae0e7855018f" },
+      { title: "Unravel", artist: "TK from Ling Tosite Sigure (Tokyo Ghoul)", artwork: "https://i.scdn.co/image/ab67616d0000b2731e8bf43eefca9cf318357b98" },
+      { title: "Gurenge", artist: "LiSA (Demon Slayer)", artwork: "https://i.scdn.co/image/ab67616d0000b273b063ee33f00e99e4f54e1d78" },
+      { title: "The Hero!!", artist: "JAM Project (One Punch Man)", artwork: "https://i.scdn.co/image/ab67616d0000b27329596c568d407ff290352ffb" },
+      { title: "Blue Bird", artist: "Ikimonogakari (Naruto)", artwork: "https://i.scdn.co/image/ab67616d0000b2734c5fae4604b3dd3c6aa1edfb" },
+      { title: "Tank!", artist: "SEATBELTS (Cowboy Bebop)", artwork: "https://i.scdn.co/image/ab67616d0000b273fc2d93e8276f7ed9357d605c" },
+      { title: "Guren no Yumiya", artist: "Linked Horizon (Attack on Titan)", artwork: "https://i.scdn.co/image/ab67616d0000b2731eb1b4b1a4a4087964b4c7ca" },
+      { title: "Kick Back", artist: "Kenshi Yonezu (Chainsaw Man)", artwork: "https://i.scdn.co/image/ab67616d0000b273c52a36b528b753a8174541cb" },
+      { title: "Kaikai Kitan", artist: "Eve (Jujutsu Kaisen)", artwork: "https://i.scdn.co/image/ab67616d0000b27339d1b09b53147ef3a31c6d1a" },
+      { title: "Crossing Field", artist: "LiSA (Sword Art Online)", artwork: "https://i.scdn.co/image/ab67616d0000b27318ff24bb6a30c5e7b23577d6" }
+    ]
+  }
+};
+
+async function parsePlaylistUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return [];
+  const cleanUrl = urlStr.trim();
+  
+  // Spotify Playlist
+  const spotifyMatch = cleanUrl.match(/(?:playlist[\/:])([a-zA-Z0-9]+)/);
+  if (spotifyMatch) {
+    const playlistId = spotifyMatch[1];
+    try {
+      const embedRes = await fetch(`https://open.spotify.com/embed/playlist/${playlistId}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      const html = await embedRes.text();
+      const scriptMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
+      if (scriptMatch) {
+        const json = JSON.parse(scriptMatch[1]);
+        const entity = json?.props?.pageProps?.state?.data?.entity;
+        const trackList = entity?.trackList || entity?.tracks?.items || [];
+        if (Array.isArray(trackList) && trackList.length > 0) {
+          return trackList.map(item => {
+            const trackObj = item.track || item;
+            const title = trackObj.title || trackObj.name || 'Unknown Track';
+            const artist = trackObj.subtitle || (trackObj.artists ? trackObj.artists.map(a => a.name).join(', ') : 'Unknown Artist');
+            const artwork = trackObj.coverArt?.sources?.[0]?.url || trackObj.album?.images?.[0]?.url || '';
+            const audioUrl = trackObj.audioPreview?.url || trackObj.preview_url || '';
+            const id = trackObj.uri ? trackObj.uri.split(':')[2] : (trackObj.id || Math.random().toString(36).substr(2, 9));
+            return { title, artist, artwork, audioUrl, id, spotifyId: id };
+          }).filter(t => t.title && t.title !== 'Unknown Track');
+        }
+      }
+    } catch (e) {
+      console.error('Spotify playlist parsing error:', e.message);
+    }
+  }
+
+  // YouTube / YouTube Music Playlist
+  const ytMatch = cleanUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (ytMatch) {
+    const playlistId = ytMatch[1];
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (apiKey) {
+      try {
+        const ytRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
+        const ytData = await ytRes.json();
+        if (ytData.items && Array.isArray(ytData.items)) {
+          return ytData.items.map(item => ({
+            title: item.snippet.title,
+            artist: item.snippet.videoOwnerChannelTitle || item.snippet.channelTitle || 'YouTube Music',
+            artwork: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.high?.url || '',
+            videoId: item.snippet.resourceId?.videoId,
+            embedUrl: `https://www.youtube.com/embed/${item.snippet.resourceId?.videoId}`
+          })).filter(t => t.title && t.title !== 'Deleted video' && t.title !== 'Private video');
+        }
+      } catch (e) {
+        console.error('YouTube API playlist fetch error:', e.message);
+      }
+    }
+  }
+
+  return [];
+}
+
+function parseCustomSongList(text) {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+  return lines.map((line, idx) => {
+    let artist = "Custom Track";
+    let title = line;
+    if (line.includes("-")) {
+      const parts = line.split("-");
+      artist = parts[0].trim();
+      title = parts.slice(1).join("-").trim();
+    }
+    return { title, artist, artwork: "", id: `custom-${idx}` };
+  });
+}
+
+
 
 // ─────────────────────────────────────────────
 // VIDEO CATEGORIES
@@ -864,6 +1045,20 @@ function resolveWavelengthTurn(room) {
   io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
+function advanceBlindRankingTrack(room) {
+  if (!room || !room.blindRankingData) return;
+  const data = room.blindRankingData;
+  data.currentTrackIndex++;
+  data.placedPlayers = [];
+  if (data.currentTrackIndex >= data.totalSongs) {
+    room.gameState = 'blind-ranking-ended';
+    io.to(room.code).emit('blind-ranking-game-ended');
+  } else {
+    io.to(room.code).emit('blind-ranking-next-track', { currentTrackIndex: data.currentTrackIndex });
+  }
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -889,6 +1084,14 @@ function sanitizeRoom(room) {
       dial: room.wvDial != null ? room.wvDial : 50,
       psychicId: room.wvCurrentPsychicId,
       dialLocked: !!room.wvDialLocked
+    } : null,
+    blindRankingPublic: (room.gameState && room.gameState.startsWith('blind-ranking-')) ? {
+      currentTrackIndex: room.blindRankingData ? room.blindRankingData.currentTrackIndex : 0,
+      totalSongs: room.blindRankingData ? room.blindRankingData.totalSongs : 10,
+      currentTrack: (room.blindRankingData && room.blindRankingData.tracks) ? room.blindRankingData.tracks[room.blindRankingData.currentTrackIndex] : null,
+      placedPlayers: room.blindRankingData ? room.blindRankingData.placedPlayers : [],
+      playerRankings: room.blindRankingData ? room.blindRankingData.playerRankings : {},
+      playlistName: room.blindRankingPlaylistName || 'Playlist'
     } : null
   };
 }
@@ -1581,6 +1784,49 @@ io.on('connection', (socket) => {
       room.wvCurrentPsychicId = null;
       room.result = null;
       startWavelengthTurn(room);
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
+    // ── BLIND RANKING MODE ──
+    if (room.settings.gameType === 'blind-ranking') {
+      if (room.players.length < 1) return socket.emit('error', { message: 'Need at least 1 player for Blind Ranking.' });
+      
+      let pool = room.blindRankingPlaylist || [];
+      let playlistName = room.blindRankingPlaylistName || "Preset Playlist";
+
+      // Default to Top Hits if no custom/loaded playlist
+      if (!pool || pool.length < 10) {
+        const presetKey = room.settings.presetKey || 'tophits';
+        const presetObj = PRESET_PLAYLISTS[presetKey] || PRESET_PLAYLISTS.tophits;
+        pool = presetObj.tracks;
+        playlistName = presetObj.name;
+        room.blindRankingPlaylist = pool;
+        room.blindRankingPlaylistName = playlistName;
+      }
+
+      // Pick 10 random tracks from pool (Fisher-Yates)
+      const shuffled = [...pool];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      const chosenTracks = shuffled.slice(0, Math.min(10, shuffled.length));
+
+      room.blindRankingData = {
+        tracks: chosenTracks,
+        totalSongs: chosenTracks.length,
+        currentTrackIndex: 0,
+        playerRankings: {},
+        placedPlayers: []
+      };
+
+      room.players.forEach(p => {
+        room.blindRankingData.playerRankings[p.id] = {};
+      });
+
+      room.gameState = 'blind-ranking-playing';
+      io.to(room.code).emit('blind-ranking-started');
       io.to(room.code).emit('room-update', sanitizeRoom(room));
       return;
     }
@@ -2514,6 +2760,93 @@ io.on('connection', (socket) => {
       s => !(s.playerId === socket.id && s.segmentId === lastSeg)
     );
     io.to(room.code).emit('collab-full-state', { strokes: room.collabStrokes });
+  });
+
+  // ─────────────────────────────────────────────
+  // BLIND RANKING — SOCKET HANDLERS
+  // ─────────────────────────────────────────────
+  socket.on('blind-ranking-fetch-playlist', async ({ source, presetKey, playlistUrl, customText }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    
+    let tracks = [];
+    let name = "Custom Playlist";
+
+    if (source === 'preset') {
+      const pKey = presetKey || 'tophits';
+      const presetObj = PRESET_PLAYLISTS[pKey] || PRESET_PLAYLISTS.tophits;
+      tracks = presetObj.tracks;
+      name = presetObj.name;
+    } else if (source === 'custom') {
+      tracks = parseCustomSongList(customText);
+      name = "Custom Tracks List";
+    } else if (source === 'url') {
+      tracks = await parsePlaylistUrl(playlistUrl);
+      name = "Loaded Playlist";
+    }
+
+    if (!tracks || tracks.length === 0) {
+      return socket.emit('error', { message: 'Could not load tracks from that source. Check URL or text format.' });
+    }
+
+    room.blindRankingPlaylist = tracks;
+    room.blindRankingPlaylistName = name;
+    room.settings.presetKey = presetKey || 'tophits';
+    room.settings.playlistSource = source;
+
+    socket.emit('blind-ranking-playlist-loaded', {
+      count: tracks.length,
+      name,
+      sample: tracks.slice(0, 5)
+    });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('blind-ranking-place-song', ({ slot }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'blind-ranking-playing') return;
+    const data = room.blindRankingData;
+    if (!data) return;
+
+    const slotNum = parseInt(slot, 10);
+    if (isNaN(slotNum) || slotNum < 1 || slotNum > 10) return;
+
+    if (!data.playerRankings[socket.id]) data.playerRankings[socket.id] = {};
+    if (data.playerRankings[socket.id][slotNum]) return socket.emit('error', { message: 'Slot already filled!' });
+
+    const currentTrack = data.tracks[data.currentTrackIndex];
+    data.playerRankings[socket.id][slotNum] = currentTrack;
+
+    if (!data.placedPlayers.includes(socket.id)) {
+      data.placedPlayers.push(socket.id);
+    }
+
+    io.to(room.code).emit('blind-ranking-placed-update', {
+      placedPlayers: data.placedPlayers,
+      totalPlayers: room.players.length
+    });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+
+    // If all players locked in their slot, advance to next song after short pause
+    if (data.placedPlayers.length >= room.players.length) {
+      setTimeout(() => {
+        advanceBlindRankingTrack(room);
+      }, 1000);
+    }
+  });
+
+  socket.on('blind-ranking-next-song', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || room.gameState !== 'blind-ranking-playing') return;
+    advanceBlindRankingTrack(room);
+  });
+
+  socket.on('blind-ranking-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    room.gameState = 'lobby';
+    room.blindRankingData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
   // Disconnect — grace period so brief blips don't destroy rooms

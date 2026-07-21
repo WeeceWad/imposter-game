@@ -99,6 +99,38 @@
     .kick-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px; border-radius: 6px; }
     .kick-btn:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
 
+    /* ─────────────── BLIND RANKING STYLES ─────────────── */
+    .blind-slot {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      background: var(--surface); border: 2px dashed var(--border); border-radius: 12px;
+      cursor: pointer; transition: all 0.2s ease; position: relative; user-select: none;
+    }
+    .blind-slot.empty:hover {
+      border-color: var(--accent2); background: rgba(14,165,233,0.08); transform: translateY(-1px);
+    }
+    .blind-slot.filled {
+      border-style: solid; border-color: var(--border); background: var(--card); cursor: default;
+    }
+    .blind-slot.filled.rank-1 { border-color: #f59e0b; background: linear-gradient(135deg, rgba(245,158,11,0.15), var(--card)); }
+    .blind-slot.filled.rank-2 { border-color: #94a3b8; background: linear-gradient(135deg, rgba(148,163,184,0.15), var(--card)); }
+    .blind-slot.filled.rank-3 { border-color: #b45309; background: linear-gradient(135deg, rgba(180,83,9,0.15), var(--card)); }
+    .blind-slot.filled.rank-10 { border-color: #ef4444; background: linear-gradient(135deg, rgba(239,68,68,0.15), var(--card)); }
+
+    .slot-badge {
+      font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 20px;
+      background: var(--border); color: var(--text); flex-shrink: 0; min-width: 48px; text-align: center;
+    }
+    .slot-badge.rank-1 { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
+    .slot-badge.rank-2 { background: linear-gradient(135deg, #cbd5e1, #94a3b8); color: #000; }
+    .slot-badge.rank-3 { background: linear-gradient(135deg, #d97706, #78350f); color: #fff; }
+    .slot-badge.rank-10 { background: linear-gradient(135deg, #ef4444, #991b1b); color: #fff; }
+
+    .slot-placeholder { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .slot-art { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+    .slot-details { flex: 1; min-width: 0; }
+    .slot-title { font-size: 0.9rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .slot-artist { font-size: 0.78rem; font-weight: 600; color: var(--accent2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
     /* ─────────────── SETTINGS ─────────────── */
     .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .setting-row:last-child { border-bottom: none; }
@@ -361,6 +393,48 @@
       <button class="btn btn-sm" id="gametype-draw-btn" onclick="setGameType('draw')" style="flex:1;min-width:calc(33% - 8px)">🎨 Draw</button>
       <button class="btn btn-sm" id="gametype-collab-btn" onclick="setGameType('collab')" style="flex:1;min-width:calc(33% - 8px)">🖌️ Collab Draw</button>
       <button class="btn btn-sm" id="gametype-wavelength-btn" onclick="setGameType('wavelength')" style="flex:1;min-width:calc(33% - 8px)">🌊 Wavelength</button>
+      <button class="btn btn-sm" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')" style="flex:1;min-width:calc(33% - 8px)">🏆 Blind Ranking</button>
+    </div>
+  </div>
+
+  <!-- BLIND RANKING SETTINGS (blind-ranking only) -->
+  <div id="host-blind-ranking-settings" class="card" style="width:100%; display:none">
+    <div class="card-title">Blind Ranking Settings</div>
+    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:12px">
+      Pick a playlist or paste a Spotify / YouTube Music playlist URL. Songs will be revealed one by one for players to rank 1–10!
+    </div>
+
+    <!-- Presets -->
+    <div style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:var(--muted); margin-bottom:6px">Preset Playlists</div>
+    <div class="category-grid" id="blind-ranking-preset-grid" style="margin-bottom:14px">
+      <div class="cat-chip selected" onclick="selectBlindRankingPreset('tophits')">🎵 Top Hits</div>
+      <div class="cat-chip" onclick="selectBlindRankingPreset('rock')">🎸 90s & 00s Rock</div>
+      <div class="cat-chip" onclick="selectBlindRankingPreset('gaming')">👾 Video Games</div>
+      <div class="cat-chip" onclick="selectBlindRankingPreset('disney')">🏰 Disney Classics</div>
+      <div class="cat-chip" onclick="selectBlindRankingPreset('tiktok')">📱 TikTok Hits</div>
+      <div class="cat-chip" onclick="selectBlindRankingPreset('anime')">🎌 Anime Openings</div>
+    </div>
+
+    <!-- Playlist URL Input -->
+    <div style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:var(--muted); margin-bottom:6px">Spotify / YouTube Playlist URL</div>
+    <div style="display:flex; gap:8px; margin-bottom:10px">
+      <input type="text" id="blind-ranking-url-input" placeholder="https://open.spotify.com/playlist/... or YouTube" style="flex:1; font-size:0.9rem" />
+      <button class="btn btn-sm btn-primary" onclick="loadBlindRankingUrl()" style="white-space:nowrap; padding:0 16px">📥 Load</button>
+    </div>
+
+    <!-- Custom Text Collapsible -->
+    <details style="margin-top:6px">
+      <summary style="font-size:0.82rem; color:var(--accent2); cursor:pointer; font-weight:600">Paste custom song list (Artist - Title)</summary>
+      <textarea id="blind-ranking-custom-text" placeholder="The Weeknd - Blinding Lights&#10;Nirvana - Smells Like Teen Spirit" rows="4" style="width:100%; margin-top:8px; padding:10px; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; font-family:inherit; font-size:0.85rem"></textarea>
+      <button class="btn btn-sm btn-outline" onclick="loadBlindRankingCustomText()" style="margin-top:6px; width:100%">Load Custom Tracks</button>
+    </details>
+
+    <!-- Playlist Status Box -->
+    <div id="blind-ranking-status-banner" style="margin-top:12px; padding:12px 14px; background:rgba(14,165,233,0.12); border:1px solid var(--accent); border-radius:10px; font-size:0.88rem; display:flex; justify-content:space-between; align-items:center">
+      <div>
+        <div style="font-weight:800; color:var(--accent2)" id="blind-ranking-loaded-name">🎵 Top Hits & Chart Toppers</div>
+        <div style="font-size:0.78rem; color:var(--muted)" id="blind-ranking-loaded-count">Ready with 14 songs</div>
+      </div>
     </div>
   </div>
 
@@ -1166,6 +1240,73 @@
   <button class="btn btn-primary" onclick="wvPlayAgain()" style="width:100%">🔄 Play Again</button>
 </div>
 
+<!-- ══════════════════════════════════════════ -->
+<!-- BLIND RANKING — PLAYING                    -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-blind-ranking-playing" class="screen" style="justify-content:flex-start; padding-top:20px; max-width:540px">
+  <!-- Top Status Bar -->
+  <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+    <div>
+      <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted)">Round</span>
+      <div style="font-size:1.3rem; font-weight:900; color:var(--accent2)" id="blind-ranking-round-indicator">Song 1 of 10</div>
+    </div>
+    <div style="text-align:right">
+      <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted)" id="blind-ranking-playlist-title-header">Top Hits</span>
+      <div style="font-size:0.85rem; font-weight:700; color:var(--text)" id="blind-ranking-lock-status">0/0 Placed</div>
+    </div>
+  </div>
+
+  <!-- Current Song Card -->
+  <div class="card" style="width:100%; text-align:center; padding:16px 14px; background:linear-gradient(135deg, rgba(14,165,233,0.15), rgba(99,102,241,0.15)); border:2px solid var(--accent); margin-bottom:14px; border-radius:16px">
+    <div style="position:relative; width:100px; height:100px; margin:0 auto 10px; border-radius:12px; overflow:hidden; background:var(--surface); border:2px solid var(--border)">
+      <img id="blind-ranking-song-art" src="" alt="Cover Art" style="width:100%; height:100%; object-fit:cover; display:none" />
+      <div id="blind-ranking-song-art-fallback" style="font-size:2.8rem; line-height:100px">🎵</div>
+    </div>
+
+    <div id="blind-ranking-song-title" style="font-size:1.25rem; font-weight:900; color:var(--text); margin-bottom:2px">Song Title</div>
+    <div id="blind-ranking-song-artist" style="font-size:0.9rem; font-weight:700; color:var(--accent2)">Artist Name</div>
+
+    <!-- Audio Preview Element -->
+    <div id="blind-ranking-audio-wrap" style="display:none; margin-top:10px">
+      <audio id="blind-ranking-audio-player" controls style="width:100%; height:32px"></audio>
+    </div>
+  </div>
+
+  <!-- Live Player Badges -->
+  <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; justify-content:center" id="blind-ranking-player-badges"></div>
+
+  <!-- 1 to 10 Ranking Tower -->
+  <div style="width:100%; font-weight:800; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between">
+    <span>Your 1–10 Tower</span>
+    <span style="color:var(--accent2); font-size:0.75rem">Tap empty slot to place!</span>
+  </div>
+
+  <div id="blind-ranking-tower" style="width:100%; display:flex; flex-direction:column; gap:8px; margin-bottom:16px"></div>
+
+  <!-- Host Skip Button -->
+  <div id="blind-ranking-host-controls" style="width:100%; display:none">
+    <button class="btn btn-outline btn-sm" onclick="forceNextBlindRankingSong()" style="width:100%">Next Song ⏩</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- BLIND RANKING — ENDED                      -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-blind-ranking-ended" class="screen" style="justify-content:flex-start; padding-top:24px; max-width:680px">
+  <div style="text-align:center; margin-bottom:16px">
+    <div style="font-size:2.8rem; margin-bottom:2px">🏆</div>
+    <div style="font-size:1.8rem; font-weight:900; background:linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent">Final Rankings!</div>
+    <div style="font-size:0.85rem; color:var(--muted)">Compare everyone's 1–10 song towers</div>
+  </div>
+
+  <div id="blind-ranking-final-boards" style="width:100%; display:flex; flex-direction:column; gap:16px; margin-bottom:20px"></div>
+
+  <div id="blind-ranking-restart-wrap" style="width:100%; display:none">
+    <button class="btn btn-primary" onclick="restartBlindRankingGame()">🔄 Play Again (New 10 Songs)</button>
+  </div>
+  <button class="btn btn-outline" onclick="showScreen('lobby')" style="margin-top:8px">🏠 Return to Lobby</button>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -1616,6 +1757,28 @@ function initSocket() {
     showScreen('whoami-reveal');
   });
 
+  // ── BLIND RANKING events ──
+  socket.on('blind-ranking-playlist-loaded', function(data) {
+    showToast(`Loaded ${data.name} (${data.count} songs) 🎵`, 'success');
+    const nameEl = document.getElementById('blind-ranking-loaded-name');
+    const countEl = document.getElementById('blind-ranking-loaded-count');
+    if (nameEl) nameEl.textContent = data.name;
+    if (countEl) countEl.textContent = `Ready with ${data.count} songs`;
+  });
+
+  socket.on('blind-ranking-started', function() {
+    showScreen('blind-ranking-playing');
+  });
+
+  socket.on('blind-ranking-placed-update', function(data) {
+    const lockStatus = document.getElementById('blind-ranking-lock-status');
+    if (lockStatus) lockStatus.textContent = `${data.placedPlayers.length}/${data.totalPlayers} Placed`;
+  });
+
+  socket.on('blind-ranking-game-ended', function() {
+    showScreen('blind-ranking-ended');
+  });
+
   // ── DRAW events ──
   socket.on('draw-role', function(data) {
     const isImposter = data.role === 'imposter';
@@ -1935,6 +2098,21 @@ function applyRoomUpdate(room) {
     showScreen('lobby');
   }
 
+  // ── BLIND RANKING STATES ──
+  if (room.gameState === 'blind-ranking-playing') {
+    if (active !== 'screen-blind-ranking-playing') showScreen('blind-ranking-playing');
+    renderBlindRankingPlayScreen(room);
+  }
+
+  if (room.gameState === 'blind-ranking-ended') {
+    if (active !== 'screen-blind-ranking-ended') showScreen('blind-ranking-ended');
+    renderBlindRankingEndScreen(room);
+  }
+
+  if (room.gameState === 'lobby' && (active === 'screen-blind-ranking-playing' || active === 'screen-blind-ranking-ended')) {
+    showScreen('lobby');
+  }
+
 }
 
 function showWaitingForRole() {
@@ -2055,6 +2233,238 @@ function setGameType(type) {
   socket.emit('update-settings', { settings: { gameType: type } });
 }
 
+// ──────────────────────────────────────────
+// BLIND RANKING CLIENT LOGIC
+// ──────────────────────────────────────────
+let blindRankingSelectedPreset = 'tophits';
+
+function selectBlindRankingPreset(key) {
+  if (!isHost || !currentRoom) return;
+  blindRankingSelectedPreset = key;
+  document.querySelectorAll('#blind-ranking-preset-grid .cat-chip').forEach(c => {
+    c.classList.remove('selected');
+  });
+  const chip = document.querySelector(`#blind-ranking-preset-grid .cat-chip[onclick*="${key}"]`);
+  if (chip) chip.classList.add('selected');
+
+  socket.emit('blind-ranking-fetch-playlist', {
+    source: 'preset',
+    presetKey: key
+  });
+}
+
+function loadBlindRankingUrl() {
+  if (!isHost || !currentRoom) return;
+  const input = document.getElementById('blind-ranking-url-input');
+  const url = input ? input.value.trim() : '';
+  if (!url) return showToast('Paste a Spotify or YouTube playlist URL first!', 'error');
+
+  socket.emit('blind-ranking-fetch-playlist', {
+    source: 'url',
+    playlistUrl: url
+  });
+}
+
+function loadBlindRankingCustomText() {
+  if (!isHost || !currentRoom) return;
+  const textEl = document.getElementById('blind-ranking-custom-text');
+  const text = textEl ? textEl.value.trim() : '';
+  if (!text) return showToast('Enter custom track titles first!', 'error');
+
+  socket.emit('blind-ranking-fetch-playlist', {
+    source: 'custom',
+    customText: text
+  });
+}
+
+function placeBlindRankingSong(slot) {
+  if (!currentRoom || currentRoom.gameState !== 'blind-ranking-playing') return;
+  socket.emit('blind-ranking-place-song', { slot });
+}
+
+function forceNextBlindRankingSong() {
+  if (!isHost || !currentRoom) return;
+  socket.emit('blind-ranking-next-song');
+}
+
+function restartBlindRankingGame() {
+  if (!isHost || !currentRoom) return;
+  socket.emit('blind-ranking-restart');
+}
+
+// Render Play Screen
+function renderBlindRankingPlayScreen(room) {
+  const pub = room.blindRankingPublic;
+  if (!pub) return;
+
+  const currentIdx = pub.currentTrackIndex || 0;
+  const total = pub.totalSongs || 10;
+  const track = pub.currentTrack || { title: "Loading...", artist: "" };
+  const placed = pub.placedPlayers || [];
+  const myRankings = (pub.playerRankings && pub.playerRankings[myId]) || {};
+
+  // Header & Round Indicator
+  const roundInd = document.getElementById('blind-ranking-round-indicator');
+  if (roundInd) roundInd.textContent = `Song ${Math.min(currentIdx + 1, total)} of ${total}`;
+
+  const titleHeader = document.getElementById('blind-ranking-playlist-title-header');
+  if (titleHeader) titleHeader.textContent = pub.playlistName || 'Blind Ranking';
+
+  const lockStatus = document.getElementById('blind-ranking-lock-status');
+  if (lockStatus) lockStatus.textContent = `${placed.length}/${room.players.length} Placed`;
+
+  // Host Skip Controls
+  const hostCtrl = document.getElementById('blind-ranking-host-controls');
+  if (hostCtrl) hostCtrl.style.display = isHost ? 'block' : 'none';
+
+  // Current Song Card
+  const titleEl = document.getElementById('blind-ranking-song-title');
+  if (titleEl) titleEl.textContent = track.title || 'Unknown Song';
+
+  const artistEl = document.getElementById('blind-ranking-song-artist');
+  if (artistEl) artistEl.textContent = track.artist || 'Unknown Artist';
+
+  const artImg = document.getElementById('blind-ranking-song-art');
+  const artFallback = document.getElementById('blind-ranking-song-art-fallback');
+
+  if (track.artwork) {
+    if (artImg) { artImg.src = track.artwork; artImg.style.display = 'block'; }
+    if (artFallback) artFallback.style.display = 'none';
+  } else {
+    if (artImg) artImg.style.display = 'none';
+    if (artFallback) artFallback.style.display = 'block';
+  }
+
+  // Audio Player
+  const audioWrap = document.getElementById('blind-ranking-audio-wrap');
+  const audioPlayer = document.getElementById('blind-ranking-audio-player');
+  if (track.audioUrl) {
+    if (audioWrap) audioWrap.style.display = 'block';
+    if (audioPlayer && audioPlayer.src !== track.audioUrl) {
+      audioPlayer.src = track.audioUrl;
+      audioPlayer.load();
+    }
+  } else {
+    if (audioWrap) audioWrap.style.display = 'none';
+    if (audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; }
+  }
+
+  // Live Player Badges
+  const badgesEl = document.getElementById('blind-ranking-player-badges');
+  if (badgesEl) {
+    badgesEl.innerHTML = room.players.map(p => {
+      const hasPlaced = placed.includes(p.id);
+      return `<div class="player-badge ${hasPlaced ? 'badge-safe' : 'badge-host'}" style="font-size:0.75rem">
+        ${p.name} ${hasPlaced ? '✅' : '⏳'}
+      </div>`;
+    }).join('');
+  }
+
+  // Render 1 to 10 Ranking Tower
+  const towerEl = document.getElementById('blind-ranking-tower');
+  if (towerEl) {
+    let html = '';
+    const myPlacedCurrent = Object.values(myRankings).some(t => t && t.title === track.title);
+
+    for (let r = 1; r <= 10; r++) {
+      const filledTrack = myRankings[r];
+      let rankClass = `rank-${r}`;
+      let badgeLabel = `#${r}`;
+      if (r === 1) badgeLabel = '👑 #1';
+      if (r === 2) badgeLabel = '🥈 #2';
+      if (r === 3) badgeLabel = '🥉 #3';
+      if (r === 10) badgeLabel = '💀 #10';
+
+      if (filledTrack) {
+        // Slot is filled
+        html += `
+          <div class="blind-slot filled ${rankClass}">
+            <span class="slot-badge ${rankClass}">${badgeLabel}</span>
+            ${filledTrack.artwork ? `<img src="${filledTrack.artwork}" class="slot-art" />` : `<div style="font-size:1.4rem; min-width:38px; text-align:center">🎵</div>`}
+            <div class="slot-details">
+              <div class="slot-title">${filledTrack.title}</div>
+              <div class="slot-artist">${filledTrack.artist}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        // Slot is empty
+        html += `
+          <div class="blind-slot empty" onclick="placeBlindRankingSong(${r})">
+            <span class="slot-badge">${badgeLabel}</span>
+            <span class="slot-placeholder">${myPlacedCurrent ? 'Slot Open' : `+ Tap to rank current song #${r}`}</span>
+          </div>
+        `;
+      }
+    }
+    towerEl.innerHTML = html;
+  }
+}
+
+// Render Results Screen
+function renderBlindRankingEndScreen(room) {
+  const pub = room.blindRankingPublic;
+  if (!pub) return;
+
+  const restartWrap = document.getElementById('blind-ranking-restart-wrap');
+  if (restartWrap) restartWrap.style.display = isHost ? 'block' : 'none';
+
+  const boardsEl = document.getElementById('blind-ranking-final-boards');
+  if (!boardsEl) return;
+
+  const playerRankings = pub.playerRankings || {};
+
+  let html = '';
+  room.players.forEach(p => {
+    const ranks = playerRankings[p.id] || {};
+    html += `
+      <div class="card" style="width:100%; padding:14px">
+        <div style="font-size:1.1rem; font-weight:800; color:var(--accent2); margin-bottom:10px; display:flex; align-items:center; gap:8px">
+          <div class="player-avatar" style="width:28px; height:28px; font-size:0.8rem">${p.name[0].toUpperCase()}</div>
+          <span>${p.name}'s Tower</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+    `;
+
+    for (let r = 1; r <= 10; r++) {
+      const song = ranks[r];
+      let rankClass = `rank-${r}`;
+      let badgeLabel = `#${r}`;
+      if (r === 1) badgeLabel = '👑 #1';
+      if (r === 2) badgeLabel = '🥈 #2';
+      if (r === 3) badgeLabel = '🥉 #3';
+      if (r === 10) badgeLabel = '💀 #10';
+
+      if (song) {
+        html += `
+          <div class="blind-slot filled ${rankClass}" style="padding:6px 10px; border-radius:8px">
+            <span class="slot-badge ${rankClass}" style="padding:2px 8px; font-size:0.7rem">${badgeLabel}</span>
+            ${song.artwork ? `<img src="${song.artwork}" class="slot-art" style="width:30px; height:30px" />` : ''}
+            <div class="slot-details">
+              <div class="slot-title" style="font-size:0.85rem">${song.title}</div>
+              <div class="slot-artist" style="font-size:0.72rem">${song.artist}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="blind-slot empty" style="padding:6px 10px; opacity:0.4">
+            <span class="slot-badge">${badgeLabel}</span>
+            <span class="slot-placeholder" style="font-size:0.78rem">Unranked</span>
+          </div>
+        `;
+      }
+    }
+
+    html += `
+        </div>
+      </div>
+    `;
+  });
+
+  boardsEl.innerHTML = html;
+}
+
 function setWhoamiCategory(key) {
   if (!currentRoom || !isHost) return;
   socket.emit('update-settings', { settings: { whoamiCategory: key } });
@@ -2115,22 +2525,47 @@ function renderLobbyData(room) {
     if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall      ? ' btn-primary' : ' btn-outline');
     if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw         ? ' btn-primary' : ' btn-outline');
     if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab       ? ' btn-primary' : ' btn-outline');
+    const brBtn     = document.getElementById('gametype-blind-ranking-btn');
+    if (impBtn)    impBtn.className    = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
+    if (wamBtn)    wamBtn.className    = 'btn btn-sm' + (isWhoami       ? ' btn-primary' : ' btn-outline');
+    if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall      ? ' btn-primary' : ' btn-outline');
+    if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw         ? ' btn-primary' : ' btn-outline');
+    if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab       ? ' btn-primary' : ' btn-outline');
     if (wvBtn)     wvBtn.className     = 'btn btn-sm' + (isWavelength   ? ' btn-primary' : ' btn-outline');
+    if (brBtn)     brBtn.className     = 'btn btn-sm' + (gameType === 'blind-ranking' ? ' btn-primary' : ' btn-outline');
 
-    const isVideo     = room.settings.gameMode === 'video';
-    const wordCats    = document.getElementById('host-categories');
-    const videoCats   = document.getElementById('host-video-categories');
-    const whoamiCats  = document.getElementById('host-whoami-categories');
-    const spyfallInfo = document.getElementById('host-spyfall-info');
-    const blindRow    = document.getElementById('blind-row');
-    const hostSettings = document.getElementById('host-settings');
+    const isVideo        = room.settings.gameMode === 'video';
+    const isBlindRanking = gameType === 'blind-ranking';
+    const wordCats       = document.getElementById('host-categories');
+    const videoCats      = document.getElementById('host-video-categories');
+    const whoamiCats     = document.getElementById('host-whoami-categories');
+    const spyfallInfo    = document.getElementById('host-spyfall-info');
+    const blindRow       = document.getElementById('blind-row');
+    const hostSettings   = document.getElementById('host-settings');
+    const brSettings     = document.getElementById('host-blind-ranking-settings');
 
-    // Always hide wavelength settings card unless wavelength mode
+    // Always hide wavelength & blind ranking settings cards unless active
     const wvSettingsCard = document.getElementById('host-wavelength-settings');
     if (wvSettingsCard && !isWavelength) wvSettingsCard.style.display = 'none';
+    if (brSettings && !isBlindRanking) brSettings.style.display = 'none';
+
+    // ── BLIND RANKING MODE ──
+    if (isBlindRanking) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettings6 = document.getElementById('host-draw-settings');
+      const drawCats6 = document.getElementById('host-draw-categories');
+      if (drawSettings6) drawSettings6.style.display = 'none';
+      if (drawCats6) drawCats6.style.display = 'none';
+      if (brSettings) brSettings.style.display = 'block';
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 1 player';
 
     // ── SPYFALL MODE ──
-    if (isSpyfall) {
+    } else if (isSpyfall) {
       if (hostSettings) hostSettings.style.display = 'none';
       if (wordCats)    wordCats.style.display    = 'none';
       if (videoCats)   videoCats.style.display   = 'none';

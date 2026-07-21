@@ -2768,16 +2768,16 @@ io.on('connection', (socket) => {
     if (!name || !name.trim()) return socket.emit('error', { message: 'Enter your name' });
     let code, attempts = 0;
     do { code = generateCode(); attempts++; } while (whoamiRooms[code] && attempts < 100);
-    whoamiRooms[code] = {
+    const room = {
       code, host: socket.id, gameState: 'lobby',
       settings: { category: 'athletes' },
       players: [{ id: socket.id, name: name.trim(), isHost: true }],
       assignments: {}
     };
+    whoamiRooms[code] = room;
     socket.join(code);
     socket.whoamiCode = code;
     socket.playerName = name.trim();
-    socket.emit('room-created', { code, playerId: socket.id });
     socket.emit('room-created', { code, playerId: socket.id });
     io.to(code).emit('room-update', sanitizeWhoamiRoom(room));
   });

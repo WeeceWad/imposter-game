@@ -2638,7 +2638,7 @@ function renderMusicBingoPlayScreen(room) {
 
   // Active Roll Card & Audio for viewing player
   const playerRollsMap = pub.playerCurrentRolls || {};
-  const activeTrack = playerRollsMap[viewingBingoPlayerId] || (pub.latestRoll ? pub.latestRoll.track : null);
+  const activeTrack = playerRollsMap[viewingBingoPlayerId] || null;
   const viewingPlayerObj = room.players.find(p => p.id === viewingBingoPlayerId);
 
   const spotlightTitle = document.getElementById('music-bingo-spotlight-title');

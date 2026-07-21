@@ -1438,13 +1438,26 @@
     </button>
   </div>
 
-  <!-- Interactive Bingo Grid -->
-  <div style="width:100%; font-weight:800; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between">
-    <span>Your Bingo Card</span>
-    <span style="color:var(--accent2); font-size:0.75rem">Tap cell to mark!</span>
+  <!-- Player Card Switcher Tabs -->
+  <div style="width:100%; overflow-x:auto; margin-bottom:10px; scrollbar-width:none">
+    <div id="music-bingo-player-tabs" style="display:flex; gap:6px; white-space:nowrap"></div>
+  </div>
+
+  <!-- Interactive Bingo Card Header -->
+  <div style="width:100%; font-weight:800; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center">
+    <span id="music-bingo-card-header-label">Your Bingo Card</span>
+    <span style="color:var(--accent2); font-size:0.75rem" id="music-bingo-card-header-hint">Tap cell to mark!</span>
   </div>
 
   <div id="music-bingo-grid-container" class="bingo-grid grid-4" style="margin-bottom:14px"></div>
+
+  <!-- Room Marked Progress Summary List -->
+  <details style="width:100%; margin-bottom:12px">
+    <summary style="font-size:0.82rem; font-weight:700; color:var(--accent2); cursor:pointer; text-align:center">
+      👁️ View All Players' Live Progress...
+    </summary>
+    <div id="music-bingo-room-progress-list" style="margin-top:8px; display:flex; flex-direction:column; gap:6px"></div>
+  </details>
 
   <!-- BINGO Call Action Button -->
   <button class="btn btn-warn" id="music-bingo-claim-btn" onclick="claimMusicBingo()" style="font-size:1.2rem; padding:14px; font-weight:900; letter-spacing:1px; box-shadow:0 6px 20px rgba(245,158,11,0.4)">
@@ -2582,10 +2595,21 @@ function restartMusicBingoGame() {
   socket.emit('music-bingo-restart');
 }
 
+let viewingBingoPlayerId = null;
+
+function setViewingBingoPlayer(playerId) {
+  viewingBingoPlayerId = playerId;
+  if (currentRoom) renderMusicBingoPlayScreen(currentRoom);
+}
+
 // Render Music Bingo Play Screen
 function renderMusicBingoPlayScreen(room) {
   const pub = room.musicBingoPublic;
   if (!pub) return;
+
+  if (!viewingBingoPlayerId || !room.players.some(p => p.id === viewingBingoPlayerId)) {
+    viewingBingoPlayerId = myId;
+  }
 
   const playlistNameEl = document.getElementById('music-bingo-playlist-name-header');
   if (playlistNameEl) playlistNameEl.textContent = pub.playlistName || 'Music Bingo';
@@ -2621,12 +2645,46 @@ function renderMusicBingoPlayScreen(room) {
     if (audioWrap) audioWrap.style.display = 'none';
   }
 
-  // Render My Bingo Card Grid
+  // Render Player Tabs
+  const tabsContainer = document.getElementById('music-bingo-player-tabs');
+  if (tabsContainer) {
+    const playerCardsMap = pub.playerCards || {};
+    tabsContainer.innerHTML = room.players.map(p => {
+      const isMe = p.id === myId;
+      const isSelected = p.id === viewingBingoPlayerId;
+      const pCard = playerCardsMap[p.id];
+      let markedCount = 0;
+      if (pCard && pCard.marked) {
+        pCard.marked.forEach(row => row.forEach(m => { if (m) markedCount++; }));
+      }
+      const label = isMe ? 'Your Card' : p.name;
+      return `
+        <button class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline'}" onclick="setViewingBingoPlayer('${p.id}')" style="padding:6px 12px; font-size:0.8rem; flex-shrink:0">
+          ${isMe ? '👤' : '👁️'} ${label} (${markedCount})
+        </button>
+      `;
+    }).join('');
+  }
+
+  // Header Labels
+  const viewingPlayerObj = room.players.find(p => p.id === viewingBingoPlayerId);
+  const isViewingMe = viewingBingoPlayerId === myId;
+  const headerLabel = document.getElementById('music-bingo-card-header-label');
+  const headerHint = document.getElementById('music-bingo-card-header-hint');
+
+  if (headerLabel) {
+    headerLabel.textContent = isViewingMe ? 'Your Bingo Card' : `Viewing ${viewingPlayerObj ? viewingPlayerObj.name : 'Player'}'s Card`;
+  }
+  if (headerHint) {
+    headerHint.textContent = isViewingMe ? 'Tap cell to mark!' : 'Viewing live (Read-only)';
+  }
+
+  // Render Target Bingo Card Grid
   const container = document.getElementById('music-bingo-grid-container');
   if (!container) return;
 
-  const myCardObj = (pub.playerCards && pub.playerCards[myId]) || null;
-  if (!myCardObj || !myCardObj.grid) return;
+  const targetCardObj = (pub.playerCards && pub.playerCards[viewingBingoPlayerId]) || null;
+  if (!targetCardObj || !targetCardObj.grid) return;
 
   const gridSize = pub.gridSize || 4;
   container.className = `bingo-grid grid-${gridSize}`;
@@ -2636,8 +2694,8 @@ function renderMusicBingoPlayScreen(room) {
   let html = '';
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
-      const cell = myCardObj.grid[r][c];
-      const isMarked = myCardObj.marked[r] && myCardObj.marked[r][c];
+      const cell = targetCardObj.grid[r][c];
+      const isMarked = targetCardObj.marked[r] && targetCardObj.marked[r][c];
       const isRolledMatch = !cell.isFree && rolledTitles.has(cell.title.toLowerCase());
 
       let classes = 'bingo-cell';
@@ -2645,8 +2703,10 @@ function renderMusicBingoPlayScreen(room) {
       if (isMarked) classes += ' marked';
       if (isRolledMatch && !isMarked) classes += ' rolled-match';
 
+      const clickHandler = isViewingMe ? `onclick="markMusicBingoCell(${r}, ${c})"` : `onclick="showToast('Switch to your card to mark cells!', 'error')"`;
+
       html += `
-        <div class="${classes}" onclick="markMusicBingoCell(${r}, ${c})">
+        <div class="${classes}" ${clickHandler}>
           ${cell.artwork ? `<img src="${cell.artwork}" class="bingo-cell-img" />` : ''}
           <div class="bingo-cell-title">${cell.title}</div>
           <div class="bingo-cell-artist">${cell.isFree ? '⭐ FREE ⭐' : cell.artist}</div>
@@ -2655,6 +2715,32 @@ function renderMusicBingoPlayScreen(room) {
     }
   }
   container.innerHTML = html;
+
+  // Room Progress Summary List
+  const progressList = document.getElementById('music-bingo-room-progress-list');
+  if (progressList) {
+    const playerCardsMap = pub.playerCards || {};
+    const totalCells = gridSize * gridSize;
+    progressList.innerHTML = room.players.map(p => {
+      const pCard = playerCardsMap[p.id];
+      let markedCount = 0;
+      if (pCard && pCard.marked) {
+        pCard.marked.forEach(row => row.forEach(m => { if (m) markedCount++; }));
+      }
+      const isMe = p.id === myId;
+      return `
+        <div class="card" onclick="setViewingBingoPlayer('${p.id}')" style="padding:8px 12px; cursor:pointer; background:var(--surface); display:flex; justify-content:space-between; align-items:center; border:1px solid ${p.id === viewingBingoPlayerId ? 'var(--accent)' : 'var(--border)'}">
+          <div style="display:flex; align-items:center; gap:8px">
+            <div class="player-avatar" style="width:24px; height:24px; font-size:0.75rem">${p.name[0].toUpperCase()}</div>
+            <span style="font-weight:700; font-size:0.85rem">${p.name} ${isMe ? '(You)' : ''}</span>
+          </div>
+          <div style="font-size:0.8rem; font-weight:800; color:var(--accent2)">
+            ${markedCount} / ${totalCells} Marked 🎯
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
 // Render Music Bingo Ended Screen
@@ -2681,6 +2767,56 @@ function renderMusicBingoEndScreen(room) {
     } else {
       podium.innerHTML = `<div class="card text-center text-muted">Game ended</div>`;
     }
+  }
+
+  // Render Final Bingo Cards Review for all players
+  const finalCardsEl = document.getElementById('music-bingo-final-cards');
+  if (finalCardsEl) {
+    const playerCardsMap = pub.playerCards || {};
+    const gridSize = pub.gridSize || 4;
+    const rolledList = pub.rolledSongs || [];
+    const rolledTitles = new Set(rolledList.map(r => r.track ? r.track.title.toLowerCase() : ''));
+
+    let html = '';
+    room.players.forEach(p => {
+      const pCard = playerCardsMap[p.id];
+      if (!pCard || !pCard.grid) return;
+
+      html += `
+        <div class="card" style="width:100%; padding:14px">
+          <div style="font-size:1.1rem; font-weight:800; color:var(--accent2); margin-bottom:10px; display:flex; align-items:center; gap:8px">
+            <div class="player-avatar" style="width:28px; height:28px; font-size:0.8rem">${p.name[0].toUpperCase()}</div>
+            <span>${p.name}'s Final Bingo Card</span>
+          </div>
+          <div class="bingo-grid grid-${gridSize}">
+      `;
+
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          const cell = pCard.grid[r][c];
+          const isMarked = pCard.marked[r] && pCard.marked[r][c];
+          const isRolledMatch = !cell.isFree && rolledTitles.has(cell.title.toLowerCase());
+
+          let classes = 'bingo-cell';
+          if (cell.isFree) classes += ' is-free';
+          if (isMarked) classes += ' marked';
+          if (isRolledMatch && !isMarked) classes += ' rolled-match';
+
+          html += `
+            <div class="${classes}" style="pointer-events:none">
+              ${cell.artwork ? `<img src="${cell.artwork}" class="bingo-cell-img" />` : ''}
+              <div class="bingo-cell-title" style="font-size:0.65rem">${cell.title}</div>
+            </div>
+          `;
+        }
+      }
+
+      html += `
+          </div>
+        </div>
+      `;
+    });
+    finalCardsEl.innerHTML = html;
   }
 }
 

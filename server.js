@@ -1130,6 +1130,82 @@ function advanceBlindRankingTrack(room) {
   io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
+function generateBingoCard(tracks, gridSize = 4) {
+  const pool = [...tracks];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  const grid = [];
+  const marked = [];
+  let trackIdx = 0;
+
+  for (let r = 0; r < gridSize; r++) {
+    const row = [];
+    const markedRow = [];
+    for (let c = 0; c < gridSize; c++) {
+      if (gridSize === 5 && r === 2 && c === 2) {
+        row.push({ title: "⭐ FREE ⭐", artist: "Free Tile", artwork: "", audioUrl: "", isFree: true });
+        markedRow.push(true);
+      } else {
+        const track = pool[trackIdx % pool.length] || { title: "Song " + (trackIdx + 1), artist: "Music" };
+        trackIdx++;
+        row.push({ ...track, isFree: false });
+        markedRow.push(false);
+      }
+    }
+    grid.push(row);
+    marked.push(markedRow);
+  }
+
+  return { grid, marked };
+}
+
+function checkBingoWin(grid, marked, rolledSongs, gridSize) {
+  const rolledTitles = new Set(rolledSongs.map(r => r.track ? r.track.title.toLowerCase() : ''));
+
+  function isCellValid(r, c) {
+    if (!marked[r][c]) return false;
+    const cell = grid[r][c];
+    if (cell.isFree) return true;
+    return rolledTitles.has(cell.title.toLowerCase());
+  }
+
+  // Rows
+  for (let r = 0; r < gridSize; r++) {
+    let rowComplete = true;
+    for (let c = 0; c < gridSize; c++) {
+      if (!isCellValid(r, c)) { rowComplete = false; break; }
+    }
+    if (rowComplete) return true;
+  }
+
+  // Columns
+  for (let c = 0; c < gridSize; c++) {
+    let colComplete = true;
+    for (let r = 0; r < gridSize; r++) {
+      if (!isCellValid(r, c)) { colComplete = false; break; }
+    }
+    if (colComplete) return true;
+  }
+
+  // Diagonals
+  let diag1 = true;
+  for (let i = 0; i < gridSize; i++) {
+    if (!isCellValid(i, i)) { diag1 = false; break; }
+  }
+  if (diag1) return true;
+
+  let diag2 = true;
+  for (let i = 0; i < gridSize; i++) {
+    if (!isCellValid(i, gridSize - 1 - i)) { diag2 = false; break; }
+  }
+  if (diag2) return true;
+
+  return false;
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -1163,6 +1239,16 @@ function sanitizeRoom(room) {
       placedPlayers: room.blindRankingData ? room.blindRankingData.placedPlayers : [],
       playerRankings: room.blindRankingData ? room.blindRankingData.playerRankings : {},
       playlistName: room.blindRankingPlaylistName || 'Playlist'
+    } : null,
+    musicBingoPublic: (room.gameState && room.gameState.startsWith('music-bingo-')) ? {
+      gridSize: room.musicBingoData ? room.musicBingoData.gridSize : 4,
+      rolledSongs: room.musicBingoData ? room.musicBingoData.rolledSongs : [],
+      latestRoll: (room.musicBingoData && room.musicBingoData.rolledSongs && room.musicBingoData.rolledSongs.length > 0)
+        ? room.musicBingoData.rolledSongs[room.musicBingoData.rolledSongs.length - 1]
+        : null,
+      winners: room.musicBingoData ? room.musicBingoData.winners : [],
+      playerCards: room.musicBingoData ? room.musicBingoData.playerCards : {},
+      playlistName: room.musicBingoPlaylistName || 'Playlist'
     } : null
   };
 }
@@ -1898,6 +1984,43 @@ io.on('connection', (socket) => {
 
       room.gameState = 'blind-ranking-playing';
       io.to(room.code).emit('blind-ranking-started');
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
+    // ── MUSIC BINGO MODE ──
+    if (room.settings.gameType === 'music-bingo') {
+      if (room.players.length < 1) return socket.emit('error', { message: 'Need at least 1 player for Music Bingo.' });
+
+      let pool = room.musicBingoPlaylist || [];
+      let playlistName = room.musicBingoPlaylistName || "Preset Playlist";
+
+      if (!pool || pool.length < 16) {
+        const presetKey = room.settings.presetKey || 'tophits';
+        const presetObj = PRESET_PLAYLISTS[presetKey] || PRESET_PLAYLISTS.tophits;
+        pool = presetObj.tracks;
+        playlistName = presetObj.name;
+        room.musicBingoPlaylist = pool;
+        room.musicBingoPlaylistName = playlistName;
+      }
+
+      const gridSize = parseInt(room.settings.bingoGridSize || 4, 10);
+      const playerCards = {};
+
+      room.players.forEach(p => {
+        playerCards[p.id] = generateBingoCard(pool, gridSize);
+      });
+
+      room.musicBingoData = {
+        gridSize,
+        allTracks: pool,
+        rolledSongs: [],
+        playerCards,
+        winners: []
+      };
+
+      room.gameState = 'music-bingo-playing';
+      io.to(room.code).emit('music-bingo-started');
       io.to(room.code).emit('room-update', sanitizeRoom(room));
       return;
     }
@@ -2917,6 +3040,128 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     room.gameState = 'lobby';
     room.blindRankingData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // ─────────────────────────────────────────────
+  // MUSIC BINGO — SOCKET HANDLERS
+  // ─────────────────────────────────────────────
+  socket.on('music-bingo-fetch-playlist', async ({ source, presetKey, playlistUrl, customText, gridSize }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    
+    let tracks = [];
+    let name = "Custom Playlist";
+
+    if (source === 'preset') {
+      const pKey = presetKey || 'tophits';
+      const presetObj = PRESET_PLAYLISTS[pKey] || PRESET_PLAYLISTS.tophits;
+      tracks = presetObj.tracks;
+      name = presetObj.name;
+    } else if (source === 'custom') {
+      tracks = parseCustomSongList(customText);
+      name = "Custom Tracks List";
+    } else if (source === 'url') {
+      tracks = await parsePlaylistUrl(playlistUrl);
+      name = "Loaded Playlist";
+    }
+
+    if (!tracks || tracks.length === 0) {
+      return socket.emit('error', { message: 'Could not load tracks from that source. Check URL or text format.' });
+    }
+
+    room.musicBingoPlaylist = tracks;
+    room.musicBingoPlaylistName = name;
+    room.settings.presetKey = presetKey || 'tophits';
+    room.settings.playlistSource = source;
+    if (gridSize) room.settings.bingoGridSize = parseInt(gridSize, 10);
+
+    socket.emit('music-bingo-playlist-loaded', {
+      count: tracks.length,
+      name,
+      sample: tracks.slice(0, 5)
+    });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('music-bingo-roll-song', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'music-bingo-playing') return;
+    const data = room.musicBingoData;
+    if (!data || !data.allTracks || data.allTracks.length === 0) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    const playerName = player ? player.name : 'A player';
+
+    const track = data.allTracks[Math.floor(Math.random() * data.allTracks.length)];
+    const rollEvent = {
+      playerId: socket.id,
+      playerName,
+      track,
+      rolledAt: Date.now()
+    };
+
+    data.rolledSongs.push(rollEvent);
+
+    io.to(room.code).emit('music-bingo-song-rolled', rollEvent);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('music-bingo-mark-cell', ({ row, col }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'music-bingo-playing') return;
+    const data = room.musicBingoData;
+    if (!data || !data.playerCards || !data.playerCards[socket.id]) return;
+
+    const card = data.playerCards[socket.id];
+    const r = parseInt(row, 10);
+    const c = parseInt(col, 10);
+
+    if (isNaN(r) || isNaN(c) || r < 0 || r >= data.gridSize || c < 0 || c >= data.gridSize) return;
+
+    card.marked[r][c] = !card.marked[r][c];
+
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('music-bingo-claim-bingo', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'music-bingo-playing') return;
+    const data = room.musicBingoData;
+    if (!data || !data.playerCards || !data.playerCards[socket.id]) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    const playerName = player ? player.name : 'A player';
+    const card = data.playerCards[socket.id];
+
+    const isValidWin = checkBingoWin(card.grid, card.marked, data.rolledSongs, data.gridSize);
+
+    if (isValidWin) {
+      const alreadyWon = data.winners.some(w => w.playerId === socket.id);
+      if (!alreadyWon) {
+        const winnerObj = { playerId: socket.id, playerName, time: Date.now(), rank: data.winners.length + 1 };
+        data.winners.push(winnerObj);
+
+        io.to(room.code).emit('music-bingo-winner', winnerObj);
+
+        if (data.winners.length >= 1) {
+          setTimeout(() => {
+            room.gameState = 'music-bingo-ended';
+            io.to(room.code).emit('music-bingo-game-ended');
+            io.to(room.code).emit('room-update', sanitizeRoom(room));
+          }, 3000);
+        }
+      }
+    } else {
+      socket.emit('error', { message: 'BINGO validation failed! Check your marked songs against rolled tracks.' });
+    }
+  });
+
+  socket.on('music-bingo-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    room.gameState = 'lobby';
+    room.musicBingoData = null;
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 

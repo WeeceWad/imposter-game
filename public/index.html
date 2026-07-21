@@ -2613,6 +2613,35 @@ function restartMusicBingoGame() {
   socket.emit('music-bingo-restart');
 }
 
+let musicBingoSelectedPromptPack = 'general';
+
+function selectMusicBingoPromptPack(packKey) {
+  if (!isHost || !currentRoom) return;
+  musicBingoSelectedPromptPack = packKey;
+  document.querySelectorAll('#music-bingo-prompt-pack-grid .cat-chip').forEach(c => {
+    c.classList.remove('selected');
+  });
+  const chip = document.querySelector(`#music-bingo-prompt-pack-grid .cat-chip[onclick*="${packKey}"]`);
+  if (chip) chip.classList.add('selected');
+
+  socket.emit('music-bingo-set-prompts', {
+    packKey,
+    customPromptsText: ''
+  });
+}
+
+function saveMusicBingoCustomPrompts() {
+  if (!isHost || !currentRoom) return;
+  const input = document.getElementById('music-bingo-custom-prompts-input');
+  const text = input ? input.value.trim() : '';
+  if (!text) return showToast('Enter custom prompts first!', 'error');
+
+  socket.emit('music-bingo-set-prompts', {
+    packKey: 'custom',
+    customPromptsText: text
+  });
+}
+
 let viewingBingoPlayerId = null;
 
 function setViewingBingoPlayer(playerId) {
@@ -2701,36 +2730,7 @@ function renderMusicBingoPlayScreen(room) {
     headerHint.textContent = isViewingMe ? 'Tap cell to mark!' : 'Viewing live (Read-only)';
   }
 
-  let musicBingoSelectedPromptPack = 'general';
-
-function selectMusicBingoPromptPack(packKey) {
-  if (!isHost || !currentRoom) return;
-  musicBingoSelectedPromptPack = packKey;
-  document.querySelectorAll('#music-bingo-prompt-pack-grid .cat-chip').forEach(c => {
-    c.classList.remove('selected');
-  });
-  const chip = document.querySelector(`#music-bingo-prompt-pack-grid .cat-chip[onclick*="${packKey}"]`);
-  if (chip) chip.classList.add('selected');
-
-  socket.emit('music-bingo-set-prompts', {
-    packKey,
-    customPromptsText: ''
-  });
-}
-
-function saveMusicBingoCustomPrompts() {
-  if (!isHost || !currentRoom) return;
-  const input = document.getElementById('music-bingo-custom-prompts-input');
-  const text = input ? input.value.trim() : '';
-  if (!text) return showToast('Enter custom prompts first!', 'error');
-
-  socket.emit('music-bingo-set-prompts', {
-    packKey: 'custom',
-    customPromptsText: text
-  });
-}
-
-// Render Target Bingo Card Grid
+  // Render Target Bingo Card Grid
   const container = document.getElementById('music-bingo-grid-container');
   if (!container) return;
 

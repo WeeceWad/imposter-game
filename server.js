@@ -2095,17 +2095,28 @@ io.on('connection', (socket) => {
       const sharedGridTemplate = generatePromptBingoGrid(promptList, gridSize);
 
       const playerCards = {};
+      const playerDecks = {};
+
       room.players.forEach(p => {
         const grid = sharedGridTemplate.map(row => row.map(cell => ({ ...cell })));
         const marked = sharedGridTemplate.map(row => row.map(cell => cell.isFree ? true : false));
         const matchedSongs = sharedGridTemplate.map(row => row.map(() => null));
         playerCards[p.id] = { grid, marked, matchedSongs };
+
+        // Unique shuffled deck per player
+        const deck = [...pool];
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        playerDecks[p.id] = deck;
       });
 
       room.musicBingoData = {
         gridSize,
         allTracks: pool,
         sharedGridTemplate,
+        playerDecks,
         rolledSongs: [],
         playerCards,
         winners: []
@@ -3203,7 +3214,17 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     const playerName = player ? player.name : 'A player';
 
-    const track = data.allTracks[Math.floor(Math.random() * data.allTracks.length)];
+    if (!data.playerDecks) data.playerDecks = {};
+    if (!data.playerDecks[socket.id] || data.playerDecks[socket.id].length === 0) {
+      const freshDeck = [...data.allTracks];
+      for (let i = freshDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [freshDeck[i], freshDeck[j]] = [freshDeck[j], freshDeck[i]];
+      }
+      data.playerDecks[socket.id] = freshDeck;
+    }
+
+    const track = data.playerDecks[socket.id].pop();
     const rollEvent = {
       playerId: socket.id,
       playerName,

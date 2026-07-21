@@ -538,6 +538,27 @@ const PRESET_PLAYLISTS = {
   }
 };
 
+async function getSpotifyApiToken() {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  try {
+    const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${authHeader}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    });
+    const data = await res.json();
+    return data.access_token || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function parsePlaylistUrl(urlStr) {
   if (!urlStr || typeof urlStr !== 'string') return [];
   const cleanUrl = urlStr.trim();
@@ -546,6 +567,46 @@ async function parsePlaylistUrl(urlStr) {
   const spotifyMatch = cleanUrl.match(/(?:playlist[\/:])([a-zA-Z0-9]+)/);
   if (spotifyMatch) {
     const playlistId = spotifyMatch[1];
+    
+    // Try Spotify Web API if credentials exist
+    const apiToken = await getSpotifyApiToken();
+    if (apiToken) {
+      try {
+        let offset = 0;
+        const allSpotifyTracks = [];
+        let hasMore = true;
+        while (hasMore && allSpotifyTracks.length < 500) {
+          const apiRes = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100&offset=${offset}`, {
+            headers: { 'Authorization': `Bearer ${apiToken}` }
+          });
+          const apiData = await apiRes.json();
+          if (apiData.items && Array.isArray(apiData.items)) {
+            apiData.items.forEach(item => {
+              const trackObj = item.track;
+              if (trackObj && trackObj.name) {
+                allSpotifyTracks.push({
+                  title: trackObj.name,
+                  artist: trackObj.artists ? trackObj.artists.map(a => a.name).join(', ') : 'Unknown Artist',
+                  artwork: trackObj.album?.images?.[0]?.url || '',
+                  audioUrl: trackObj.preview_url || '',
+                  id: trackObj.id || Math.random().toString(36).substr(2, 9),
+                  spotifyId: trackObj.id
+                });
+              }
+            });
+            hasMore = !!apiData.next && apiData.items.length > 0;
+            offset += 100;
+          } else {
+            hasMore = false;
+          }
+        }
+        if (allSpotifyTracks.length > 0) return allSpotifyTracks;
+      } catch (e) {
+        console.error('Spotify API fetch error:', e.message);
+      }
+    }
+
+    // Embed HTML fallback
     try {
       const embedRes = await fetch(`https://open.spotify.com/embed/playlist/${playlistId}`, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
@@ -573,17 +634,27 @@ async function parsePlaylistUrl(urlStr) {
     }
   }
 
-  // YouTube / YouTube Music Playlist
+  // YouTube / YouTube Music Playlist with Pagination
   const ytMatch = cleanUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/);
   if (ytMatch) {
     const playlistId = ytMatch[1];
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (apiKey) {
       try {
-        const ytRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
-        const ytData = await ytRes.json();
-        if (ytData.items && Array.isArray(ytData.items)) {
-          return ytData.items.map(item => ({
+        let pageToken = '';
+        const allYtItems = [];
+        do {
+          const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}${pageToken ? '&pageToken=' + pageToken : ''}`;
+          const ytRes = await fetch(url);
+          const ytData = await ytRes.json();
+          if (ytData.items && Array.isArray(ytData.items)) {
+            allYtItems.push(...ytData.items);
+          }
+          pageToken = ytData.nextPageToken || '';
+        } while (pageToken && allYtItems.length < 500);
+
+        if (allYtItems.length > 0) {
+          return allYtItems.map(item => ({
             title: item.snippet.title,
             artist: item.snippet.videoOwnerChannelTitle || item.snippet.channelTitle || 'YouTube Music',
             artwork: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.high?.url || '',

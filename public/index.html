@@ -1447,8 +1447,8 @@
       <audio id="music-bingo-audio-player" controls style="width:100%; height:32px"></audio>
     </div>
 
-    <button class="btn btn-primary" id="music-bingo-roll-btn" onclick="rollMusicBingoSong()" style="font-size:1.1rem; padding:12px; border-radius:12px">
-      🎲 ROLL SONG
+    <button class="btn btn-primary" id="music-bingo-roll-btn" onclick="rollMusicBingoSong()" style="font-size:1.05rem; padding:12px; border-radius:12px; width:100%">
+      🎲 Pass / Re-Roll Song
     </button>
   </div>
 
@@ -2636,21 +2636,25 @@ function renderMusicBingoPlayScreen(room) {
   const rolledList = pub.rolledSongs || [];
   if (rollCountEl) rollCountEl.textContent = `${rolledList.length} Songs Rolled`;
 
-  // Latest Roll Card & Audio
-  const latest = pub.latestRoll;
+  // Active Roll Card & Audio for viewing player
+  const playerRollsMap = pub.playerCurrentRolls || {};
+  const activeTrack = playerRollsMap[viewingBingoPlayerId] || (pub.latestRoll ? pub.latestRoll.track : null);
+  const viewingPlayerObj = room.players.find(p => p.id === viewingBingoPlayerId);
+
   const spotlightTitle = document.getElementById('music-bingo-spotlight-title');
   const spotlightArtist = document.getElementById('music-bingo-spotlight-artist');
   const audioWrap = document.getElementById('music-bingo-audio-wrap');
   const audioPlayer = document.getElementById('music-bingo-audio-player');
 
-  if (latest && latest.track) {
-    if (spotlightTitle) spotlightTitle.textContent = `🎲 ${latest.playerName} rolled: "${latest.track.title}"`;
-    if (spotlightArtist) spotlightArtist.textContent = latest.track.artist || '';
+  if (activeTrack) {
+    const isMe = viewingBingoPlayerId === myId;
+    if (spotlightTitle) spotlightTitle.textContent = isMe ? `🎵 Your Active Song: "${activeTrack.title}"` : `🎵 ${viewingPlayerObj ? viewingPlayerObj.name : 'Player'}'s Song: "${activeTrack.title}"`;
+    if (spotlightArtist) spotlightArtist.textContent = isMe ? `${activeTrack.artist || ''} — Tap a prompt tile below to lock!` : (activeTrack.artist || '');
 
-    if (latest.track.audioUrl) {
+    if (activeTrack.audioUrl) {
       if (audioWrap) audioWrap.style.display = 'block';
-      if (audioPlayer && audioPlayer.src !== latest.track.audioUrl) {
-        audioPlayer.src = latest.track.audioUrl;
+      if (audioPlayer && audioPlayer.src !== activeTrack.audioUrl) {
+        audioPlayer.src = activeTrack.audioUrl;
         audioPlayer.load();
       }
     } else {
@@ -2658,8 +2662,8 @@ function renderMusicBingoPlayScreen(room) {
       if (audioPlayer) audioPlayer.pause();
     }
   } else {
-    if (spotlightTitle) spotlightTitle.textContent = 'Tap "Roll Song" below!';
-    if (spotlightArtist) spotlightArtist.textContent = 'Draw a song for the room';
+    if (spotlightTitle) spotlightTitle.textContent = 'Tap "Pass / Re-Roll Song" below!';
+    if (spotlightArtist) spotlightArtist.textContent = 'Draw a song for your board';
     if (audioWrap) audioWrap.style.display = 'none';
   }
 

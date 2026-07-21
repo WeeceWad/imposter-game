@@ -1332,6 +1332,7 @@ function sanitizeRoom(room) {
       latestRoll: (room.musicBingoData && room.musicBingoData.rolledSongs && room.musicBingoData.rolledSongs.length > 0)
         ? room.musicBingoData.rolledSongs[room.musicBingoData.rolledSongs.length - 1]
         : null,
+      playerCurrentRolls: room.musicBingoData ? room.musicBingoData.playerCurrentRoll : {},
       winners: room.musicBingoData ? room.musicBingoData.winners : [],
       playerCards: room.musicBingoData ? room.musicBingoData.playerCards : {},
       playlistName: room.musicBingoPlaylistName || 'Playlist'
@@ -2096,6 +2097,7 @@ io.on('connection', (socket) => {
 
       const playerCards = {};
       const playerDecks = {};
+      const playerCurrentRoll = {};
 
       room.players.forEach(p => {
         const grid = sharedGridTemplate.map(row => row.map(cell => ({ ...cell })));
@@ -2110,6 +2112,7 @@ io.on('connection', (socket) => {
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
         playerDecks[p.id] = deck;
+        playerCurrentRoll[p.id] = deck.pop() || null;
       });
 
       room.musicBingoData = {
@@ -2117,6 +2120,7 @@ io.on('connection', (socket) => {
         allTracks: pool,
         sharedGridTemplate,
         playerDecks,
+        playerCurrentRoll,
         rolledSongs: [],
         playerCards,
         winners: []
@@ -3225,6 +3229,9 @@ io.on('connection', (socket) => {
     }
 
     const track = data.playerDecks[socket.id].pop();
+    if (!data.playerCurrentRoll) data.playerCurrentRoll = {};
+    data.playerCurrentRoll[socket.id] = track;
+
     const rollEvent = {
       playerId: socket.id,
       playerName,
@@ -3238,7 +3245,7 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  socket.on('music-bingo-mark-cell', ({ row, col, song }) => {
+  socket.on('music-bingo-mark-cell', ({ row, col }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'music-bingo-playing') return;
     const data = room.musicBingoData;
@@ -3251,14 +3258,28 @@ io.on('connection', (socket) => {
     if (isNaN(r) || isNaN(c) || r < 0 || r >= data.gridSize || c < 0 || c >= data.gridSize) return;
     if (card.grid[r][c] && card.grid[r][c].isFree) return;
 
-    card.marked[r][c] = !card.marked[r][c];
-
-    if (card.marked[r][c]) {
-      const playerRolls = data.rolledSongs.filter(rs => rs.playerId === socket.id);
-      const latestRoll = playerRolls.length > 0 ? playerRolls[playerRolls.length - 1].track : null;
+    if (!card.marked[r][c]) {
+      // Lock cell with active song
+      const activeRoll = data.playerCurrentRoll ? data.playerCurrentRoll[socket.id] : null;
+      card.marked[r][c] = true;
       if (!card.matchedSongs) card.matchedSongs = card.grid.map(row => row.map(() => null));
-      card.matchedSongs[r][c] = song || latestRoll || null;
+      card.matchedSongs[r][c] = activeRoll;
+
+      // Auto-advance to draw next song for player!
+      if (!data.playerDecks[socket.id] || data.playerDecks[socket.id].length === 0) {
+        const freshDeck = [...data.allTracks];
+        for (let i = freshDeck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [freshDeck[i], freshDeck[j]] = [freshDeck[j], freshDeck[i]];
+        }
+        data.playerDecks[socket.id] = freshDeck;
+      }
+      const nextTrack = data.playerDecks[socket.id].pop();
+      if (!data.playerCurrentRoll) data.playerCurrentRoll = {};
+      data.playerCurrentRoll[socket.id] = nextTrack;
     } else {
+      // Unlock cell
+      card.marked[r][c] = false;
       if (card.matchedSongs && card.matchedSongs[r]) {
         card.matchedSongs[r][c] = null;
       }

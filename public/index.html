@@ -490,6 +490,20 @@
         <div style="font-size:0.78rem; color:var(--muted)" id="music-bingo-loaded-count">Ready with 14 songs</div>
       </div>
     </div>
+
+    <!-- Bingo Board Prompts Section -->
+    <div style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:var(--muted); margin-top:14px; margin-bottom:6px">Shared Bingo Board Prompts</div>
+    <div class="category-grid" id="music-bingo-prompt-pack-grid" style="margin-bottom:10px">
+      <div class="cat-chip selected" onclick="selectMusicBingoPromptPack('general')">🎉 General Trivia</div>
+      <div class="cat-chip" onclick="selectMusicBingoPromptPack('decades')">📻 Decades & Genres</div>
+      <div class="cat-chip" onclick="selectMusicBingoPromptPack('words')">🔤 Title & Words</div>
+    </div>
+
+    <details style="margin-top:6px">
+      <summary style="font-size:0.82rem; color:var(--accent2); cursor:pointer; font-weight:600">✍️ Type Custom Bingo Board Prompts (One per line)</summary>
+      <textarea id="music-bingo-custom-prompts-input" placeholder="Color in the title&#10;Released in the 90s&#10;Guitar Solo&#10;Female Solo Artist" rows="5" style="width:100%; margin-top:8px; padding:10px; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; font-family:inherit; font-size:0.85rem"></textarea>
+      <button class="btn btn-sm btn-outline" onclick="saveMusicBingoCustomPrompts()" style="margin-top:6px; width:100%">Save Custom Prompts</button>
+    </details>
   </div>
 
   <!-- BLIND RANKING SETTINGS (blind-ranking only) -->
@@ -1968,6 +1982,10 @@ function initSocket() {
     if (countEl) countEl.textContent = `Ready with ${data.count} songs`;
   });
 
+  socket.on('music-bingo-prompts-loaded', function(data) {
+    showToast(`Loaded Prompts: ${data.packName} (${data.count} prompts) 📝`, 'success');
+  });
+
   socket.on('music-bingo-started', function() {
     showScreen('music-bingo-playing');
   });
@@ -2679,7 +2697,36 @@ function renderMusicBingoPlayScreen(room) {
     headerHint.textContent = isViewingMe ? 'Tap cell to mark!' : 'Viewing live (Read-only)';
   }
 
-  // Render Target Bingo Card Grid
+  let musicBingoSelectedPromptPack = 'general';
+
+function selectMusicBingoPromptPack(packKey) {
+  if (!isHost || !currentRoom) return;
+  musicBingoSelectedPromptPack = packKey;
+  document.querySelectorAll('#music-bingo-prompt-pack-grid .cat-chip').forEach(c => {
+    c.classList.remove('selected');
+  });
+  const chip = document.querySelector(`#music-bingo-prompt-pack-grid .cat-chip[onclick*="${packKey}"]`);
+  if (chip) chip.classList.add('selected');
+
+  socket.emit('music-bingo-set-prompts', {
+    packKey,
+    customPromptsText: ''
+  });
+}
+
+function saveMusicBingoCustomPrompts() {
+  if (!isHost || !currentRoom) return;
+  const input = document.getElementById('music-bingo-custom-prompts-input');
+  const text = input ? input.value.trim() : '';
+  if (!text) return showToast('Enter custom prompts first!', 'error');
+
+  socket.emit('music-bingo-set-prompts', {
+    packKey: 'custom',
+    customPromptsText: text
+  });
+}
+
+// Render Target Bingo Card Grid
   const container = document.getElementById('music-bingo-grid-container');
   if (!container) return;
 
@@ -2689,27 +2736,28 @@ function renderMusicBingoPlayScreen(room) {
   const gridSize = pub.gridSize || 4;
   container.className = `bingo-grid grid-${gridSize}`;
 
-  const rolledTitles = new Set(rolledList.map(r => r.track ? r.track.title.toLowerCase() : ''));
-
   let html = '';
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       const cell = targetCardObj.grid[r][c];
       const isMarked = targetCardObj.marked[r] && targetCardObj.marked[r][c];
-      const isRolledMatch = !cell.isFree && rolledTitles.has(cell.title.toLowerCase());
+      const matchedSong = targetCardObj.matchedSongs && targetCardObj.matchedSongs[r] && targetCardObj.matchedSongs[r][c];
 
       let classes = 'bingo-cell';
       if (cell.isFree) classes += ' is-free';
       if (isMarked) classes += ' marked';
-      if (isRolledMatch && !isMarked) classes += ' rolled-match';
 
       const clickHandler = isViewingMe ? `onclick="markMusicBingoCell(${r}, ${c})"` : `onclick="showToast('Switch to your card to mark cells!', 'error')"`;
 
+      let songSub = '';
+      if (matchedSong) {
+        songSub = `<div style="font-size:0.62rem; color:#f59e0b; font-weight:800; margin-top:2px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">🎵 ${matchedSong.title}</div>`;
+      }
+
       html += `
         <div class="${classes}" ${clickHandler}>
-          ${cell.artwork ? `<img src="${cell.artwork}" class="bingo-cell-img" />` : ''}
-          <div class="bingo-cell-title">${cell.title}</div>
-          <div class="bingo-cell-artist">${cell.isFree ? '⭐ FREE ⭐' : cell.artist}</div>
+          <div class="bingo-cell-title" style="font-size:0.75rem">${cell.isFree ? '⭐ FREE ⭐' : cell.prompt}</div>
+          ${songSub}
         </div>
       `;
     }
@@ -2774,8 +2822,6 @@ function renderMusicBingoEndScreen(room) {
   if (finalCardsEl) {
     const playerCardsMap = pub.playerCards || {};
     const gridSize = pub.gridSize || 4;
-    const rolledList = pub.rolledSongs || [];
-    const rolledTitles = new Set(rolledList.map(r => r.track ? r.track.title.toLowerCase() : ''));
 
     let html = '';
     room.players.forEach(p => {
@@ -2786,7 +2832,7 @@ function renderMusicBingoEndScreen(room) {
         <div class="card" style="width:100%; padding:14px">
           <div style="font-size:1.1rem; font-weight:800; color:var(--accent2); margin-bottom:10px; display:flex; align-items:center; gap:8px">
             <div class="player-avatar" style="width:28px; height:28px; font-size:0.8rem">${p.name[0].toUpperCase()}</div>
-            <span>${p.name}'s Final Bingo Card</span>
+            <span>${p.name}'s Final Bingo Board</span>
           </div>
           <div class="bingo-grid grid-${gridSize}">
       `;
@@ -2795,17 +2841,21 @@ function renderMusicBingoEndScreen(room) {
         for (let c = 0; c < gridSize; c++) {
           const cell = pCard.grid[r][c];
           const isMarked = pCard.marked[r] && pCard.marked[r][c];
-          const isRolledMatch = !cell.isFree && rolledTitles.has(cell.title.toLowerCase());
+          const matchedSong = pCard.matchedSongs && pCard.matchedSongs[r] && pCard.matchedSongs[r][c];
 
           let classes = 'bingo-cell';
           if (cell.isFree) classes += ' is-free';
           if (isMarked) classes += ' marked';
-          if (isRolledMatch && !isMarked) classes += ' rolled-match';
+
+          let songSub = '';
+          if (matchedSong) {
+            songSub = `<div style="font-size:0.58rem; color:#f59e0b; font-weight:800; margin-top:2px; line-height:1">🎵 ${matchedSong.title}</div>`;
+          }
 
           html += `
             <div class="${classes}" style="pointer-events:none">
-              ${cell.artwork ? `<img src="${cell.artwork}" class="bingo-cell-img" />` : ''}
-              <div class="bingo-cell-title" style="font-size:0.65rem">${cell.title}</div>
+              <div class="bingo-cell-title" style="font-size:0.65rem">${cell.isFree ? '⭐ FREE ⭐' : cell.prompt}</div>
+              ${songSub}
             </div>
           `;
         }

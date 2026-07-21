@@ -1130,53 +1130,139 @@ function advanceBlindRankingTrack(room) {
   io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
-function generateBingoCard(tracks, gridSize = 4) {
-  const pool = [...tracks];
+const BINGO_PROMPT_PACKS = {
+  general: {
+    name: "🎉 General Music Trivia & Vibes",
+    prompts: [
+      "Color in the title",
+      "Released in the 90s or 00s",
+      "Solo Female Artist",
+      "Over 4 minutes long",
+      "Song with a One-Word Title",
+      "Plays a Guitar Solo",
+      "Explicit / Parent Advisory",
+      "Love or Heart in lyrics/title",
+      "Duet or Feature",
+      "Name of a City or Country",
+      "Has a Number in the title",
+      "Fast Dance / Upbeat Tempo",
+      "Movie or TV Soundtrack",
+      "Acoustic / Slow Vibe",
+      "Artist starting with S or M",
+      "Rain, Sun, or Weather mention",
+      "Mentions Night or Midnight",
+      "Title starts with 'The'",
+      "Mentions Money or Rich",
+      "Instrumental Intro",
+      "Iconic Chorus",
+      "Whistle or Finger Snaps",
+      "Mentions a Day of the Week",
+      "Rock or Heavy Drums",
+      "Billboard #1 Hit"
+    ]
+  },
+  decades: {
+    name: "📻 Decades & Genres",
+    prompts: [
+      "80s Synth Pop / Disco",
+      "90s Classic Hit",
+      "2000s Pop/Nostalgia",
+      "Modern 2020s Release",
+      "Hip-Hop / Rap Verse",
+      "Rock / Alternative Guitar",
+      "R&B / Soul Vocals",
+      "Country / Acoustic Vibes",
+      "EDM / Electronic Beat",
+      "Latin or Spanish Lyrics",
+      "Boy Band or Girl Group",
+      "Under 3 minutes long",
+      "Over 4.5 minutes long",
+      "Key Change / Big Drop",
+      "Summer Party Banger",
+      "Sad / Heartbreak Song",
+      "Motivational / Hype Track",
+      "Radio Classic",
+      "Piano Heavy Intro",
+      "Feat. Rapper",
+      "Indie / Underground Hit",
+      "Live Performance Vibe",
+      "Whistle or Choir Backing",
+      "Funk / Bassline Driven",
+      "Award Winning Song"
+    ]
+  },
+  words: {
+    name: "🔤 Title & Word Prompts",
+    prompts: [
+      "Title contains 'You' or 'Me'",
+      "Title contains 'Love' or 'Like'",
+      "Title contains 'Night' or 'Day'",
+      "Title contains 'Girl' or 'Boy'",
+      "Title contains a Color",
+      "Title is 1 Word",
+      "Title is 4+ Words",
+      "Title has a Question Mark",
+      "Title starts with A, B, or C",
+      "Title starts with S, T, or M",
+      "Title has a Number",
+      "Artist is a Group / Band",
+      "Artist is a Single Name (e.g. Drake)",
+      "Artist has 2 Words",
+      "Song mentions a Place/City",
+      "Song mentions Time (Clock/Hour)",
+      "Song mentions Water or Ocean",
+      "Song mentions Fire or Flame",
+      "Song mentions Eyes or Smile",
+      "Song mentions Car or Driving",
+      "Song mentions Dancing",
+      "Song mentions Phone/Call",
+      "Song mentions Heaven/Angel",
+      "Song mentions Gold or Silver",
+      "Song mentions Radio or Music"
+    ]
+  }
+};
+
+function parsePromptList(customText, packKey = 'general') {
+  if (customText && customText.trim().length > 0) {
+    const lines = customText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length >= 10) return lines;
+  }
+  const pack = BINGO_PROMPT_PACKS[packKey] || BINGO_PROMPT_PACKS.general;
+  return pack.prompts;
+}
+
+function generatePromptBingoGrid(prompts, gridSize = 4) {
+  const pool = [...prompts];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
 
   const grid = [];
-  const marked = [];
-  let trackIdx = 0;
-
+  let promptIdx = 0;
   for (let r = 0; r < gridSize; r++) {
     const row = [];
-    const markedRow = [];
     for (let c = 0; c < gridSize; c++) {
       if (gridSize === 5 && r === 2 && c === 2) {
-        row.push({ title: "⭐ FREE ⭐", artist: "Free Tile", artwork: "", audioUrl: "", isFree: true });
-        markedRow.push(true);
+        row.push({ prompt: "⭐ FREE ⭐", isFree: true });
       } else {
-        const track = pool[trackIdx % pool.length] || { title: "Song " + (trackIdx + 1), artist: "Music" };
-        trackIdx++;
-        row.push({ ...track, isFree: false });
-        markedRow.push(false);
+        const text = pool[promptIdx % pool.length] || `Prompt ${promptIdx + 1}`;
+        promptIdx++;
+        row.push({ prompt: text, isFree: false });
       }
     }
     grid.push(row);
-    marked.push(markedRow);
   }
-
-  return { grid, marked };
+  return grid;
 }
 
-function checkBingoWin(grid, marked, rolledSongs, gridSize) {
-  const rolledTitles = new Set(rolledSongs.map(r => r.track ? r.track.title.toLowerCase() : ''));
-
-  function isCellValid(r, c) {
-    if (!marked[r][c]) return false;
-    const cell = grid[r][c];
-    if (cell.isFree) return true;
-    return rolledTitles.has(cell.title.toLowerCase());
-  }
-
+function checkPromptBingoWin(marked, gridSize) {
   // Rows
   for (let r = 0; r < gridSize; r++) {
     let rowComplete = true;
     for (let c = 0; c < gridSize; c++) {
-      if (!isCellValid(r, c)) { rowComplete = false; break; }
+      if (!marked[r][c]) { rowComplete = false; break; }
     }
     if (rowComplete) return true;
   }
@@ -1185,7 +1271,7 @@ function checkBingoWin(grid, marked, rolledSongs, gridSize) {
   for (let c = 0; c < gridSize; c++) {
     let colComplete = true;
     for (let r = 0; r < gridSize; r++) {
-      if (!isCellValid(r, c)) { colComplete = false; break; }
+      if (!marked[r][c]) { colComplete = false; break; }
     }
     if (colComplete) return true;
   }
@@ -1193,13 +1279,13 @@ function checkBingoWin(grid, marked, rolledSongs, gridSize) {
   // Diagonals
   let diag1 = true;
   for (let i = 0; i < gridSize; i++) {
-    if (!isCellValid(i, i)) { diag1 = false; break; }
+    if (!marked[i][i]) { diag1 = false; break; }
   }
   if (diag1) return true;
 
   let diag2 = true;
   for (let i = 0; i < gridSize; i++) {
-    if (!isCellValid(i, gridSize - 1 - i)) { diag2 = false; break; }
+    if (!marked[i][gridSize - 1 - i]) { diag2 = false; break; }
   }
   if (diag2) return true;
 
@@ -2005,15 +2091,21 @@ io.on('connection', (socket) => {
       }
 
       const gridSize = parseInt(room.settings.bingoGridSize || 4, 10);
-      const playerCards = {};
+      const promptList = parsePromptList(room.musicBingoCustomPrompts, room.settings.promptPackKey || 'general');
+      const sharedGridTemplate = generatePromptBingoGrid(promptList, gridSize);
 
+      const playerCards = {};
       room.players.forEach(p => {
-        playerCards[p.id] = generateBingoCard(pool, gridSize);
+        const grid = sharedGridTemplate.map(row => row.map(cell => ({ ...cell })));
+        const marked = sharedGridTemplate.map(row => row.map(cell => cell.isFree ? true : false));
+        const matchedSongs = sharedGridTemplate.map(row => row.map(() => null));
+        playerCards[p.id] = { grid, marked, matchedSongs };
       });
 
       room.musicBingoData = {
         gridSize,
         allTracks: pool,
+        sharedGridTemplate,
         rolledSongs: [],
         playerCards,
         winners: []
@@ -3084,6 +3176,24 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
+  socket.on('music-bingo-set-prompts', ({ packKey, customPromptsText }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+
+    room.settings.promptPackKey = packKey || 'general';
+    room.musicBingoCustomPrompts = customPromptsText || '';
+
+    const promptList = parsePromptList(customPromptsText, packKey);
+    const packObj = BINGO_PROMPT_PACKS[packKey] || BINGO_PROMPT_PACKS.general;
+
+    socket.emit('music-bingo-prompts-loaded', {
+      count: promptList.length,
+      packName: packObj ? packObj.name : 'Custom Prompts',
+      sample: promptList.slice(0, 5)
+    });
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
   socket.on('music-bingo-roll-song', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'music-bingo-playing') return;
@@ -3107,7 +3217,7 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  socket.on('music-bingo-mark-cell', ({ row, col }) => {
+  socket.on('music-bingo-mark-cell', ({ row, col, song }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'music-bingo-playing') return;
     const data = room.musicBingoData;
@@ -3118,8 +3228,20 @@ io.on('connection', (socket) => {
     const c = parseInt(col, 10);
 
     if (isNaN(r) || isNaN(c) || r < 0 || r >= data.gridSize || c < 0 || c >= data.gridSize) return;
+    if (card.grid[r][c] && card.grid[r][c].isFree) return;
 
     card.marked[r][c] = !card.marked[r][c];
+
+    if (card.marked[r][c]) {
+      const playerRolls = data.rolledSongs.filter(rs => rs.playerId === socket.id);
+      const latestRoll = playerRolls.length > 0 ? playerRolls[playerRolls.length - 1].track : null;
+      if (!card.matchedSongs) card.matchedSongs = card.grid.map(row => row.map(() => null));
+      card.matchedSongs[r][c] = song || latestRoll || null;
+    } else {
+      if (card.matchedSongs && card.matchedSongs[r]) {
+        card.matchedSongs[r][c] = null;
+      }
+    }
 
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
@@ -3134,7 +3256,7 @@ io.on('connection', (socket) => {
     const playerName = player ? player.name : 'A player';
     const card = data.playerCards[socket.id];
 
-    const isValidWin = checkBingoWin(card.grid, card.marked, data.rolledSongs, data.gridSize);
+    const isValidWin = checkPromptBingoWin(card.marked, data.gridSize);
 
     if (isValidWin) {
       const alreadyWon = data.winners.some(w => w.playerId === socket.id);
@@ -3153,7 +3275,7 @@ io.on('connection', (socket) => {
         }
       }
     } else {
-      socket.emit('error', { message: 'BINGO validation failed! Check your marked songs against rolled tracks.' });
+      socket.emit('error', { message: 'BINGO validation failed! Complete a full row, column, or diagonal line on your prompt board first.' });
     }
   });
 

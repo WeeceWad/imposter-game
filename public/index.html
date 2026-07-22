@@ -258,7 +258,7 @@
     .draw-canvas-wrap { width:100%; background:#fff; border-radius:14px; overflow:hidden; touch-action:none; cursor:crosshair; user-select:none; }
     .draw-canvas-wrap canvas { display:block; width:100%; height:100%; }
     .draw-tools { display:flex; flex-direction:column; gap:8px; width:100%; padding:10px 0; }
-    .color-swatch { width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; flex-shrink:0; transition:transform .15s, border-color .15s, box-shadow .15s; display:flex; align-items:center; justify-content:center; }
+    .color-swatch { width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer; flex-shrink:0; transition:transform .15s, border-color .15s, box-shadow .15s; display:flex; align-items:center; justify-content:center; }
     .color-swatch:hover { transform:scale(1.15); }
     .color-swatch.active { border-color:white; transform:scale(1.2); box-shadow:0 0 8px rgba(255,255,255,0.6); }
     .brush-btn { width:34px; height:34px; border-radius:8px; background:var(--surface); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:800; color:var(--text); transition:all 0.15s; }
@@ -1006,19 +1006,19 @@
     <canvas id="draw-canvas" style="touch-action:none"></canvas>
   </div>
   <div class="draw-tools">
-    <div style="display:flex; align-items:center; gap:6px; width:100%; overflow-x:auto; padding:4px 0; scrollbar-width:none">
-      <div id="draw-color-swatches" style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap"></div>
+    <div style="display:flex; align-items:center; justify-content:center; gap:6px; width:100%; flex-wrap:wrap; padding:4px 0">
+      <div id="draw-color-swatches" style="display:flex; gap:6px 8px; align-items:center; justify-content:center; flex-wrap:wrap"></div>
       <label class="color-swatch custom-picker-swatch" style="background:conic-gradient(red, yellow, lime, cyan, blue, magenta, red); position:relative; cursor:pointer; flex-shrink:0" title="Custom Color">
         <input type="color" id="draw-custom-color-input" style="opacity:0; width:100%; height:100%; cursor:pointer; position:absolute; inset:0" onchange="setDrawColor(this.value)" />
-        <span style="font-size:0.75rem; text-shadow:0 0 4px #000; color:#fff">🎨</span>
+        <span style="font-size:0.7rem; text-shadow:0 0 3px #000; color:#fff">🎨</span>
       </label>
     </div>
     <div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:6px">
       <div style="display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:3px">
         <button class="brush-btn" id="brush-s" onclick="setBrushSize(4)" title="Small">S</button>
-        <button class="brush-btn" id="brush-m" onclick="setBrushSize(10)" title="Medium">M</button>
-        <button class="brush-btn" id="brush-l" onclick="setBrushSize(20)" title="Large">L</button>
-        <button class="brush-btn" id="brush-xl" onclick="setBrushSize(36)" title="Extra Large">XL</button>
+        <button class="brush-btn" id="brush-m" onclick="setBrushSize(9)" title="Medium">M</button>
+        <button class="brush-btn" id="brush-l" onclick="setBrushSize(16)" title="Large">L</button>
+        <button class="brush-btn" id="brush-xl" onclick="setBrushSize(25)" title="Extra Large">XL</button>
       </div>
       <div style="display:flex; gap:4px; align-items:center">
         <button class="btn btn-sm btn-outline tool-btn active" id="draw-pen-btn" onclick="setDrawTool('pen')" title="Brush">✏️</button>
@@ -1081,19 +1081,19 @@
     <canvas id="collab-canvas" style="touch-action:none"></canvas>
   </div>
   <div class="draw-tools" id="collab-tools" style="display:none">
-    <div style="display:flex; align-items:center; gap:6px; width:100%; overflow-x:auto; padding:4px 0; scrollbar-width:none">
-      <div id="collab-color-swatches" style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap"></div>
+    <div style="display:flex; align-items:center; justify-content:center; gap:6px; width:100%; flex-wrap:wrap; padding:4px 0">
+      <div id="collab-color-swatches" style="display:flex; gap:6px 8px; align-items:center; justify-content:center; flex-wrap:wrap"></div>
       <label class="color-swatch custom-picker-swatch" style="background:conic-gradient(red, yellow, lime, cyan, blue, magenta, red); position:relative; cursor:pointer; flex-shrink:0" title="Custom Color">
         <input type="color" id="collab-custom-color-input" style="opacity:0; width:100%; height:100%; cursor:pointer; position:absolute; inset:0" onchange="setCollabColor(this.value)" />
-        <span style="font-size:0.75rem; text-shadow:0 0 4px #000; color:#fff">🎨</span>
+        <span style="font-size:0.7rem; text-shadow:0 0 3px #000; color:#fff">🎨</span>
       </label>
     </div>
     <div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:6px">
       <div style="display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:3px">
         <button class="brush-btn" id="collab-brush-s" onclick="setCollabBrushSize(4)" title="Small">S</button>
-        <button class="brush-btn" id="collab-brush-m" onclick="setCollabBrushSize(10)" title="Medium">M</button>
-        <button class="brush-btn" id="collab-brush-l" onclick="setCollabBrushSize(20)" title="Large">L</button>
-        <button class="brush-btn" id="collab-brush-xl" onclick="setCollabBrushSize(36)" title="Extra Large">XL</button>
+        <button class="brush-btn" id="collab-brush-m" onclick="setCollabBrushSize(9)" title="Medium">M</button>
+        <button class="brush-btn" id="collab-brush-l" onclick="setCollabBrushSize(16)" title="Large">L</button>
+        <button class="brush-btn" id="collab-brush-xl" onclick="setCollabBrushSize(25)" title="Extra Large">XL</button>
       </div>
       <div style="display:flex; gap:4px; align-items:center">
         <button class="btn btn-sm btn-outline tool-btn active" id="collab-pen-btn" onclick="setCollabTool('pen')" title="Brush">✏️</button>
@@ -3619,7 +3619,7 @@ function setDrawColor(c) {
 }
 function setBrushSize(s) { drawSize = s; updateBrushBtns('draw'); }
 function updateBrushBtns(prefix) {
-  const sizes = { 4: 's', 10: 'm', 20: 'l', 36: 'xl' };
+  const sizes = { 4: 's', 9: 'm', 16: 'l', 25: 'xl' };
   const size = prefix === 'draw' ? drawSize : collabSize;
   Object.entries(sizes).forEach(function(entry) {
     const sz = entry[0]; const id = entry[1];

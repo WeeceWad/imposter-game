@@ -131,51 +131,7 @@
     .slot-title { font-size: 0.9rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .slot-artist { font-size: 0.78rem; font-weight: 600; color: var(--accent2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* ─────────────── MUSIC BINGO STYLES ─────────────── */
-    .bingo-grid {
-      display: grid; gap: 8px; width: 100%; margin: 0 auto;
-    }
-    .bingo-grid.grid-4 { grid-template-columns: repeat(4, 1fr); }
-    .bingo-grid.grid-5 { grid-template-columns: repeat(5, 1fr); }
 
-    .bingo-cell {
-      aspect-ratio: 1; padding: 6px; background: var(--surface);
-      border: 2px solid var(--border); border-radius: 10px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; cursor: pointer; transition: all 0.2s ease; position: relative; user-select: none;
-      overflow: hidden;
-    }
-    .bingo-cell:hover {
-      border-color: var(--accent2); transform: scale(1.03);
-    }
-    .bingo-cell.rolled-match {
-      border-color: #f59e0b; box-shadow: 0 0 12px rgba(245,158,11,0.4);
-    }
-    .bingo-cell.marked {
-      background: linear-gradient(135deg, rgba(147,51,234,0.35), rgba(14,165,233,0.35));
-      border-color: var(--accent); color: #ffffff;
-    }
-    .bingo-cell.marked::after {
-      content: "✓"; position: absolute; top: 4px; right: 6px;
-      font-size: 0.85rem; font-weight: 900; color: #22c55e;
-      background: rgba(0,0,0,0.6); width: 18px; height: 18px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .bingo-cell.is-free {
-      background: linear-gradient(135deg, rgba(245,158,11,0.3), rgba(234,179,8,0.3));
-      border-color: #f59e0b; font-weight: 900;
-    }
-    .bingo-cell-title {
-      font-size: 0.72rem; font-weight: 700; line-height: 1.1; margin-top: 2px;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .bingo-cell-artist {
-      font-size: 0.62rem; color: var(--muted); margin-top: 2px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    .bingo-cell-img {
-      width: 28px; height: 28px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
-    }
 
     /* ─────────────── SETTINGS ─────────────── */
     .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
@@ -440,70 +396,7 @@
       <button class="btn btn-sm" id="gametype-collab-btn" onclick="setGameType('collab')" style="flex:1;min-width:calc(33% - 8px)">🖌️ Collab Draw</button>
       <button class="btn btn-sm" id="gametype-wavelength-btn" onclick="setGameType('wavelength')" style="flex:1;min-width:calc(33% - 8px)">🌊 Wavelength</button>
       <button class="btn btn-sm" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')" style="flex:1;min-width:calc(33% - 8px)">🏆 Blind Ranking</button>
-      <button class="btn btn-sm" id="gametype-music-bingo-btn" onclick="setGameType('music-bingo')" style="flex:1;min-width:calc(33% - 8px)">🎵 Music Bingo</button>
     </div>
-  </div>
-
-  <!-- MUSIC BINGO SETTINGS (music-bingo only) -->
-  <div id="host-music-bingo-settings" class="card" style="width:100%; display:none">
-    <div class="card-title">Music Bingo Settings</div>
-    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:12px">
-      Pick a playlist or paste a Spotify / YouTube Music playlist URL. Players get a Bingo card, roll songs live, and mark matches off!
-    </div>
-
-    <!-- Presets -->
-    <div style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:var(--muted); margin-bottom:6px">Preset Playlists</div>
-    <div class="category-grid" id="music-bingo-preset-grid" style="margin-bottom:14px">
-      <div class="cat-chip selected" onclick="selectMusicBingoPreset('tophits')">🎵 Top Hits</div>
-      <div class="cat-chip" onclick="selectMusicBingoPreset('rock')">🎸 90s & 00s Rock</div>
-      <div class="cat-chip" onclick="selectMusicBingoPreset('gaming')">👾 Video Games</div>
-      <div class="cat-chip" onclick="selectMusicBingoPreset('disney')">🏰 Disney Classics</div>
-      <div class="cat-chip" onclick="selectMusicBingoPreset('tiktok')">📱 TikTok Hits</div>
-      <div class="cat-chip" onclick="selectMusicBingoPreset('anime')">🎌 Anime Openings</div>
-    </div>
-
-    <!-- Grid Size Selector -->
-    <div style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:var(--muted); margin-bottom:6px">Bingo Grid Size</div>
-    <div style="display:flex; gap:8px; margin-bottom:14px">
-      <button class="btn btn-sm btn-primary" id="bingogrid-4-btn" onclick="selectMusicBingoGridSize(4)" style="flex:1">4 x 4 (16 Songs)</button>
-      <button class="btn btn-sm btn-outline" id="bingogrid-5-btn" onclick="selectMusicBingoGridSize(5)" style="flex:1">5 x 5 (24 Songs + FREE)</button>
-    </div>
-
-    <!-- Playlist URL Input -->
-    <div style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:var(--muted); margin-bottom:6px">Spotify / YouTube Playlist URL</div>
-    <div style="display:flex; gap:8px; margin-bottom:10px">
-      <input type="text" id="music-bingo-url-input" placeholder="https://open.spotify.com/playlist/... or YouTube" style="flex:1; font-size:0.9rem" />
-      <button class="btn btn-sm btn-primary" onclick="loadMusicBingoUrl()" style="white-space:nowrap; padding:0 16px">📥 Load</button>
-    </div>
-
-    <!-- Custom Text Collapsible -->
-    <details style="margin-top:6px">
-      <summary style="font-size:0.82rem; color:var(--accent2); cursor:pointer; font-weight:600">Paste custom song list (Artist - Title)</summary>
-      <textarea id="music-bingo-custom-text" placeholder="The Weeknd - Blinding Lights&#10;Nirvana - Smells Like Teen Spirit" rows="4" style="width:100%; margin-top:8px; padding:10px; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; font-family:inherit; font-size:0.85rem"></textarea>
-      <button class="btn btn-sm btn-outline" onclick="loadMusicBingoCustomText()" style="margin-top:6px; width:100%">Load Custom Tracks</button>
-    </details>
-
-    <!-- Playlist Status Box -->
-    <div id="music-bingo-status-banner" style="margin-top:12px; padding:12px 14px; background:rgba(14,165,233,0.12); border:1px solid var(--accent); border-radius:10px; font-size:0.88rem; display:flex; justify-content:space-between; align-items:center">
-      <div>
-        <div style="font-weight:800; color:var(--accent2)" id="music-bingo-loaded-name">🎵 Top Hits & Chart Toppers</div>
-        <div style="font-size:0.78rem; color:var(--muted)" id="music-bingo-loaded-count">Ready with 14 songs</div>
-      </div>
-    </div>
-
-    <!-- Bingo Board Prompts Section -->
-    <div style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:var(--muted); margin-top:14px; margin-bottom:6px">Shared Bingo Board Prompts</div>
-    <div class="category-grid" id="music-bingo-prompt-pack-grid" style="margin-bottom:10px">
-      <div class="cat-chip selected" onclick="selectMusicBingoPromptPack('general')">🎉 General Trivia</div>
-      <div class="cat-chip" onclick="selectMusicBingoPromptPack('decades')">📻 Decades & Genres</div>
-      <div class="cat-chip" onclick="selectMusicBingoPromptPack('words')">🔤 Title & Words</div>
-    </div>
-
-    <details style="margin-top:6px">
-      <summary style="font-size:0.82rem; color:var(--accent2); cursor:pointer; font-weight:600">✍️ Type Custom Bingo Board Prompts (One per line)</summary>
-      <textarea id="music-bingo-custom-prompts-input" placeholder="Color in the title&#10;Released in the 90s&#10;Guitar Solo&#10;Female Solo Artist" rows="5" style="width:100%; margin-top:8px; padding:10px; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; font-family:inherit; font-size:0.85rem"></textarea>
-      <button class="btn btn-sm btn-outline" onclick="saveMusicBingoCustomPrompts()" style="margin-top:6px; width:100%">Save Custom Prompts</button>
-    </details>
   </div>
 
   <!-- BLIND RANKING SETTINGS (blind-ranking only) -->
@@ -1416,90 +1309,7 @@
   <button class="btn btn-outline" onclick="showScreen('lobby')" style="margin-top:8px">🏠 Return to Lobby</button>
 </div>
 
-<!-- ══════════════════════════════════════════ -->
-<!-- MUSIC BINGO — PLAYING                      -->
-<!-- ══════════════════════════════════════════ -->
-<div id="screen-music-bingo-playing" class="screen" style="justify-content:flex-start; padding-top:18px; max-width:560px">
-  <!-- Top Ticker / Header -->
-  <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-    <div>
-      <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted)" id="music-bingo-playlist-name-header">Top Hits</span>
-      <div style="font-size:1.3rem; font-weight:900; color:var(--accent2)">🎵 Music Bingo</div>
-    </div>
-    <div style="text-align:right">
-      <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted)">Total Rolls</span>
-      <div style="font-size:1rem; font-weight:800; color:var(--text)" id="music-bingo-roll-count">0 Songs Rolled</div>
-    </div>
-  </div>
 
-  <!-- Recent Roll Ticker Banner -->
-  <div id="music-bingo-roll-ticker" style="width:100%; padding:8px 12px; background:rgba(245,158,11,0.12); border:1px solid #f59e0b; border-radius:10px; font-size:0.85rem; font-weight:700; color:#f59e0b; text-align:center; margin-bottom:12px">
-    🎲 Roll a song to start filling your Bingo card!
-  </div>
-
-  <!-- Latest Song Spotlight Card & Roll Button -->
-  <div class="card" style="width:100%; text-align:center; padding:14px; background:linear-gradient(135deg, rgba(147,51,234,0.15), rgba(14,165,233,0.15)); border:2px solid var(--accent); margin-bottom:14px; border-radius:16px">
-    <div id="music-bingo-spotlight-title" style="font-size:1.15rem; font-weight:900; color:var(--text); margin-bottom:2px">Tap "Roll Song" below!</div>
-    <div id="music-bingo-spotlight-artist" style="font-size:0.85rem; font-weight:600; color:var(--accent2); margin-bottom:8px">Draw a song for the room</div>
-
-    <!-- Audio Player -->
-    <div id="music-bingo-audio-wrap" style="display:none; margin-bottom:10px">
-      <audio id="music-bingo-audio-player" controls style="width:100%; height:32px"></audio>
-    </div>
-
-    <button class="btn btn-primary" id="music-bingo-roll-btn" onclick="rollMusicBingoSong()" style="font-size:1.05rem; padding:12px; border-radius:12px; width:100%">
-      🎲 Pass / Re-Roll Song
-    </button>
-  </div>
-
-  <!-- Player Card Switcher Tabs -->
-  <div style="width:100%; overflow-x:auto; margin-bottom:10px; scrollbar-width:none">
-    <div id="music-bingo-player-tabs" style="display:flex; gap:6px; white-space:nowrap"></div>
-  </div>
-
-  <!-- Interactive Bingo Card Header -->
-  <div style="width:100%; font-weight:800; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center">
-    <span id="music-bingo-card-header-label">Your Bingo Card</span>
-    <span style="color:var(--accent2); font-size:0.75rem" id="music-bingo-card-header-hint">Tap cell to mark!</span>
-  </div>
-
-  <div id="music-bingo-grid-container" class="bingo-grid grid-4" style="margin-bottom:14px"></div>
-
-  <!-- Room Marked Progress Summary List -->
-  <details style="width:100%; margin-bottom:12px">
-    <summary style="font-size:0.82rem; font-weight:700; color:var(--accent2); cursor:pointer; text-align:center">
-      👁️ View All Players' Live Progress...
-    </summary>
-    <div id="music-bingo-room-progress-list" style="margin-top:8px; display:flex; flex-direction:column; gap:6px"></div>
-  </details>
-
-  <!-- BINGO Call Action Button -->
-  <button class="btn btn-warn" id="music-bingo-claim-btn" onclick="claimMusicBingo()" style="font-size:1.2rem; padding:14px; font-weight:900; letter-spacing:1px; box-shadow:0 6px 20px rgba(245,158,11,0.4)">
-    🚨 CALL BINGO! 🚨
-  </button>
-</div>
-
-<!-- ══════════════════════════════════════════ -->
-<!-- MUSIC BINGO — ENDED                        -->
-<!-- ══════════════════════════════════════════ -->
-<div id="screen-music-bingo-ended" class="screen" style="justify-content:flex-start; padding-top:24px; max-width:680px">
-  <div style="text-align:center; margin-bottom:16px">
-    <div style="font-size:3rem; margin-bottom:2px">🎉</div>
-    <div style="font-size:2rem; font-weight:900; background:linear-gradient(135deg, #f59e0b, #ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent">BINGO Winners!</div>
-    <div style="font-size:0.85rem; color:var(--muted)">Congratulations to the top players!</div>
-  </div>
-
-  <!-- Winners Podium -->
-  <div id="music-bingo-winners-podium" style="width:100%; display:flex; flex-direction:column; gap:10px; margin-bottom:20px"></div>
-
-  <!-- Final Cards Review -->
-  <div id="music-bingo-final-cards" style="width:100%; display:flex; flex-direction:column; gap:16px; margin-bottom:20px"></div>
-
-  <div id="music-bingo-restart-wrap" style="width:100%; display:none">
-    <button class="btn btn-primary" onclick="restartMusicBingoGame()">🔄 Play Again</button>
-  </div>
-  <button class="btn btn-outline" onclick="showScreen('lobby')" style="margin-top:8px">🏠 Return to Lobby</button>
-</div>
 
 <!-- TOAST -->
 <div id="toast"></div>
@@ -1973,38 +1783,7 @@ function initSocket() {
     showScreen('blind-ranking-ended');
   });
 
-  // ── MUSIC BINGO events ──
-  socket.on('music-bingo-playlist-loaded', function(data) {
-    showToast(`Loaded ${data.name} (${data.count} songs) 🎵`, 'success');
-    const nameEl = document.getElementById('music-bingo-loaded-name');
-    const countEl = document.getElementById('music-bingo-loaded-count');
-    if (nameEl) nameEl.textContent = data.name;
-    if (countEl) countEl.textContent = `Ready with ${data.count} songs`;
-  });
 
-  socket.on('music-bingo-prompts-loaded', function(data) {
-    showToast(`Loaded Prompts: ${data.packName} (${data.count} prompts) 📝`, 'success');
-  });
-
-  socket.on('music-bingo-started', function() {
-    showScreen('music-bingo-playing');
-  });
-
-  socket.on('music-bingo-song-rolled', function(data) {
-    showToast(`🎲 ${data.playerName} rolled: "${data.track.title}"`, 'success');
-    const ticker = document.getElementById('music-bingo-roll-ticker');
-    if (ticker) {
-      ticker.textContent = `🎲 ${data.playerName} rolled "${data.track.title}" by ${data.track.artist}`;
-    }
-  });
-
-  socket.on('music-bingo-winner', function(data) {
-    showToast(`🎉 BINGO! ${data.playerName} got a Bingo! (${data.rank}${data.rank === 1 ? 'st' : 'nd'} Place)`, 'success');
-  });
-
-  socket.on('music-bingo-game-ended', function() {
-    showScreen('music-bingo-ended');
-  });
 
   // ── DRAW events ──
   socket.on('draw-role', function(data) {
@@ -2340,20 +2119,7 @@ function applyRoomUpdate(room) {
     showScreen('lobby');
   }
 
-  // ── MUSIC BINGO STATES ──
-  if (room.gameState === 'music-bingo-playing') {
-    if (active !== 'screen-music-bingo-playing') showScreen('music-bingo-playing');
-    renderMusicBingoPlayScreen(room);
-  }
 
-  if (room.gameState === 'music-bingo-ended') {
-    if (active !== 'screen-music-bingo-ended') showScreen('music-bingo-ended');
-    renderMusicBingoEndScreen(room);
-  }
-
-  if (room.gameState === 'lobby' && (active === 'screen-music-bingo-playing' || active === 'screen-music-bingo-ended')) {
-    showScreen('lobby');
-  }
 
 }
 
@@ -2534,345 +2300,9 @@ function restartBlindRankingGame() {
   socket.emit('blind-ranking-restart');
 }
 
-// ──────────────────────────────────────────
-// MUSIC BINGO CLIENT LOGIC
-// ──────────────────────────────────────────
-let musicBingoSelectedPreset = 'tophits';
-let musicBingoSelectedGridSize = 4;
 
-function selectMusicBingoPreset(key) {
-  if (!isHost || !currentRoom) return;
-  musicBingoSelectedPreset = key;
-  document.querySelectorAll('#music-bingo-preset-grid .cat-chip').forEach(c => {
-    c.classList.remove('selected');
-  });
-  const chip = document.querySelector(`#music-bingo-preset-grid .cat-chip[onclick*="${key}"]`);
-  if (chip) chip.classList.add('selected');
 
-  socket.emit('music-bingo-fetch-playlist', {
-    source: 'preset',
-    presetKey: key,
-    gridSize: musicBingoSelectedGridSize
-  });
-}
 
-function selectMusicBingoGridSize(size) {
-  if (!isHost || !currentRoom) return;
-  musicBingoSelectedGridSize = size;
-  const b4 = document.getElementById('bingogrid-4-btn');
-  const b5 = document.getElementById('bingogrid-5-btn');
-  if (b4) b4.className = 'btn btn-sm ' + (size === 4 ? 'btn-primary' : 'btn-outline');
-  if (b5) b5.className = 'btn btn-sm ' + (size === 5 ? 'btn-primary' : 'btn-outline');
-
-  socket.emit('update-settings', { settings: { bingoGridSize: size } });
-}
-
-function loadMusicBingoUrl() {
-  if (!isHost || !currentRoom) return;
-  const input = document.getElementById('music-bingo-url-input');
-  const url = input ? input.value.trim() : '';
-  if (!url) return showToast('Paste a Spotify or YouTube playlist URL first!', 'error');
-
-  socket.emit('music-bingo-fetch-playlist', {
-    source: 'url',
-    playlistUrl: url,
-    gridSize: musicBingoSelectedGridSize
-  });
-}
-
-function loadMusicBingoCustomText() {
-  if (!isHost || !currentRoom) return;
-  const textEl = document.getElementById('music-bingo-custom-text');
-  const text = textEl ? textEl.value.trim() : '';
-  if (!text) return showToast('Enter custom track titles first!', 'error');
-
-  socket.emit('music-bingo-fetch-playlist', {
-    source: 'custom',
-    customText: text,
-    gridSize: musicBingoSelectedGridSize
-  });
-}
-
-function rollMusicBingoSong() {
-  if (!currentRoom || currentRoom.gameState !== 'music-bingo-playing') return;
-  socket.emit('music-bingo-roll-song');
-}
-
-function markMusicBingoCell(r, c) {
-  if (!currentRoom || currentRoom.gameState !== 'music-bingo-playing') return;
-  socket.emit('music-bingo-mark-cell', { row: r, col: c });
-}
-
-function claimMusicBingo() {
-  if (!currentRoom || currentRoom.gameState !== 'music-bingo-playing') return;
-  socket.emit('music-bingo-claim-bingo');
-}
-
-function restartMusicBingoGame() {
-  if (!isHost || !currentRoom) return;
-  socket.emit('music-bingo-restart');
-}
-
-let musicBingoSelectedPromptPack = 'general';
-
-function selectMusicBingoPromptPack(packKey) {
-  if (!isHost || !currentRoom) return;
-  musicBingoSelectedPromptPack = packKey;
-  document.querySelectorAll('#music-bingo-prompt-pack-grid .cat-chip').forEach(c => {
-    c.classList.remove('selected');
-  });
-  const chip = document.querySelector(`#music-bingo-prompt-pack-grid .cat-chip[onclick*="${packKey}"]`);
-  if (chip) chip.classList.add('selected');
-
-  socket.emit('music-bingo-set-prompts', {
-    packKey,
-    customPromptsText: ''
-  });
-}
-
-function saveMusicBingoCustomPrompts() {
-  if (!isHost || !currentRoom) return;
-  const input = document.getElementById('music-bingo-custom-prompts-input');
-  const text = input ? input.value.trim() : '';
-  if (!text) return showToast('Enter custom prompts first!', 'error');
-
-  socket.emit('music-bingo-set-prompts', {
-    packKey: 'custom',
-    customPromptsText: text
-  });
-}
-
-let viewingBingoPlayerId = null;
-
-function setViewingBingoPlayer(playerId) {
-  viewingBingoPlayerId = playerId;
-  if (currentRoom) renderMusicBingoPlayScreen(currentRoom);
-}
-
-// Render Music Bingo Play Screen
-function renderMusicBingoPlayScreen(room) {
-  const pub = room.musicBingoPublic;
-  if (!pub) return;
-
-  if (!viewingBingoPlayerId || !room.players.some(p => p.id === viewingBingoPlayerId)) {
-    viewingBingoPlayerId = myId;
-  }
-
-  const playlistNameEl = document.getElementById('music-bingo-playlist-name-header');
-  if (playlistNameEl) playlistNameEl.textContent = pub.playlistName || 'Music Bingo';
-
-  const rollCountEl = document.getElementById('music-bingo-roll-count');
-  const rolledList = pub.rolledSongs || [];
-  if (rollCountEl) rollCountEl.textContent = `${rolledList.length} Songs Rolled`;
-
-  // Active Roll Card & Audio for viewing player
-  const playerRollsMap = pub.playerCurrentRolls || {};
-  const activeTrack = playerRollsMap[viewingBingoPlayerId] || null;
-  const viewingPlayerObj = room.players.find(p => p.id === viewingBingoPlayerId);
-
-  const spotlightTitle = document.getElementById('music-bingo-spotlight-title');
-  const spotlightArtist = document.getElementById('music-bingo-spotlight-artist');
-  const audioWrap = document.getElementById('music-bingo-audio-wrap');
-  const audioPlayer = document.getElementById('music-bingo-audio-player');
-
-  if (activeTrack) {
-    const isMe = viewingBingoPlayerId === myId;
-    if (spotlightTitle) spotlightTitle.textContent = isMe ? `🎵 Your Active Song: "${activeTrack.title}"` : `🎵 ${viewingPlayerObj ? viewingPlayerObj.name : 'Player'}'s Song: "${activeTrack.title}"`;
-    if (spotlightArtist) spotlightArtist.textContent = isMe ? `${activeTrack.artist || ''} — Tap a prompt tile below to lock!` : (activeTrack.artist || '');
-
-    if (activeTrack.audioUrl) {
-      if (audioWrap) audioWrap.style.display = 'block';
-      if (audioPlayer && audioPlayer.src !== activeTrack.audioUrl) {
-        audioPlayer.src = activeTrack.audioUrl;
-        audioPlayer.load();
-      }
-    } else {
-      if (audioWrap) audioWrap.style.display = 'none';
-      if (audioPlayer) audioPlayer.pause();
-    }
-  } else {
-    if (spotlightTitle) spotlightTitle.textContent = 'Tap "Pass / Re-Roll Song" below!';
-    if (spotlightArtist) spotlightArtist.textContent = 'Draw a song for your board';
-    if (audioWrap) audioWrap.style.display = 'none';
-  }
-
-  // Render Player Tabs
-  const tabsContainer = document.getElementById('music-bingo-player-tabs');
-  if (tabsContainer) {
-    const playerCardsMap = pub.playerCards || {};
-    tabsContainer.innerHTML = room.players.map(p => {
-      const isMe = p.id === myId;
-      const isSelected = p.id === viewingBingoPlayerId;
-      const pCard = playerCardsMap[p.id];
-      let markedCount = 0;
-      if (pCard && pCard.marked) {
-        pCard.marked.forEach(row => row.forEach(m => { if (m) markedCount++; }));
-      }
-      const label = isMe ? 'Your Card' : p.name;
-      return `
-        <button class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline'}" onclick="setViewingBingoPlayer('${p.id}')" style="padding:6px 12px; font-size:0.8rem; flex-shrink:0">
-          ${isMe ? '👤' : '👁️'} ${label} (${markedCount})
-        </button>
-      `;
-    }).join('');
-  }
-
-  // Header Labels
-  const viewingPlayerObj = room.players.find(p => p.id === viewingBingoPlayerId);
-  const isViewingMe = viewingBingoPlayerId === myId;
-  const headerLabel = document.getElementById('music-bingo-card-header-label');
-  const headerHint = document.getElementById('music-bingo-card-header-hint');
-
-  if (headerLabel) {
-    headerLabel.textContent = isViewingMe ? 'Your Bingo Card' : `Viewing ${viewingPlayerObj ? viewingPlayerObj.name : 'Player'}'s Card`;
-  }
-  if (headerHint) {
-    headerHint.textContent = isViewingMe ? 'Tap cell to mark!' : 'Viewing live (Read-only)';
-  }
-
-  // Render Target Bingo Card Grid
-  const container = document.getElementById('music-bingo-grid-container');
-  if (!container) return;
-
-  const targetCardObj = (pub.playerCards && pub.playerCards[viewingBingoPlayerId]) || null;
-  if (!targetCardObj || !targetCardObj.grid) return;
-
-  const gridSize = pub.gridSize || 4;
-  container.className = `bingo-grid grid-${gridSize}`;
-
-  let html = '';
-  for (let r = 0; r < gridSize; r++) {
-    for (let c = 0; c < gridSize; c++) {
-      const cell = targetCardObj.grid[r][c];
-      const isMarked = targetCardObj.marked[r] && targetCardObj.marked[r][c];
-      const matchedSong = targetCardObj.matchedSongs && targetCardObj.matchedSongs[r] && targetCardObj.matchedSongs[r][c];
-
-      let classes = 'bingo-cell';
-      if (cell.isFree) classes += ' is-free';
-      if (isMarked) classes += ' marked';
-
-      const clickHandler = isViewingMe ? `onclick="markMusicBingoCell(${r}, ${c})"` : `onclick="showToast('Switch to your card to mark cells!', 'error')"`;
-
-      let songSub = '';
-      if (matchedSong) {
-        songSub = `<div style="font-size:0.62rem; color:#f59e0b; font-weight:800; margin-top:2px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">🎵 ${matchedSong.title}</div>`;
-      }
-
-      html += `
-        <div class="${classes}" ${clickHandler}>
-          <div class="bingo-cell-title" style="font-size:0.75rem">${cell.isFree ? '⭐ FREE ⭐' : cell.prompt}</div>
-          ${songSub}
-        </div>
-      `;
-    }
-  }
-  container.innerHTML = html;
-
-  // Room Progress Summary List
-  const progressList = document.getElementById('music-bingo-room-progress-list');
-  if (progressList) {
-    const playerCardsMap = pub.playerCards || {};
-    const totalCells = gridSize * gridSize;
-    progressList.innerHTML = room.players.map(p => {
-      const pCard = playerCardsMap[p.id];
-      let markedCount = 0;
-      if (pCard && pCard.marked) {
-        pCard.marked.forEach(row => row.forEach(m => { if (m) markedCount++; }));
-      }
-      const isMe = p.id === myId;
-      return `
-        <div class="card" onclick="setViewingBingoPlayer('${p.id}')" style="padding:8px 12px; cursor:pointer; background:var(--surface); display:flex; justify-content:space-between; align-items:center; border:1px solid ${p.id === viewingBingoPlayerId ? 'var(--accent)' : 'var(--border)'}">
-          <div style="display:flex; align-items:center; gap:8px">
-            <div class="player-avatar" style="width:24px; height:24px; font-size:0.75rem">${p.name[0].toUpperCase()}</div>
-            <span style="font-weight:700; font-size:0.85rem">${p.name} ${isMe ? '(You)' : ''}</span>
-          </div>
-          <div style="font-size:0.8rem; font-weight:800; color:var(--accent2)">
-            ${markedCount} / ${totalCells} Marked 🎯
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-}
-
-// Render Music Bingo Ended Screen
-function renderMusicBingoEndScreen(room) {
-  const pub = room.musicBingoPublic;
-  if (!pub) return;
-
-  const restartWrap = document.getElementById('music-bingo-restart-wrap');
-  if (restartWrap) restartWrap.style.display = isHost ? 'block' : 'none';
-
-  const podium = document.getElementById('music-bingo-winners-podium');
-  const winners = pub.winners || [];
-  if (podium) {
-    if (winners.length > 0) {
-      podium.innerHTML = winners.map(w => `
-        <div class="card" style="padding:12px 16px; background:linear-gradient(135deg, rgba(245,158,11,0.2), rgba(234,179,8,0.2)); border:2px solid #f59e0b; display:flex; align-items:center; gap:12px">
-          <div style="font-size:1.6rem">${w.rank === 1 ? '👑' : w.rank === 2 ? '🥈' : '🥉'}</div>
-          <div>
-            <div style="font-size:1.1rem; font-weight:900; color:var(--text)">${w.playerName}</div>
-            <div style="font-size:0.78rem; color:#f59e0b; font-weight:700">${w.rank}${w.rank === 1 ? 'st' : 'nd'} Place BINGO Winner!</div>
-          </div>
-        </div>
-      `).join('');
-    } else {
-      podium.innerHTML = `<div class="card text-center text-muted">Game ended</div>`;
-    }
-  }
-
-  // Render Final Bingo Cards Review for all players
-  const finalCardsEl = document.getElementById('music-bingo-final-cards');
-  if (finalCardsEl) {
-    const playerCardsMap = pub.playerCards || {};
-    const gridSize = pub.gridSize || 4;
-
-    let html = '';
-    room.players.forEach(p => {
-      const pCard = playerCardsMap[p.id];
-      if (!pCard || !pCard.grid) return;
-
-      html += `
-        <div class="card" style="width:100%; padding:14px">
-          <div style="font-size:1.1rem; font-weight:800; color:var(--accent2); margin-bottom:10px; display:flex; align-items:center; gap:8px">
-            <div class="player-avatar" style="width:28px; height:28px; font-size:0.8rem">${p.name[0].toUpperCase()}</div>
-            <span>${p.name}'s Final Bingo Board</span>
-          </div>
-          <div class="bingo-grid grid-${gridSize}">
-      `;
-
-      for (let r = 0; r < gridSize; r++) {
-        for (let c = 0; c < gridSize; c++) {
-          const cell = pCard.grid[r][c];
-          const isMarked = pCard.marked[r] && pCard.marked[r][c];
-          const matchedSong = pCard.matchedSongs && pCard.matchedSongs[r] && pCard.matchedSongs[r][c];
-
-          let classes = 'bingo-cell';
-          if (cell.isFree) classes += ' is-free';
-          if (isMarked) classes += ' marked';
-
-          let songSub = '';
-          if (matchedSong) {
-            songSub = `<div style="font-size:0.58rem; color:#f59e0b; font-weight:800; margin-top:2px; line-height:1">🎵 ${matchedSong.title}</div>`;
-          }
-
-          html += `
-            <div class="${classes}" style="pointer-events:none">
-              <div class="bingo-cell-title" style="font-size:0.65rem">${cell.isFree ? '⭐ FREE ⭐' : cell.prompt}</div>
-              ${songSub}
-            </div>
-          `;
-        }
-      }
-
-      html += `
-          </div>
-        </div>
-      `;
-    });
-    finalCardsEl.innerHTML = html;
-  }
-}
 
 // Render Play Screen
 function renderBlindRankingPlayScreen(room) {
@@ -3108,7 +2538,6 @@ function renderLobbyData(room) {
     if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw         ? ' btn-primary' : ' btn-outline');
     if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab       ? ' btn-primary' : ' btn-outline');
     const brBtn     = document.getElementById('gametype-blind-ranking-btn');
-    const mbBtn     = document.getElementById('gametype-music-bingo-btn');
     if (impBtn)    impBtn.className    = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
     if (wamBtn)    wamBtn.className    = 'btn btn-sm' + (isWhoami       ? ' btn-primary' : ' btn-outline');
     if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall      ? ' btn-primary' : ' btn-outline');
@@ -3116,11 +2545,9 @@ function renderLobbyData(room) {
     if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab       ? ' btn-primary' : ' btn-outline');
     if (wvBtn)     wvBtn.className     = 'btn btn-sm' + (isWavelength   ? ' btn-primary' : ' btn-outline');
     if (brBtn)     brBtn.className     = 'btn btn-sm' + (gameType === 'blind-ranking' ? ' btn-primary' : ' btn-outline');
-    if (mbBtn)     mbBtn.className     = 'btn btn-sm' + (gameType === 'music-bingo'   ? ' btn-primary' : ' btn-outline');
 
     const isVideo        = room.settings.gameMode === 'video';
     const isBlindRanking = gameType === 'blind-ranking';
-    const isMusicBingo   = gameType === 'music-bingo';
     const wordCats       = document.getElementById('host-categories');
     const videoCats      = document.getElementById('host-video-categories');
     const whoamiCats     = document.getElementById('host-whoami-categories');
@@ -3128,31 +2555,14 @@ function renderLobbyData(room) {
     const blindRow       = document.getElementById('blind-row');
     const hostSettings   = document.getElementById('host-settings');
     const brSettings     = document.getElementById('host-blind-ranking-settings');
-    const mbSettings     = document.getElementById('host-music-bingo-settings');
 
-    // Always hide wavelength, blind ranking & music bingo settings cards unless active
+    // Always hide wavelength & blind ranking settings cards unless active
     const wvSettingsCard = document.getElementById('host-wavelength-settings');
     if (wvSettingsCard && !isWavelength) wvSettingsCard.style.display = 'none';
     if (brSettings && !isBlindRanking) brSettings.style.display = 'none';
-    if (mbSettings && !isMusicBingo) mbSettings.style.display = 'none';
-
-    // ── MUSIC BINGO MODE ──
-    if (isMusicBingo) {
-      if (hostSettings) hostSettings.style.display = 'none';
-      if (wordCats)    wordCats.style.display    = 'none';
-      if (videoCats)   videoCats.style.display   = 'none';
-      if (whoamiCats)  whoamiCats.style.display  = 'none';
-      if (spyfallInfo) spyfallInfo.style.display = 'none';
-      const drawSettings7 = document.getElementById('host-draw-settings');
-      const drawCats7 = document.getElementById('host-draw-categories');
-      if (drawSettings7) drawSettings7.style.display = 'none';
-      if (drawCats7) drawCats7.style.display = 'none';
-      if (mbSettings) mbSettings.style.display = 'block';
-      const hint = document.getElementById('start-hint');
-      if (hint) hint.textContent = 'Need at least 1 player';
 
     // ── BLIND RANKING MODE ──
-    } else if (isBlindRanking) {
+    if (isBlindRanking) {
       if (hostSettings) hostSettings.style.display = 'none';
       if (wordCats)    wordCats.style.display    = 'none';
       if (videoCats)   videoCats.style.display   = 'none';

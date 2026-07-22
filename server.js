@@ -1793,6 +1793,7 @@ io.on('connection', (socket) => {
       room.collabTurnOrder = turnOrder;
       room.collabCurrentTurnIdx = 0;
       room.collabStrokes = [];
+      room.collabReadyPlayers = new Set();
       room.gameState = 'collab-drawing';
       room.votes = {};
       room.eliminatedPlayers = [];
@@ -2833,6 +2834,47 @@ io.on('connection', (socket) => {
       s => !(s.playerId === socket.id && s.segmentId === lastSeg)
     );
     io.to(room.code).emit('collab-full-state', { strokes: room.collabStrokes });
+  });
+
+  socket.on('collab-ready', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || (room.gameState !== 'collab-drawing' && room.gameState !== 'collab-role')) return;
+    if (!room.collabReadyPlayers) room.collabReadyPlayers = new Set();
+    room.collabReadyPlayers.add(socket.id);
+
+    const totalCount = room.players.length;
+    const readyCount = room.collabReadyPlayers.size;
+
+    io.to(room.code).emit('collab-ready-update', { readyCount, totalCount });
+
+    if (readyCount >= totalCount) {
+      io.to(room.code).emit('collab-all-ready');
+    }
+  });
+
+  socket.on('wv-random-teams', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (!room.settings.wvTeams) {
+      room.settings.wvTeams = [
+        { name: 'Team 1', color: '#3b82f6', playerIds: [] },
+        { name: 'Team 2', color: '#ef4444', playerIds: [] }
+      ];
+    }
+    const pool = [...room.players];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const t1 = [];
+    const t2 = [];
+    pool.forEach((p, idx) => {
+      if (idx % 2 === 0) t1.push(p.id);
+      else t2.push(p.id);
+    });
+    room.settings.wvTeams[0].playerIds = t1;
+    room.settings.wvTeams[1].playerIds = t2;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
   // ─────────────────────────────────────────────

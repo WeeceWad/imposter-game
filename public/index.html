@@ -620,7 +620,7 @@
         <div class="setting-desc">Tap a player to move them between teams</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px">
-        <button class="btn btn-sm btn-outline" onclick="wvAutoAssign()" style="font-size:0.8rem">⚡ Auto Assign</button>
+        <button class="btn btn-sm btn-outline" onclick="wvRandomTeams()" style="font-size:0.8rem">🎲 Random Teams</button>
         <button class="btn btn-sm btn-outline" onclick="wvDuoSetup()" style="font-size:0.8rem;border-color:#a855f7;color:#a855f7">🎮 Duo Mode</button>
       </div>
       <div class="wv-team-strip" id="wv-lobby-teams" style="gap:14px"></div>
@@ -1043,8 +1043,11 @@
     <div class="card-title">Drawing Order</div>
     <div id="collab-turn-list" class="turn-list"></div>
   </div>
-  <div class="text-muted text-center">Everyone adds to the same canvas.<br>Try to blend in!</div>
-  <button class="btn btn-primary" onclick="goToCollabCanvas()">🖌️ Go to Canvas</button>
+  <div class="card text-center" style="width:100%">
+    <div class="text-muted" style="font-size:0.85rem">Canvas opens when everyone is ready</div>
+    <div id="collab-ready-count" style="margin-top:8px; font-weight:700">0 / 0 ready</div>
+  </div>
+  <button class="btn btn-primary" id="collab-ready-btn" onclick="collabMarkReady()">✅ Ready to Draw!</button>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -1917,6 +1920,15 @@ function initSocket() {
 
     myWord = data.word || null;
     collabCurrentDrawerId = data.currentTurnId;
+
+    const readyBtn = document.getElementById('collab-ready-btn');
+    if (readyBtn) {
+      readyBtn.disabled = false;
+      readyBtn.textContent = '✅ Ready to Draw!';
+    }
+    const readyCount = document.getElementById('collab-ready-count');
+    if (readyCount) readyCount.textContent = '0 / ' + (data.turnOrder ? data.turnOrder.length : 0) + ' ready';
+
     showScreen('collab-role');
   });
 
@@ -1951,6 +1963,16 @@ function initSocket() {
     collabCtx.fillStyle = '#ffffff';
     collabCtx.fillRect(0, 0, canvas.width, canvas.height);
     (data.strokes || []).forEach(function(s) { drawStrokeOnCollab(s); });
+  });
+
+  socket.on('collab-ready-update', function(data) {
+    const el = document.getElementById('collab-ready-count');
+    if (el) el.textContent = data.readyCount + ' / ' + data.totalCount + ' ready';
+  });
+
+  socket.on('collab-all-ready', function() {
+    showScreen('collab-canvas');
+    initCollabCanvas();
   });
 
   // Wavelength socket handlers
@@ -2172,6 +2194,24 @@ function leaveRoom() {
   _wvActiveSvg = null; _wvActiveNeedle = null; wvDragging = false;
   clearInterval(wvClueTimer); clearInterval(wvGuessTimer);
   showScreen('home');
+}
+
+function collabMarkReady() {
+  const btn = document.getElementById('collab-ready-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Waiting for others...';
+  }
+  socket.emit('collab-ready');
+}
+
+function goToCollabCanvas() {
+  collabMarkReady();
+}
+
+function wvRandomTeams() {
+  if (!isHost || !currentRoom) return;
+  socket.emit('wv-random-teams');
 }
 
 // ──────────────────────────────────────────

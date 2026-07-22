@@ -2477,6 +2477,7 @@ io.on('connection', (socket) => {
     socket.roomCode = room.code;
     socket.playerName = name;
 
+    delete player.isDisconnected;
     // Remap all ID references to the new socket ID
     if (room.host === oldId) { room.host = socket.id; player.isHost = true; }
     if (room.imposters) room.imposters = room.imposters.map(id => id === oldId ? socket.id : id);
@@ -2512,6 +2513,10 @@ io.on('connection', (socket) => {
       room.drawReadyPlayers.delete(oldId);
       room.drawReadyPlayers.add(socket.id);
     }
+    if (room.collabReadyPlayers && room.collabReadyPlayers.has(oldId)) {
+      room.collabReadyPlayers.delete(oldId);
+      room.collabReadyPlayers.add(socket.id);
+    }
     if (room.drawSubmissions && room.drawSubmissions[oldId] !== undefined) {
       room.drawSubmissions[socket.id] = room.drawSubmissions[oldId];
       delete room.drawSubmissions[oldId];
@@ -2521,6 +2526,16 @@ io.on('connection', (socket) => {
     }
     if (room.collabStrokes) {
       room.collabStrokes = room.collabStrokes.map(s => s.playerId === oldId ? { ...s, playerId: socket.id } : s);
+    }
+    if (room.settings && room.settings.wvTeams) {
+      room.settings.wvTeams.forEach(t => {
+        t.playerIds = (t.playerIds || []).map(id => id === oldId ? socket.id : id);
+      });
+    }
+    if (room.wvTeams) {
+      room.wvTeams.forEach(t => {
+        t.playerIds = (t.playerIds || []).map(id => id === oldId ? socket.id : id);
+      });
     }
 
     socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
@@ -2979,6 +2994,11 @@ io.on('connection', (socket) => {
         if (connectedActive.length > 0 && Object.keys(room.votes).length >= connectedActive.length) {
           try { resolveVotes(room); } catch(e) { console.error('resolveVotes (dc) error:', e); }
         }
+      }
+      const dcPlayer = room.players.find(p => p.id === socket.id);
+      if (dcPlayer) {
+        dcPlayer.isDisconnected = true;
+        io.to(room.code).emit('room-update', sanitizeRoom(room));
       }
       if (!room._dcTimers) room._dcTimers = {};
       // Give generous grace periods — mobile browsers suspend sockets when backgrounded

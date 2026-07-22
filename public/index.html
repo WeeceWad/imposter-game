@@ -1390,15 +1390,41 @@ function initSocket() {
     reconnectionDelayMax: 5000
   });
 
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
+      const name = myPlayerName || sessionStorage.getItem('imposter_name');
+      if (socket && !socket.connected) {
+        socket.connect();
+      } else if (socket && socket.connected && roomCode && name) {
+        socket.emit('rejoin-room', { code: roomCode, name: name });
+      }
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
+    const name = myPlayerName || sessionStorage.getItem('imposter_name');
+    if (socket && !socket.connected) {
+      socket.connect();
+    } else if (socket && socket.connected && roomCode && name) {
+      socket.emit('rejoin-room', { code: roomCode, name: name });
+    }
+  });
+
   // On every (re)connect — if we're mid-session, rejoin the room
   socket.on('connect', () => {
-    if (currentRoom && myPlayerName) {
-      socket.emit('rejoin-room', { code: currentRoom.code, name: myPlayerName });
+    const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
+    const name = myPlayerName || sessionStorage.getItem('imposter_name');
+    if (roomCode && name) {
+      socket.emit('rejoin-room', { code: roomCode, name: name });
     }
   });
 
   socket.on('rejoin-ack', ({ code, playerId }) => {
     myId = playerId;
+    if (code) sessionStorage.setItem('imposter_room', code);
+    if (myPlayerName) sessionStorage.setItem('imposter_name', myPlayerName);
     document.getElementById('lobby-code').textContent = code;
     showToast('Reconnected ✓', 'success');
   });
@@ -1406,12 +1432,16 @@ function initSocket() {
   // ── Room events ──
   socket.on('room-created', ({ code, playerId }) => {
     setMyId(playerId);
+    if (code) sessionStorage.setItem('imposter_room', code);
+    if (myPlayerName) sessionStorage.setItem('imposter_name', myPlayerName);
     showScreen('lobby');
     document.getElementById('lobby-code').textContent = code;
   });
 
   socket.on('room-joined', ({ code, playerId }) => {
     setMyId(playerId);
+    if (code) sessionStorage.setItem('imposter_room', code);
+    if (myPlayerName) sessionStorage.setItem('imposter_name', myPlayerName);
     showScreen('lobby');
     document.getElementById('lobby-code').textContent = code;
     // re-render immediately in case room-update already arrived
@@ -2212,6 +2242,8 @@ function joinRoom() {
 }
 
 function leaveRoom() {
+  sessionStorage.removeItem('imposter_room');
+  sessionStorage.removeItem('imposter_name');
   if (socket) { socket.disconnect(); socket = null; }
   myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myVotes = []; myPlayerName = null;
   mySfRole = null; mySfVote = null; gameIsOver = false;
@@ -2803,9 +2835,9 @@ function renderLobbyData(room) {
   // Player list — always render
   const list = document.getElementById('lobby-player-list');
   list.innerHTML = room.players.map(p => `
-    <div class="player-item ${p.id === room.host ? 'host-item' : ''}">
+    <div class="player-item ${p.id === room.host ? 'host-item' : ''}" style="${p.isDisconnected ? 'opacity:0.6;' : ''}">
       <div class="player-avatar">${p.name[0].toUpperCase()}</div>
-      <div class="player-name">${p.name}</div>
+      <div class="player-name">${p.name} ${p.isDisconnected ? '<small style="color:var(--muted);font-weight:400">(Away 🔌)</small>' : ''}</div>
       ${p.id === room.host ? '<span class="player-badge badge-host">HOST</span>' : ''}
       ${p.id === myId ? '<span class="player-badge badge-you">YOU</span>' : ''}
       ${amHost && p.id !== myId && room.gameState === 'lobby' ? `<button class="kick-btn" onclick="kickPlayer('${p.id}')" title="Remove">✕</button>` : ''}
@@ -4782,6 +4814,17 @@ function initWavelengthSocketHandlers() {
 
 // Keep Render server awake — ping every 4 minutes
 setInterval(() => fetch('/ping').catch(() => {}), 4 * 60 * 1000);
+
+// Auto-restore session on page load or refresh
+window.addEventListener('DOMContentLoaded', () => {
+  const savedRoom = sessionStorage.getItem('imposter_room');
+  const savedName = sessionStorage.getItem('imposter_name');
+  if (savedRoom && savedName) {
+    myPlayerName = savedName;
+    initSocket();
+    socket.emit('rejoin-room', { code: savedRoom, name: savedName });
+  }
+});
 </script>
 </body>
 </html>

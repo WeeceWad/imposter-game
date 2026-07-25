@@ -988,6 +988,16 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// Proper unbiased Fisher-Yates shuffle — returns a NEW array
+function shuffleArray(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 function pickWordFromCategories(selectedCategories) {
   const catKey = pickRandom(selectedCategories);
   const cat = CATEGORIES[catKey];
@@ -1010,12 +1020,8 @@ function pickDifferentWord(selectedCategories, mainWord, categoryKey) {
 
 // Fisher-Yates shuffle, returns `count` randomly selected player IDs
 function selectImposters(players, count) {
-  const pool = [...players];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, count).map(p => p.id);
+  // Fully random regardless of count — unbiased Fisher-Yates, then take the first N
+  return shuffleArray(players).slice(0, count).map(p => p.id);
 }
 
 // ─────────────────────────────────────────────
@@ -1667,7 +1673,7 @@ io.on('connection', (socket) => {
       if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players for Spyfall.' });
       const loc = SPYFALL_LOCS[Math.floor(Math.random() * SPYFALL_LOCS.length)];
       const spyIdx = Math.floor(Math.random() * room.players.length);
-      const shuffledRoles = [...loc.roles].sort(() => Math.random() - 0.5);
+      const shuffledRoles = shuffleArray(loc.roles);
       let ri = 0;
       room.spyfallData = {
         locationName: loc.name, locationEmoji: loc.emoji,
@@ -1960,7 +1966,8 @@ io.on('connection', (socket) => {
     room.lastEliminated = null;
     room.result = null;
     room.votingHistory = [];
-    room.speakingOrder = [...room.players].sort(() => Math.random() - 0.5).map(p => p.id);
+    // Fully random speaking order — unbiased Fisher-Yates (sort(()=>Math.random()) is biased)
+    room.speakingOrder = shuffleArray(room.players).map(p => p.id);
 
     // Send each player their private role
     // Pre-generate one shared blind-imposter word so all imposters get the same fake word

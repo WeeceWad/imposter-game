@@ -1503,8 +1503,36 @@ const SPYFALL_LOCS = [
 // ─────────────────────────────────────────────
 // WHO AM I — CATEGORIES
 // ─────────────────────────────────────────────
+// Bands/groups within the shared music & YouTuber lists — excluded from the
+// "solo people" Who Am I mode (famous), but kept for the "w/ bands" mode.
+const WHOAMI_MUSIC_GROUPS = new Set([
+  "The Beatles","Queen","Rolling Stones","Led Zeppelin","Pink Floyd","Oasis","Coldplay",
+  "Nirvana","Guns N Roses","Fleetwood Mac","AC/DC","Metallica","Red Hot Chili Peppers",
+  "Foo Fighters","Arctic Monkeys","Radiohead","Linkin Park","Green Day","Blink-182",
+  "The Killers","Imagine Dragons","One Direction","Backstreet Boys","NSYNC","Maroon 5",
+  "Kings of Leon","Fall Out Boy","Migos","TLC","Destiny's Child","Boyz II Men","Bon Jovi",
+  "Aerosmith","The Who","The Doors","Eagles","U2","The Beach Boys","Simon & Garfunkel",
+  "Creedence Clearwater Revival","Lynyrd Skynyrd","Van Halen","Def Leppard","KISS","Journey",
+  "Genesis","Dire Straits","The Police","The Smiths","Depeche Mode","R.E.M.","Pearl Jam",
+  "Soundgarden","Rage Against the Machine","System of a Down","Slipknot","Korn","Muse",
+  "Kasabian","Franz Ferdinand","Kaiser Chiefs","The Strokes","The White Stripes","Tame Impala",
+  "The 1975","Twenty One Pilots","Panic! at the Disco","My Chemical Romance","Paramore",
+  "Weezer","The Cure","Gorillaz","Florence and the Machine","Mumford & Sons","The Lumineers",
+  "Blur","Pulp","The Verve","Stereophonics","Snow Patrol","Bastille","Two Door Cinema Club",
+  "Black Sabbath","Iron Maiden","Megadeth","Pantera","Tool","Judas Priest","Motorhead",
+  "Disturbed","The Chainsmokers","Daft Punk","Swedish House Mafia","ABBA","Bee Gees",
+  "The Supremes","The Temptations","Earth, Wind & Fire","Spice Girls","Take That","Little Mix",
+  "Sugababes","Girls Aloud","Westlife","Boyzone","Steps","S Club 7","UB40"
+]);
+const WHOAMI_YT_GROUPS = new Set([
+  "Sidemen","Dude Perfect","Rhett & Link","Smosh","LankyBox","Vlad and Niki",
+  "Kids Diana Show","Linus Tech Tips"
+]);
+const WHOAMI_SOLO_MUSIC = CATEGORIES.musicArtists.items.filter(a => !WHOAMI_MUSIC_GROUPS.has(a));
+const WHOAMI_SOLO_YT = CATEGORIES.youtubers.items.filter(a => !WHOAMI_YT_GROUPS.has(a));
+
 const WHOAMI_CATS = {
-  famous: { name: "Famous People", items: [
+  famous: { name: "Famous People", items: [...new Set([
     // Athletes
     "Cristiano Ronaldo","Lionel Messi","David Beckham","Harry Kane","Wayne Rooney",
     "Jude Bellingham","Mohamed Salah","Erling Haaland","Kylian Mbappe","Kevin De Bruyne",
@@ -1537,24 +1565,10 @@ const WHOAMI_CATS = {
     "Emma Stone","Julia Roberts","Meryl Streep","Sandra Bullock","Anne Hathaway",
     "Nicole Kidman","Charlize Theron","Emma Watson","Florence Pugh","Anya Taylor-Joy",
     "Sydney Sweeney","Gal Gadot","Elizabeth Olsen","Brie Larson","Natalie Portman",
-    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet",
-    // Music Artists (solo only)
-    "Michael Jackson","Elvis Presley","Taylor Swift","Beyonce","Ed Sheeran","Adele",
-    "Eminem","Drake","Justin Bieber","Rihanna","Elton John","David Bowie",
-    "Whitney Houston","Freddie Mercury","Bruno Mars","Harry Styles","Post Malone",
-    "The Weeknd","Ariana Grande","Billie Eilish","Olivia Rodrigo","Sabrina Carpenter",
-    "Miley Cyrus","Justin Timberlake","Britney Spears","Christina Aguilera","Kanye West",
-    "Jay-Z","Snoop Dogg","50 Cent","Travis Scott","Kendrick Lamar","Cardi B","Doja Cat",
-    "Nicki Minaj","Lewis Capaldi","Sam Smith","Dua Lipa","Calvin Harris","Shawn Mendes",
-    "Camila Cabello","Selena Gomez","Lady Gaga","Katy Perry","Pink","Usher","Prince",
-    "Madonna","George Michael","Stevie Wonder","Bob Marley","Phil Collins",
-    // YouTubers (solo only)
-    "MrBeast","PewDiePie","Markiplier","Jacksepticeye","Logan Paul","KSI",
-    "TommyInnit","Dream","Ninja","Tfue","xQc","Kai Cenat","IShowSpeed","Adin Ross",
-    "Andrew Tate","Tristan Tate","Joe Rogan","Theo Von","DanTDM","James Charles",
-    "Jeffree Star","Shane Dawson","David Dobrik","Zach King","Vsauce","MatPat","Mark Rober"
-  ]},
-  famousBands: { name: "Famous People w/ Bands", items: [
+    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet"
+    // Solo music artists & solo YouTubers/streamers pulled from the shared lists
+  ].concat(WHOAMI_SOLO_MUSIC, WHOAMI_SOLO_YT))] },
+  famousBands: { name: "Famous People w/ Bands", items: [...new Set([
     // Athletes
     "Cristiano Ronaldo","Lionel Messi","David Beckham","Harry Kane","Wayne Rooney",
     "Jude Bellingham","Mohamed Salah","Erling Haaland","Kylian Mbappe","Kevin De Bruyne",
@@ -1587,29 +1601,9 @@ const WHOAMI_CATS = {
     "Emma Stone","Julia Roberts","Meryl Streep","Sandra Bullock","Anne Hathaway",
     "Nicole Kidman","Charlize Theron","Emma Watson","Florence Pugh","Anya Taylor-Joy",
     "Sydney Sweeney","Gal Gadot","Elizabeth Olsen","Brie Larson","Natalie Portman",
-    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet",
-    // Music Artists + Bands
-    "Michael Jackson","Elvis Presley","Taylor Swift","Beyonce","Ed Sheeran","Adele",
-    "Eminem","Drake","Justin Bieber","Rihanna","Elton John","David Bowie",
-    "Whitney Houston","Freddie Mercury","Bruno Mars","Harry Styles","Post Malone",
-    "The Weeknd","Ariana Grande","Billie Eilish","Olivia Rodrigo","Sabrina Carpenter",
-    "Miley Cyrus","Justin Timberlake","Britney Spears","Christina Aguilera","Kanye West",
-    "Jay-Z","Snoop Dogg","50 Cent","Travis Scott","Kendrick Lamar","Cardi B","Doja Cat",
-    "Nicki Minaj","Lewis Capaldi","Sam Smith","Dua Lipa","Calvin Harris","Shawn Mendes",
-    "Camila Cabello","Selena Gomez","Lady Gaga","Katy Perry","Pink","Usher","Prince",
-    "Madonna","George Michael","Stevie Wonder","Bob Marley","Phil Collins",
-    "The Beatles","Queen","Rolling Stones","Led Zeppelin","Pink Floyd","Oasis","Coldplay",
-    "Nirvana","Guns N Roses","Fleetwood Mac","AC/DC","Metallica","Red Hot Chili Peppers",
-    "Foo Fighters","Arctic Monkeys","Radiohead","Linkin Park","Green Day","Blink-182",
-    "The Killers","Imagine Dragons","One Direction","Backstreet Boys","NSYNC","Maroon 5",
-    "Kings of Leon","Fall Out Boy",
-    // YouTubers + groups
-    "MrBeast","PewDiePie","Markiplier","Jacksepticeye","Logan Paul","KSI",
-    "Sidemen","TommyInnit","Dream","Dude Perfect","Rhett & Link","Ninja","Tfue","xQc",
-    "Kai Cenat","IShowSpeed","Adin Ross","Andrew Tate","Tristan Tate","Joe Rogan",
-    "Theo Von","DanTDM","James Charles","Jeffree Star","Shane Dawson","David Dobrik",
-    "Zach King","Vsauce","Smosh","MatPat","Mark Rober"
-  ]},
+    "Reese Witherspoon","Jennifer Lawrence","Kate Winslet"
+    // Full music (incl. bands) & YouTubers/streamers (incl. groups) from shared lists
+  ].concat(CATEGORIES.musicArtists.items, CATEGORIES.youtubers.items))] },
   videoGames: { name: "Video Games", items: [
     "Roblox", "Minecraft", "Fortnite", "Counter-Strike 2", "League of Legends",
     "Grand Theft Auto V", "Call of Duty", "Call of Duty: Black Ops",
@@ -1721,6 +1715,9 @@ const WHOAMI_CATS = {
     "Dorian Gray","Captain Ahab","Heathcliff","Jane Eyre","Mr Rochester"
   ]}
 };
+
+// Who Am I "Video Games" shares the full, expanded video-games list
+WHOAMI_CATS.videoGames.items = CATEGORIES.videoGames.items;
 
 // ─────────────────────────────────────────────
 // WHO AM I — ROOMS

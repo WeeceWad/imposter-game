@@ -1419,35 +1419,57 @@ function initSocket() {
     reconnectionDelayMax: 5000
   });
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
-      const name = myPlayerName || sessionStorage.getItem('imposter_name');
-      if (socket && !socket.connected) {
-        socket.connect();
-      } else if (socket && socket.connected && roomCode && name) {
-        socket.emit('rejoin-room', { code: roomCode, name: name });
-      }
-    }
-  });
-
-  window.addEventListener('focus', () => {
+  // ── Reconnection: ONE place that decides how to get back into the room ──
+  // Phones suspend the socket when backgrounded/locked; desktops drop it when
+  // minimised. These events all funnel through tryRejoin(), debounced so rapid
+  // focus/visibility/online events don't spam the server.
+  let _rejoinTimer = null;
+  let _reconnectToast = null;
+  function tryRejoin() {
+    if (!socket) return;
+    if (!socket.connected) { socket.connect(); return; } // 'connect' handler rejoins once back
     const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
     const name = myPlayerName || sessionStorage.getItem('imposter_name');
-    if (socket && !socket.connected) {
-      socket.connect();
-    } else if (socket && socket.connected && roomCode && name) {
-      socket.emit('rejoin-room', { code: roomCode, name: name });
+    if (roomCode && name) {
+      clearTimeout(_rejoinTimer);
+      _rejoinTimer = setTimeout(() => socket.emit('rejoin-room', { code: roomCode, name: name }), 150);
     }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') tryRejoin();
   });
+  window.addEventListener('focus', tryRejoin);
+  window.addEventListener('online', tryRejoin);
+  window.addEventListener('pageshow', tryRejoin);
 
   // On every (re)connect — if we're mid-session, rejoin the room
   socket.on('connect', () => {
+    clearTimeout(_reconnectToast); // cancel any pending "reconnecting" toast
     const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
     const name = myPlayerName || sessionStorage.getItem('imposter_name');
     if (roomCode && name) {
       socket.emit('rejoin-room', { code: roomCode, name: name });
     }
+  });
+
+  // Server couldn't put us back in the room — clean up instead of getting stuck
+  socket.on('rejoin-failed', ({ reason, gameState, code }) => {
+    if (reason === 'not-in-room' && gameState === 'lobby' && code && myPlayerName) {
+      // We were removed but the room is still open — silently re-join fresh
+      socket.emit('join-room', { code: code, name: myPlayerName });
+      return;
+    }
+    // Room is gone, or a game is in progress and we're no longer part of it
+    sessionStorage.removeItem('imposter_room');
+    sessionStorage.removeItem('imposter_name');
+    currentRoom = null; myId = null; gameIsOver = false;
+    const activeScreen = document.querySelector('.screen.active');
+    const wasInGame = activeScreen && activeScreen.id !== 'screen-home';
+    showScreen('home');
+    // Only tell them they were dropped if they were actually in a room —
+    // on a fresh load with an expired session, clean up silently.
+    if (wasInGame) showToast('You left the room', 'error');
   });
 
   socket.on('rejoin-ack', ({ code, playerId }) => {
@@ -1692,31 +1714,20 @@ function initSocket() {
   });
 
   socket.on('disconnect', (reason) => {
+    // Don't flash a scary toast for brief backgrounding — only warn if we're still
+    // disconnected after a few seconds. Cleared instantly on reconnect.
     if (reason !== 'io client disconnect') {
-      showToast('Connection lost — reconnecting...', 'error');
+      clearTimeout(_reconnectToast);
+      _reconnectToast = setTimeout(() => {
+        if (socket && !socket.connected) showToast('Reconnecting…', 'error');
+      }, 3000);
     }
   });
 
-  // socket.io v4: reconnect fires on the manager, not the socket
+  // socket.io v4: reconnect fires on the manager, not the socket.
+  // The 'connect' handler above already re-emits rejoin-room, so just tidy up here.
   socket.io.on('reconnect', () => {
-    showToast('Reconnected! ✓', 'success');
-    if (currentRoom && myPlayerName) {
-      socket.emit('rejoin-room', { code: currentRoom.code, name: myPlayerName });
-    }
-  });
-
-  // When tab becomes visible again (mobile switch back, alt-tab, etc.)
-  // force the socket to reconnect if it dropped while backgrounded
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && currentRoom && myPlayerName) {
-      if (!socket.connected) {
-        socket.connect();
-      } else {
-        // Socket thinks it's connected but server may have a stale connection —
-        // send a lightweight ping to confirm; rejoin-room handles the rest
-        socket.emit('rejoin-room', { code: currentRoom.code, name: myPlayerName });
-      }
-    }
+    clearTimeout(_reconnectToast);
   });
 
   // ── WHO AM I events ──
@@ -2273,7 +2284,9 @@ function joinRoom() {
 function leaveRoom() {
   sessionStorage.removeItem('imposter_room');
   sessionStorage.removeItem('imposter_name');
-  if (socket) { socket.disconnect(); socket = null; }
+  // Tell the server this is a deliberate leave so we're removed immediately
+  // (not left as a ghost for the disconnect grace period).
+  if (socket) { socket.emit('leave-room'); socket.disconnect(); socket = null; }
   myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myVotes = []; myPlayerName = null;
   mySfRole = null; mySfVote = null; gameIsOver = false;
   drawCtx = null; drawIsDrawing = false;
@@ -3363,13 +3376,26 @@ function renderGameOver(data) {
         <div class="text-muted" style="font-size:0.8rem; margin-top:4px">${category}</div>
       </div>`;
     if (blindMode && imposterWords && imposterWords.some(iw => iw.word)) {
-      imposterWords.filter(iw => iw.word).forEach(iw => {
+      const withWord = imposterWords.filter(iw => iw.word);
+      const uniqueWords = [...new Set(withWord.map(iw => iw.word))];
+      if (uniqueWords.length === 1) {
+        // All imposters shared the same fake word — show it once
+        const many = withWord.length > 1;
         html += `
           <div class="word-box fade-in" style="border-color:#a855f7; background:rgba(168,85,247,0.08)">
-            <div class="word-box-label" style="color:#a855f7">${iw.name}'s Word (Blind Imposter)</div>
-            <div class="word-box-value" style="color:#c084fc">${iw.word}</div>
+            <div class="word-box-label" style="color:#a855f7">${many ? 'The Imposters Had' : 'The Imposter Had'} (Blind)</div>
+            <div class="word-box-value" style="color:#c084fc">${uniqueWords[0]}</div>
           </div>`;
-      });
+      } else {
+        // Fallback: different words per imposter
+        withWord.forEach(iw => {
+          html += `
+            <div class="word-box fade-in" style="border-color:#a855f7; background:rgba(168,85,247,0.08)">
+              <div class="word-box-label" style="color:#a855f7">${iw.name}'s Word (Blind Imposter)</div>
+              <div class="word-box-value" style="color:#c084fc">${iw.word}</div>
+            </div>`;
+        });
+      }
     }
   }
 
@@ -4838,14 +4864,14 @@ function initWavelengthSocketHandlers() {
 // Keep Render server awake — ping every 4 minutes
 setInterval(() => fetch('/ping').catch(() => {}), 4 * 60 * 1000);
 
-// Auto-restore session on page load or refresh
+// Auto-restore session on page load or refresh.
+// initSocket()'s 'connect' handler does the actual rejoin once the socket is up.
 window.addEventListener('DOMContentLoaded', () => {
   const savedRoom = sessionStorage.getItem('imposter_room');
   const savedName = sessionStorage.getItem('imposter_name');
   if (savedRoom && savedName) {
     myPlayerName = savedName;
     initSocket();
-    socket.emit('rejoin-room', { code: savedRoom, name: savedName });
   }
 });
 </script>

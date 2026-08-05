@@ -155,7 +155,63 @@ const CATEGORIES = {
       "Skyrim", "Oblivion", "Monster Hunter Stories 3", "Nioh 3",
       "Crimson Desert", "Marathon", "Fable",
       "Kingdom Come Deliverance II", "Dragon Age The Veilguard",
-      "Mass Effect Legendary Edition", "Subnautica"
+      "Mass Effect Legendary Edition", "Subnautica",
+      // Classic Nintendo & retro
+      "Super Mario Bros", "Super Mario 64", "Super Mario World",
+      "Super Mario Galaxy", "New Super Mario Bros", "Super Mario Bros Wonder",
+      "Donkey Kong", "Donkey Kong Country",
+      "The Legend of Zelda Ocarina of Time", "Metroid Dread", "Star Fox",
+      "GoldenEye 007", "Splatoon 3", "Luigi's Mansion 3", "Mario Party",
+      "Super Mario Party Jamboree", "Pikmin 4", "Wii Sports",
+      "Nintendo Switch Sports", "Just Dance",
+      // Arcade & Sega classics
+      "Sonic the Hedgehog", "Space Invaders", "Galaga", "Frogger",
+      // Valve
+      "Half-Life", "Half-Life 2", "Portal", "Portal 2", "Team Fortress 2",
+      "Left 4 Dead 2", "Garry's Mod", "Counter-Strike Global Offensive",
+      // Shooters
+      "Halo Combat Evolved", "Halo 3", "Halo Reach", "Gears of War",
+      "Titanfall 2", "Rainbow Six Siege", "Doom", "Wolfenstein",
+      "Far Cry 3", "Far Cry 5", "Borderlands 2", "Borderlands 3",
+      "BioShock", "BioShock Infinite",
+      // Action-adventure
+      "God of War", "The Last of Us", "Uncharted 2", "Marvel's Spider-Man",
+      "Batman Arkham City", "Ghost of Tsushima", "Death Stranding",
+      "Detroit Become Human", "Sekiro", "Bloodborne", "Dark Souls",
+      "Dark Souls III", "NieR Automata", "Metal Gear Solid V",
+      "Assassin's Creed II", "Assassin's Creed Odyssey",
+      "Grand Theft Auto San Andreas", "Grand Theft Auto IV",
+      "Grand Theft Auto Vice City", "Red Dead Redemption", "Mafia",
+      // RPGs
+      "Persona 5", "Kingdom Hearts", "Final Fantasy VII",
+      "Final Fantasy VII Remake", "Fallout New Vegas", "Fallout 3",
+      "Mass Effect 2", "Dragon Quest",
+      // Popular indies
+      "Among Us", "Fall Guys", "Five Nights at Freddy's", "Cuphead",
+      "Hollow Knight", "Undertale", "Celeste", "Vampire Survivors",
+      "Balatro", "Slay the Spire", "Cult of the Lamb", "Ori and the Blind Forest",
+      // Mobile
+      "Angry Birds", "Temple Run", "Subway Surfers", "Fruit Ninja",
+      "Plants vs Zombies", "Cut the Rope", "Flappy Bird", "2048",
+      "Brawl Stars", "Pokémon Unite", "Geometry Dash", "Wordle",
+      "Monopoly Go", "Marvel Snap", "Hearthstone", "Hay Day",
+      // Sim & strategy
+      "The Sims", "The Sims 3", "SimCity", "RollerCoaster Tycoon",
+      "Age of Empires II", "Age of Empires IV", "StarCraft II",
+      "Warcraft III", "Command & Conquer", "Civilization VI",
+      "Cities Skylines", "Planet Coaster", "Football Manager",
+      "Euro Truck Simulator 2", "Microsoft Flight Simulator",
+      "Farming Simulator",
+      // Co-op & party
+      "Overcooked 2", "Gang Beasts", "Human Fall Flat",
+      "Ultimate Chicken Horse", "Golf With Your Friends", "Stumble Guys",
+      "Moving Out", "The Forest", "Sons of the Forest", "Raft",
+      "Warhammer 40000 Space Marine 2",
+      // Racing, rhythm & sports
+      "Need for Speed Most Wanted", "Burnout Paradise", "Crash Team Racing",
+      "Guitar Hero", "Rock Band", "Beat Saber", "Tony Hawk's Pro Skater",
+      "Madden NFL", "Injustice 2", "Magic The Gathering Arena",
+      "Teamfight Tactics"
     ]
   },
 
@@ -281,19 +337,113 @@ const CATEGORIES = {
       "AC/DC", "Metallica", "Red Hot Chili Peppers", "Foo Fighters",
       "Arctic Monkeys", "Radiohead", "Linkin Park", "Green Day", "Blink-182",
       "The Killers", "Imagine Dragons", "One Direction", "Backstreet Boys",
-      "NSYNC", "Maroon 5", "Kings of Leon", "Fall Out Boy"
+      "NSYNC", "Maroon 5", "Kings of Leon", "Fall Out Boy",
+      // More pop
+      "Charlie Puth", "Halsey", "Lizzo", "SZA", "Lorde", "Sia",
+      "Ellie Goulding", "Rita Ora", "Zayn Malik", "Niall Horan",
+      "Meghan Trainor", "Bebe Rexha", "Jason Derulo", "Nick Jonas",
+      "Demi Lovato", "Kesha", "Gwen Stefani", "Avril Lavigne",
+      "Kelly Clarkson", "Michael Buble", "Chris Brown", "Ne-Yo",
+      "Akon", "Flo Rida", "Pitbull", "will.i.am", "Jennifer Lopez",
+      "Robbie Williams", "Amy Winehouse", "Craig David", "Jessie J",
+      "Jess Glynne", "Anne-Marie", "RAYE", "Tom Grennan", "George Ezra",
+      "Sam Fender", "Charli XCX", "Troye Sivan", "Tate McRae", "Chappell Roan",
+      // Hip-hop & rap
+      "Tupac", "The Notorious B.I.G.", "Nas", "Dr. Dre", "Ice Cube",
+      "Lil Wayne", "Future", "21 Savage", "Megan Thee Stallion", "Lil Baby",
+      "DaBaby", "Tyler, the Creator", "A$AP Rocky", "J. Cole",
+      "Childish Gambino", "Machine Gun Kelly", "Wiz Khalifa", "Big Sean",
+      "Migos", "Lil Nas X", "Juice WRLD", "XXXTentacion", "Mac Miller",
+      "Ludacris", "Nelly", "Missy Elliott", "Kid Cudi", "Gunna",
+      "Central Cee", "Stormzy", "Dave", "Tinie Tempah", "Wiley",
+      "Skepta", "AJ Tracey", "Aitch", "Ice Spice", "Metro Boomin",
+      // R&B & soul
+      "Mariah Carey", "Aretha Franklin", "Ray Charles", "Marvin Gaye",
+      "Diana Ross", "Lionel Richie", "Luther Vandross", "Frank Ocean",
+      "H.E.R.", "Summer Walker", "Mary J. Blige", "TLC", "Destiny's Child",
+      "Boyz II Men", "Alicia Keys", "John Legend", "Tina Turner", "Cher",
+      "Toni Braxton", "Chaka Khan",
+      // Rock & classic rock
+      "Bruce Springsteen", "Bob Dylan", "Neil Young", "Eric Clapton",
+      "Jimi Hendrix", "Bon Jovi", "Aerosmith", "The Who", "The Doors",
+      "Eagles", "U2", "The Beach Boys", "Simon & Garfunkel",
+      "Creedence Clearwater Revival", "Lynyrd Skynyrd", "Van Halen",
+      "Def Leppard", "KISS", "Journey", "Genesis", "Dire Straits",
+      "The Police", "Sting", "Rod Stewart", "Tom Petty", "Billy Joel",
+      "Meat Loaf",
+      // Alt, indie & modern rock
+      "The Smiths", "Depeche Mode", "R.E.M.", "Pearl Jam", "Soundgarden",
+      "Rage Against the Machine", "System of a Down", "Slipknot", "Korn",
+      "Muse", "Kasabian", "Franz Ferdinand", "Kaiser Chiefs", "The Strokes",
+      "The White Stripes", "Tame Impala", "The 1975", "Twenty One Pilots",
+      "Panic! at the Disco", "My Chemical Romance", "Paramore", "Weezer",
+      "The Cure", "Gorillaz", "Florence and the Machine", "Mumford & Sons",
+      "The Lumineers", "Hozier", "Blur", "Pulp", "The Verve",
+      "Stereophonics", "Snow Patrol", "Bastille", "Two Door Cinema Club",
+      // Metal
+      "Black Sabbath", "Iron Maiden", "Megadeth", "Pantera", "Tool",
+      "Judas Priest", "Motorhead", "Disturbed",
+      // Country
+      "Johnny Cash", "Dolly Parton", "Willie Nelson", "Garth Brooks",
+      "Shania Twain", "Carrie Underwood", "Blake Shelton", "Luke Combs",
+      "Morgan Wallen", "Kacey Musgraves", "Keith Urban", "Tim McGraw",
+      "Zach Bryan",
+      // EDM & DJs
+      "David Guetta", "Avicii", "Marshmello", "Skrillex", "Deadmau5",
+      "Tiesto", "Martin Garrix", "Zedd", "Diplo", "The Chainsmokers",
+      "Daft Punk", "Swedish House Mafia", "Kygo", "Alan Walker",
+      "Fatboy Slim", "Steve Aoki",
+      // Legends & classic pop
+      "Frank Sinatra", "Barbra Streisand", "ABBA", "Bee Gees",
+      "The Supremes", "The Temptations", "Earth, Wind & Fire",
+      "Donna Summer", "Barry White",
+      // UK pop groups
+      "Spice Girls", "Take That", "Little Mix", "Sugababes", "Girls Aloud",
+      "Westlife", "Boyzone", "Steps", "S Club 7",
+      // Reggae & other
+      "Sean Paul", "Shaggy", "UB40"
     ]
   },
 
   youtubers: {
-    name: "📺 YouTubers",
+    name: "📺 YouTubers & Streamers",
     items: [
       "MrBeast", "PewDiePie", "Markiplier", "Jacksepticeye", "Logan Paul",
       "KSI", "Sidemen", "TommyInnit", "Dream", "Dude Perfect",
       "Rhett & Link", "Ninja", "Tfue", "xQc", "Kai Cenat",
       "IShowSpeed", "Adin Ross", "Andrew Tate", "Tristan Tate", "Joe Rogan",
       "Theo Von", "DanTDM", "James Charles", "Jeffree Star", "Shane Dawson",
-      "David Dobrik", "Zach King", "Vsauce", "Smosh", "MatPat", "Mark Rober"
+      "David Dobrik", "Zach King", "Vsauce", "Smosh", "MatPat", "Mark Rober",
+      // Twitch & Kick streamers
+      "Pokimane", "Shroud", "Ludwig", "Amouranth", "HasanAbi", "Sodapoppin",
+      "TimTheTatman", "Dr Disrespect", "Summit1g", "Nickmercs", "CouRage",
+      "Valkyrae", "Sykkuno", "Disguised Toast", "QTCinderella", "Mizkif",
+      "Asmongold", "Tyler1", "Jerma985", "Lirik", "Myth", "Tarik", "Clix",
+      "Bugha", "TenZ", "Jynxzi", "CaseOh", "Duke Dennis", "Fanum",
+      "Jack Doherty", "Sketch", "Stable Ronaldo", "Plaqueboymax", "Agent00",
+      // Sidemen & UK
+      "Miniminter", "Zerkaa", "Behzinga", "Vikkstar123", "TBJZL", "W2S",
+      "Deji", "Jake Paul", "FaZe Rug",
+      // Minecraft & gaming
+      "Technoblade", "Wilbur Soot", "Ranboo", "Tubbo", "GeorgeNotFound",
+      "Sapnap", "Quackity", "Karl Jacobs", "Corpse Husband", "SSundee",
+      "Aphmau", "LDShadowLady", "CaptainSparklez", "CoryxKenshin", "Grian",
+      "Mumbo Jumbo", "Preston", "Unspeakable", "Jelly", "Slogoman",
+      "Lazarbeam", "Muselk", "Fresh", "Loserfruit", "Typical Gamer",
+      "VanossGaming", "H2ODelirious",
+      // Big YouTubers
+      "Casey Neistat", "Emma Chamberlain", "Ryan Trahan", "Airrack",
+      "Marques Brownlee", "Linus Tech Tips", "Unbox Therapy", "Dhar Mann",
+      "TheOdd1sOut", "Cody Ko", "Noel Miller", "Danny Gonzalez",
+      "Drew Gooden", "Kurtis Conner", "Ryan Higa", "Colleen Ballinger",
+      "Liza Koshy", "Lilly Singh", "Jacksfilms", "Jenna Marbles",
+      "Nikocado Avocado",
+      // Beauty & lifestyle
+      "NikkieTutorials", "Safiya Nygaard", "Bretman Rock", "Michelle Khare",
+      "Tana Mongeau", "Trisha Paytas",
+      // Kids & family
+      "Ryan's World", "Blippi", "FGTeeV", "LankyBox", "Vlad and Niki",
+      "Kids Diana Show"
     ]
   },
 
@@ -2458,10 +2608,17 @@ io.on('connection', (socket) => {
   // Rejoin after reconnect (client sends this on every reconnect)
   socket.on('rejoin-room', ({ code, name }) => {
     const room = rooms[(code || '').toUpperCase()];
-    if (!room) return socket.emit('error', { message: 'Room no longer exists.' });
+    if (!room) {
+      // Room is gone — tell the client specifically so it can clean up instead of getting stuck
+      return socket.emit('rejoin-failed', { reason: 'no-room' });
+    }
 
     const player = room.players.find(p => p.name === name);
-    if (!player) return socket.emit('error', { message: 'You are no longer in this room.' });
+    if (!player) {
+      // Player was removed (grace expired). If the room is still in the lobby they can
+      // just re-join fresh; the client handles that fallback.
+      return socket.emit('rejoin-failed', { reason: 'not-in-room', gameState: room.gameState, code: room.code });
+    }
 
     // Cancel any pending removal timer
     if (room._dcTimers && room._dcTimers[player.id]) {
@@ -2987,6 +3144,19 @@ io.on('connection', (socket) => {
   });
 
   // Disconnect — grace period so brief blips don't destroy rooms
+  // Deliberate leave (pressed "Leave") — remove immediately, no grace period
+  socket.on('leave-room', () => {
+    const name = socket.playerName || 'A player';
+    const room = rooms[socket.roomCode];
+    if (!room) return;
+    if (room._dcTimers && room._dcTimers[socket.id]) {
+      clearTimeout(room._dcTimers[socket.id]);
+      delete room._dcTimers[socket.id];
+    }
+    _removePlayer(room, socket.id, name);
+    socket.roomCode = null;
+  });
+
   socket.on('disconnect', () => {
     const name = socket.playerName || 'A player';
 
@@ -3008,8 +3178,10 @@ io.on('connection', (socket) => {
         io.to(room.code).emit('room-update', sanitizeRoom(room));
       }
       if (!room._dcTimers) room._dcTimers = {};
-      // Give generous grace periods — mobile browsers suspend sockets when backgrounded
-      const delay = room.gameState !== 'lobby' ? 300000 : 120000; // 5 min in-game, 2 min lobby
+      // Very generous grace periods — phones suspend sockets when backgrounded/locked,
+      // and desktops drop them when minimised. Players should be able to tab away for
+      // a long time without being removed mid-session.
+      const delay = room.gameState !== 'lobby' ? 30 * 60 * 1000 : 10 * 60 * 1000; // 30 min in-game, 10 min lobby
       room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, delay);
     }
   });
@@ -3019,6 +3191,7 @@ function _removePlayer(room, socketId, name) {
   if (!room) return;
   room.players = room.players.filter(p => p.id !== socketId);
   if (room.readyPlayers) room.readyPlayers.delete(socketId);
+  if (room.votes) delete room.votes[socketId];
   // Remove from wavelength team lists
   if (room.settings && room.settings.wvTeams) {
     room.settings.wvTeams.forEach(t => { t.playerIds = (t.playerIds || []).filter(id => id !== socketId); });
@@ -3033,6 +3206,15 @@ function _removePlayer(room, socketId, name) {
   }
   io.to(room.code).emit('room-update', sanitizeRoom(room));
   io.to(room.code).emit('player-left', { name });
+
+  // If they left mid-vote, the game may now be waiting on nobody — resolve it
+  if (room.gameState === 'voting') {
+    const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+    const connectedActive = activePlayers.filter(p => io.sockets.sockets.has(p.id));
+    if (connectedActive.length > 0 && Object.keys(room.votes || {}).length >= connectedActive.length) {
+      try { resolveVotes(room); } catch (e) { console.error('resolveVotes (leave) error:', e); }
+    }
+  }
 }
 
 app.get('/ping', (req, res) => res.send('ok'));

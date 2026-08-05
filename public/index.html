@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Imposter</title>
+  <title>Party Games</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎉</text></svg>" />
   <style>
     /* ─────────────── BASE ─────────────── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,7 +27,14 @@
       background: var(--bg); color: var(--text);
       overflow-x: hidden;
     }
-    body { display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    body {
+      display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, rgba(124,58,237,0.18), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(236,72,153,0.10), transparent 55%),
+        var(--bg);
+      background-attachment: fixed;
+    }
 
     /* ─────────────── SCREENS ─────────────── */
     .screen { display: none; width: 100%; max-width: 480px; padding: 24px 20px; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; justify-content: center; scrollbar-width: none; -ms-overflow-style: none; }
@@ -40,12 +48,33 @@
     }
 
     /* ─────────────── LOGO ─────────────── */
-    .logo { font-size: 2.6rem; font-weight: 900; letter-spacing: -1px; background: linear-gradient(135deg, #a855f7, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .logo-sub { color: var(--muted); font-size: 0.9rem; margin-top: -8px; }
-    .logo-eye { font-size: 3rem; filter: drop-shadow(0 0 20px #a855f7); }
+    .logo { font-size: 2.6rem; font-weight: 900; letter-spacing: -1px; line-height: 1.05; background: linear-gradient(135deg, #a855f7, #ec4899 55%, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .logo-sub { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+    .logo-eye { font-size: 3rem; filter: drop-shadow(0 0 22px rgba(168,85,247,0.55)); }
+
+    /* ─────────────── GAME MODE GRID ─────────────── */
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mode-tile {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+      padding: 16px 8px; background: var(--surface); border: 2px solid var(--border);
+      border-radius: 14px; cursor: pointer; transition: all .15s; color: var(--text);
+      text-align: center; min-height: 84px;
+    }
+    .mode-tile:hover { border-color: var(--accent2); transform: translateY(-2px); }
+    .mode-tile:active { transform: scale(0.97); }
+    .mode-tile.selected {
+      border-color: var(--accent2); background: rgba(168,85,247,0.14);
+      box-shadow: 0 0 0 1px var(--accent2), 0 6px 18px rgba(124,58,237,0.28);
+    }
+    .mode-tile-emoji { font-size: 1.9rem; line-height: 1; }
+    .mode-tile-label { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.2px; }
 
     /* ─────────────── CARDS ─────────────── */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; width: 100%; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; width: 100%;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
     .card-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
 
     /* ─────────────── INPUTS ─────────────── */
@@ -339,9 +368,9 @@
 <!-- HOME SCREEN -->
 <!-- ══════════════════════════════════════════ -->
 <div id="screen-home" class="screen active">
-  <div class="logo-eye">👁️</div>
-  <div class="logo">IMPOSTER</div>
-  <div class="logo-sub">Who among you is the fake?</div>
+  <div class="logo-eye">🎉</div>
+  <div class="logo">PARTY GAMES</div>
+  <div class="logo-sub">Pick a game. Grab your friends. Play.</div>
   <div style="height:8px"></div>
 
   <div style="width:100%">
@@ -368,7 +397,7 @@
 <div id="screen-lobby" class="screen">
   <div class="lobby-top">
     <div>
-      <div class="logo" style="font-size:1.8rem">IMPOSTER</div>
+      <div class="logo" style="font-size:1.8rem">PARTY GAMES</div>
       <div class="logo-sub">Waiting for players...</div>
     </div>
     <button class="btn-ghost" onclick="leaveRoom()">← Leave</button>
@@ -390,15 +419,15 @@
 
   <!-- GAME TYPE SELECTOR (host only) -->
   <div id="host-game-type" class="card" style="width:100%; display:none">
-    <div class="card-title">Game Mode</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-sm" id="gametype-imposter-btn" onclick="setGameType('imposter')" style="flex:1;min-width:calc(33% - 8px)">🕵️ Imposter</button>
-      <button class="btn btn-sm" id="gametype-whoami-btn" onclick="setGameType('whoami')" style="flex:1;min-width:calc(33% - 8px)">🤔 Who Am I?</button>
-      <button class="btn btn-sm" id="gametype-spyfall-btn" onclick="setGameType('spyfall')" style="flex:1;min-width:calc(33% - 8px)">🔍 Spyfall</button>
-      <button class="btn btn-sm" id="gametype-draw-btn" onclick="setGameType('draw')" style="flex:1;min-width:calc(33% - 8px)">🎨 Draw</button>
-      <button class="btn btn-sm" id="gametype-collab-btn" onclick="setGameType('collab')" style="flex:1;min-width:calc(33% - 8px)">🖌️ Collab Draw</button>
-      <button class="btn btn-sm" id="gametype-wavelength-btn" onclick="setGameType('wavelength')" style="flex:1;min-width:calc(33% - 8px)">🌊 Wavelength</button>
-      <button class="btn btn-sm" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')" style="flex:1;min-width:calc(33% - 8px)">🏆 Blind Ranking</button>
+    <div class="card-title">Choose a Game</div>
+    <div class="mode-grid">
+      <button class="mode-tile" id="gametype-imposter-btn" onclick="setGameType('imposter')"><span class="mode-tile-emoji">🕵️</span><span class="mode-tile-label">Imposter</span></button>
+      <button class="mode-tile" id="gametype-whoami-btn" onclick="setGameType('whoami')"><span class="mode-tile-emoji">🤔</span><span class="mode-tile-label">Who Am I?</span></button>
+      <button class="mode-tile" id="gametype-spyfall-btn" onclick="setGameType('spyfall')"><span class="mode-tile-emoji">🔍</span><span class="mode-tile-label">Spyfall</span></button>
+      <button class="mode-tile" id="gametype-draw-btn" onclick="setGameType('draw')"><span class="mode-tile-emoji">🎨</span><span class="mode-tile-label">Draw</span></button>
+      <button class="mode-tile" id="gametype-collab-btn" onclick="setGameType('collab')"><span class="mode-tile-emoji">🖌️</span><span class="mode-tile-label">Collab Draw</span></button>
+      <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span></button>
+      <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span></button>
     </div>
   </div>
 
@@ -2626,26 +2655,20 @@ function renderLobbyData(room) {
   document.getElementById('player-waiting-msg').style.display = amHost ? 'none' : 'block';
 
   if (amHost) {
-    // Game type toggle buttons
-    const impBtn    = document.getElementById('gametype-imposter-btn');
-    const wamBtn    = document.getElementById('gametype-whoami-btn');
-    const sfBtn     = document.getElementById('gametype-spyfall-btn');
-    const drawBtn   = document.getElementById('gametype-draw-btn');
-    const collabBtn = document.getElementById('gametype-collab-btn');
-    const wvBtn     = document.getElementById('gametype-wavelength-btn');
-    if (impBtn)    impBtn.className    = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
-    if (wamBtn)    wamBtn.className    = 'btn btn-sm' + (isWhoami       ? ' btn-primary' : ' btn-outline');
-    if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall      ? ' btn-primary' : ' btn-outline');
-    if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw         ? ' btn-primary' : ' btn-outline');
-    if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab       ? ' btn-primary' : ' btn-outline');
-    const brBtn     = document.getElementById('gametype-blind-ranking-btn');
-    if (impBtn)    impBtn.className    = 'btn btn-sm' + (gameType === 'imposter' ? ' btn-primary' : ' btn-outline');
-    if (wamBtn)    wamBtn.className    = 'btn btn-sm' + (isWhoami       ? ' btn-primary' : ' btn-outline');
-    if (sfBtn)     sfBtn.className     = 'btn btn-sm' + (isSpyfall      ? ' btn-primary' : ' btn-outline');
-    if (drawBtn)   drawBtn.className   = 'btn btn-sm' + (isDraw         ? ' btn-primary' : ' btn-outline');
-    if (collabBtn) collabBtn.className = 'btn btn-sm' + (isCollab       ? ' btn-primary' : ' btn-outline');
-    if (wvBtn)     wvBtn.className     = 'btn btn-sm' + (isWavelength   ? ' btn-primary' : ' btn-outline');
-    if (brBtn)     brBtn.className     = 'btn btn-sm' + (gameType === 'blind-ranking' ? ' btn-primary' : ' btn-outline');
+    // Game type tiles — highlight the selected one
+    const modeSelected = {
+      imposter: gameType === 'imposter',
+      whoami: isWhoami,
+      spyfall: isSpyfall,
+      draw: isDraw,
+      collab: isCollab,
+      wavelength: isWavelength,
+      'blind-ranking': gameType === 'blind-ranking'
+    };
+    Object.entries(modeSelected).forEach(([type, on]) => {
+      const el = document.getElementById('gametype-' + type + '-btn');
+      if (el) el.classList.toggle('selected', !!on);
+    });
 
     const isVideo        = room.settings.gameMode === 'video';
     const isBlindRanking = gameType === 'blind-ranking';

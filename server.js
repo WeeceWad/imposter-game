@@ -1403,6 +1403,12 @@ function biddersStartItem(room) {
   d.currentItem = d.pool[d.poolIdx++];
   d.highBid = 0;
   d.highBidderId = null;
+  // Only one player can still afford to bid — nobody can outbid them, so the item
+  // goes to them automatically for free (no pointless solo bid).
+  if (eligible.length === 1) {
+    d.active = eligible;
+    return biddersAward(room, eligible[0], 0);
+  }
   d.active = eligible;
   const opener = d.active[(d.openerRot || 0) % d.active.length];
   d.openerRot = (d.openerRot || 0) + 1;

@@ -3,6 +3,17 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
+// ── Crash guards ──────────────────────────────────────────────
+// A single unhandled error must NEVER take down the whole server — that would
+// restart the process on the host, wipe all in-memory rooms, and kick everyone.
+// Log and keep running instead.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -709,6 +720,41 @@ async function getSpotifyApiToken() {
   }
 }
 
+// Scrape a SoundCloud client_id from the site's JS bundles (needed for their internal API)
+let _scClientIdCache = null;
+async function getSoundCloudClientId(pageHtml) {
+  if (_scClientIdCache) return _scClientIdCache;
+  const scriptUrls = [...pageHtml.matchAll(/<script[^>]+src="([^"]+)"/g)]
+    .map(m => m[1])
+    .filter(u => u.startsWith('http'));
+  // The client_id lives in one of the app bundles — usually the last few loaded
+  for (const url of scriptUrls.reverse().slice(0, 6)) {
+    try {
+      const res = await fetch(url);
+      const js = await res.text();
+      const m = js.match(/client_id\s*[:=]\s*["']([a-zA-Z0-9]{25,})["']/);
+      if (m) { _scClientIdCache = m[1]; return m[1]; }
+    } catch (e) { /* try next */ }
+  }
+  return null;
+}
+
+// Resolve un-hydrated SoundCloud track IDs into full track objects via their internal API
+async function resolveSoundCloudTracks(ids, clientId) {
+  const byId = {};
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    try {
+      const res = await fetch(`https://api-v2.soundcloud.com/tracks?ids=${chunk.join(',')}&client_id=${clientId}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      const arr = await res.json();
+      if (Array.isArray(arr)) arr.forEach(t => { if (t && t.id) byId[t.id] = t; });
+    } catch (e) { /* skip chunk */ }
+  }
+  return byId;
+}
+
 async function parsePlaylistUrl(urlStr) {
   if (!urlStr || typeof urlStr !== 'string') return [];
   const cleanUrl = urlStr.trim();
@@ -818,30 +864,55 @@ async function parsePlaylistUrl(urlStr) {
     }
   }
 
-  // SoundCloud playlist / set — scrape the page's hydration JSON (best effort)
+  // SoundCloud playlist / set
   if (/soundcloud\.com\//i.test(cleanUrl)) {
     try {
       const scRes = await fetch(cleanUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
       });
       const scHtml = await scRes.text();
-      // The hydration blob is the last statement in its inline <script>, so anchor to </script>
-      const m = scHtml.match(/__sc_hydration\s*=\s*(\[[\s\S]*?\]);\s*<\/script>/);
-      if (m) {
-        const hydration = JSON.parse(m[1]);
-        const plEntry = hydration.find(h => h && (h.hydratable === 'playlist' || h.hydratable === 'system-playlist'));
-        const tracks = (plEntry && plEntry.data && plEntry.data.tracks) || [];
-        const out = tracks
-          .filter(t => t && t.title && t.permalink_url)
-          .map(t => ({
-            title: t.title,
-            artist: (t.user && t.user.username) || 'SoundCloud',
-            artwork: (t.artwork_url ? t.artwork_url.replace('-large', '-t200x200') : '') || (t.user && t.user.avatar_url) || '',
-            scUrl: t.permalink_url,
-            id: String(t.id || Math.random().toString(36).slice(2))
-          }));
-        if (out.length > 0) return out;
+      const clientId = await getSoundCloudClientId(scHtml);
+
+      // Primary: the resolve API returns the FULL track list (page HTML only embeds ~5)
+      let rawTracks = [];
+      if (clientId) {
+        try {
+          const rr = await fetch(`https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(cleanUrl)}&client_id=${clientId}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0' }
+          });
+          if (rr.ok) {
+            const pd = await rr.json();
+            if (pd && Array.isArray(pd.tracks)) rawTracks = pd.tracks;
+          }
+        } catch (e) { /* fall back to hydration */ }
       }
+      // Fallback: scrape the page's hydration JSON
+      if (rawTracks.length === 0) {
+        const m = scHtml.match(/__sc_hydration\s*=\s*(\[[\s\S]*?\]);\s*<\/script>/);
+        if (m) {
+          const hydration = JSON.parse(m[1]);
+          const plEntry = hydration.find(h => h && (h.hydratable === 'playlist' || h.hydratable === 'system-playlist'));
+          rawTracks = (plEntry && plEntry.data && plEntry.data.tracks) || [];
+        }
+      }
+
+      // Most tracks come back as just { id } — resolve those into full objects in batches
+      const idsOnly = rawTracks.filter(t => t && t.id && !t.title).map(t => t.id);
+      let resolved = {};
+      if (idsOnly.length > 0 && clientId) resolved = await resolveSoundCloudTracks(idsOnly, clientId);
+      const merged = rawTracks.map(t => (t && t.title ? t : resolved[t && t.id])).filter(Boolean);
+
+      const scArtwork = t => (t.artwork_url ? t.artwork_url.replace('-large', '-t200x200') : '') || (t.user && t.user.avatar_url) || '';
+      const out = merged
+        .filter(t => t && t.title && t.permalink_url)
+        .map(t => ({
+          title: t.title,
+          artist: (t.user && t.user.username) || 'SoundCloud',
+          artwork: scArtwork(t),
+          scUrl: t.permalink_url,
+          id: String(t.id || Math.random().toString(36).slice(2))
+        }));
+      if (out.length > 0) return out;
     } catch (e) {
       console.error('SoundCloud playlist parsing error:', e.message);
     }
@@ -3276,38 +3347,43 @@ io.on('connection', (socket) => {
   socket.on('blind-ranking-fetch-playlist', async ({ source, presetKey, playlistUrl, customText }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
-    
-    let tracks = [];
-    let name = "Custom Playlist";
 
-    if (source === 'preset') {
-      const pKey = presetKey || 'tophits';
-      const presetObj = PRESET_PLAYLISTS[pKey] || PRESET_PLAYLISTS.tophits;
-      tracks = presetObj.tracks;
-      name = presetObj.name;
-    } else if (source === 'custom') {
-      tracks = parseCustomSongList(customText);
-      name = "Custom Tracks List";
-    } else if (source === 'url') {
-      tracks = await parsePlaylistUrl(playlistUrl);
-      name = "Loaded Playlist";
+    try {
+      let tracks = [];
+      let name = "Custom Playlist";
+
+      if (source === 'preset') {
+        const pKey = presetKey || 'tophits';
+        const presetObj = PRESET_PLAYLISTS[pKey] || PRESET_PLAYLISTS.tophits;
+        tracks = presetObj.tracks;
+        name = presetObj.name;
+      } else if (source === 'custom') {
+        tracks = parseCustomSongList(customText);
+        name = "Custom Tracks List";
+      } else if (source === 'url') {
+        tracks = await parsePlaylistUrl(playlistUrl);
+        name = "Loaded Playlist";
+      }
+
+      if (!tracks || tracks.length === 0) {
+        return socket.emit('error', { message: 'Could not load tracks from that source. Check the URL or text format.' });
+      }
+
+      room.blindRankingPlaylist = tracks;
+      room.blindRankingPlaylistName = name;
+      room.settings.presetKey = presetKey || 'tophits';
+      room.settings.playlistSource = source;
+
+      socket.emit('blind-ranking-playlist-loaded', {
+        count: tracks.length,
+        name,
+        sample: tracks.slice(0, 5)
+      });
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+    } catch (e) {
+      console.error('blind-ranking-fetch-playlist error:', e.message);
+      socket.emit('error', { message: 'Could not load that playlist. Try a different link.' });
     }
-
-    if (!tracks || tracks.length === 0) {
-      return socket.emit('error', { message: 'Could not load tracks from that source. Check URL or text format.' });
-    }
-
-    room.blindRankingPlaylist = tracks;
-    room.blindRankingPlaylistName = name;
-    room.settings.presetKey = presetKey || 'tophits';
-    room.settings.playlistSource = source;
-
-    socket.emit('blind-ranking-playlist-loaded', {
-      count: tracks.length,
-      name,
-      sample: tracks.slice(0, 5)
-    });
-    io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
   socket.on('blind-ranking-place-song', ({ slot }) => {

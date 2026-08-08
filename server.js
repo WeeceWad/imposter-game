@@ -1402,14 +1402,23 @@ function biddersStartItem(room) {
   d.currentItem = d.pool[d.poolIdx++];
   d.highBid = 0;
   d.highBidderId = null;
+  d.skipVotes = [];   // per-item: everyone can vote to skip the current item
   const bidders = biddersEligible(room); // players who can actually bid (space + money + connected)
   if (bidders.length === 0) {
     // Nobody can afford to bid — give the item to a broke player who still has empty slots
     return biddersDonate(room);
   }
   d.active = bidders;
-  const opener = d.active[(d.openerRot || 0) % d.active.length];
-  d.openerRot = (d.openerRot || 0) + 1;
+  let opener;
+  if (d.forcedOpenerId && bidders.includes(d.forcedOpenerId)) {
+    // A skipped item keeps the same player opening the next one
+    opener = d.forcedOpenerId;
+  } else {
+    opener = d.active[(d.openerRot || 0) % d.active.length];
+    d.openerRot = (d.openerRot || 0) + 1;
+  }
+  d.forcedOpenerId = null;
+  d.openerId = opener;
   d.currentTurnId = opener;
   io.to(room.code).emit('bidders-new-item', { item: d.currentItem, itemsLeft: d.pool.length - d.poolIdx });
   io.to(room.code).emit('room-update', sanitizeRoom(room));
@@ -2871,6 +2880,8 @@ io.on('connection', (socket) => {
       if (d.players[oldId]) { d.players[socket.id] = d.players[oldId]; delete d.players[oldId]; }
       if (d.highBidderId === oldId) d.highBidderId = socket.id;
       if (d.currentTurnId === oldId) d.currentTurnId = socket.id;
+      if (d.forcedOpenerId === oldId) d.forcedOpenerId = socket.id;
+      if (d.openerId === oldId) d.openerId = socket.id;
     }
 
     socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
@@ -3342,8 +3353,8 @@ io.on('connection', (socket) => {
     biddersDoPass(room, socket.id);
   });
 
-  // ── BIDDERS: vote to end the game early (all connected players must vote) ──
-  socket.on('bidders-vote-skip', () => {
+  // ── BIDDERS: vote to skip the CURRENT item (all connected players must agree) ──
+  socket.on('bidders-skip-item', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState !== 'bidders-playing' || !room.biddersData) return;
     const d = room.biddersData;
@@ -3360,8 +3371,13 @@ io.on('connection', (socket) => {
       total: connected.length,
       voted: idx < 0
     });
+    // Everyone agreed — discard this item and move to the next one,
+    // keeping the same player as the opener (turn doesn't rotate on a skip)
     if (connected.length > 0 && d.skipVotes.length >= connected.length) {
-      return biddersEndGame(room);
+      d.forcedOpenerId = d.currentTurnId || d.openerId || null;
+      d.currentItem = null; d.highBid = 0; d.highBidderId = null;
+      d.currentTurnId = null; d.active = []; d.skipVotes = [];
+      return biddersStartItem(room);
     }
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });

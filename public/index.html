@@ -1418,32 +1418,35 @@
     <div style="font-size:0.8rem; color:var(--muted)"><span id="bidders-source-name">—</span> · <span id="bidders-items-left">0</span> left</div>
   </div>
 
-  <!-- Current item up for auction -->
-  <div class="card" style="width:100%; text-align:center; border-color:#f59e0b">
-    <div class="card-title" style="color:#fbbf24">Up For Auction</div>
-    <div id="bidders-item" style="display:flex; flex-direction:column; align-items:center; gap:8px; margin:6px 0 10px"></div>
-    <div style="display:flex; justify-content:center; gap:24px; margin-top:6px">
-      <div>
-        <div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">High Bid</div>
-        <div style="font-size:1.6rem; font-weight:900; color:#22c55e" id="bidders-high-bid">£0</div>
-      </div>
-      <div>
-        <div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Held By</div>
-        <div style="font-size:1rem; font-weight:800; margin-top:8px" id="bidders-high-bidder">—</div>
+  <!-- Arena: two lists with the item up for auction in the middle -->
+  <div id="bidders-arena" style="display:grid; grid-template-columns:1fr minmax(108px,1.2fr) 1fr; gap:8px; width:100%; align-items:start">
+    <div id="bidders-side-left"></div>
+    <div id="bidders-center">
+      <div class="card" style="text-align:center; border-color:#f59e0b; padding:12px 8px">
+        <div class="card-title" style="color:#fbbf24; margin-bottom:8px">Up For Auction</div>
+        <div id="bidders-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:10px"></div>
+        <div style="font-size:0.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">High Bid</div>
+        <div style="font-size:1.5rem; font-weight:900; color:#22c55e" id="bidders-high-bid">£0</div>
+        <div style="font-size:0.8rem; font-weight:700" id="bidders-high-bidder">—</div>
       </div>
     </div>
+    <div id="bidders-side-right"></div>
   </div>
+
+  <!-- Extra players (3+) stack below the two-column arena -->
+  <div id="bidders-players" style="width:100%; display:flex; flex-direction:column; gap:10px; margin-top:10px"></div>
 
   <!-- My controls -->
   <div id="bidders-my-turn" class="card" style="width:100%; display:none; border-color:var(--accent)">
     <div class="card-title" style="color:var(--accent2)">Your Move</div>
-    <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px">You have <strong id="bidders-my-money" style="color:#22c55e">£0</strong> · Bid higher than the current high bid, or pass.</div>
+    <div id="bidders-my-hint" style="font-size:0.82rem; color:var(--muted); margin-bottom:10px">You have <strong id="bidders-my-money" style="color:#22c55e">£0</strong></div>
     <div style="display:flex; gap:8px; align-items:center">
       <span style="font-size:1.2rem; font-weight:800; color:var(--muted)">£</span>
       <input type="number" id="bidders-bid-input" min="1" step="1" style="flex:1; font-size:1.1rem; text-align:center" />
       <button class="btn btn-success" style="width:auto; padding:12px 18px" onclick="placeBid()">Bid</button>
     </div>
-    <button class="btn btn-outline" style="margin-top:10px" onclick="passBid()">🙅 Pass</button>
+    <!-- Contextual: "Don't bid" (concede to leader) or "Pass" (give to broke player) -->
+    <button class="btn btn-outline" id="bidders-concede-btn" style="margin-top:10px; display:none" onclick="passBid()">Don't Bid</button>
   </div>
   <div id="bidders-wait" class="card text-center pulse" style="width:100%; display:none; color:var(--muted)">
     Waiting for <strong id="bidders-turn-name" style="color:var(--text)">—</strong>…
@@ -1452,11 +1455,8 @@
     ✅ Your list is full — sit back and watch the rest bid it out.
   </div>
 
-  <!-- Players -->
-  <div id="bidders-players" style="width:100%; display:flex; flex-direction:column; gap:10px"></div>
-
-  <!-- Skip vote -->
-  <button class="btn btn-outline" id="bidders-skip-btn" onclick="voteSkipBidders()" style="margin-top:14px">🏳️ Vote to End Game (0/0)</button>
+  <!-- Skip current item vote -->
+  <button class="btn btn-outline" id="bidders-skip-btn" onclick="voteSkipBidders()" style="margin-top:14px">⏭️ Vote to Skip This Item (0/0)</button>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -1996,7 +1996,7 @@ function initSocket() {
     else showToast(`${d.winnerName} won "${name}" for £${d.price}`, 'success');
   });
   socket.on('bidders-skip-update', function(d) {
-    if (d.voted) showToast(`${d.voterName} voted to end the game (${d.count}/${d.total})`, '');
+    if (d.voted) showToast(`${d.voterName} voted to skip this item (${d.count}/${d.total})`, '');
   });
   socket.on('bidders-ended', function(d) {
     renderBiddersFinal(d.results || []);
@@ -2524,7 +2524,7 @@ function placeBid() {
   socket.emit('bidders-bid', { amount: amt });
 }
 function passBid() { socket.emit('bidders-pass'); }
-function voteSkipBidders() { socket.emit('bidders-vote-skip'); }
+function voteSkipBidders() { socket.emit('bidders-skip-item'); }
 function restartBiddersGame() { if (!isHost) return; socket.emit('bidders-restart'); showScreen('lobby'); }
 
 function biddersItemHtml(item) {
@@ -2565,6 +2565,9 @@ function renderBidders(room) {
     setTxt('bidders-my-money', '£' + (me ? me.money : 0));
     const inp = document.getElementById('bidders-bid-input');
     const bidBtn = turnEl ? turnEl.querySelector('.btn-success') : null;
+    const concedeBtn = document.getElementById('bidders-concede-btn');
+    const hintEl = document.getElementById('bidders-my-hint');
+    const highStands = b.highBidderId != null;
     const min = (b.highBid || 0) + 1;
     const canAfford = me && me.money >= min;
     if (inp) {
@@ -2574,7 +2577,26 @@ function renderBidders(room) {
     }
     if (bidBtn) {
       bidBtn.disabled = !canAfford;
-      bidBtn.textContent = canAfford ? 'Bid' : 'Too rich';
+      bidBtn.textContent = highStands ? 'Bid More' : 'Bid';
+    }
+    // Contextual second button
+    const brokeWaiting = b.players.filter(p => p.id !== myId && p.money <= 0 && !p.full);
+    if (concedeBtn) {
+      if (highStands) {
+        // Someone has bid — you can concede and let them have it
+        const leader = b.players.find(p => p.id === b.highBidderId);
+        concedeBtn.textContent = `🙅 Don't Bid — let ${leader ? leader.name : 'them'} have it (£${b.highBid})`;
+        concedeBtn.style.display = 'block';
+        if (hintEl) hintEl.innerHTML = `You have <strong style="color:#22c55e">£${me ? me.money : 0}</strong> · bid more, or let them have it.`;
+      } else if (brokeWaiting.length > 0) {
+        // Opponent is broke — take it yourself or pass it to them
+        concedeBtn.textContent = `🤲 Pass — give it to ${brokeWaiting[0].name}`;
+        concedeBtn.style.display = 'block';
+        if (hintEl) hintEl.innerHTML = `You have <strong style="color:#22c55e">£${me ? me.money : 0}</strong> · bid to keep it, or pass it to ${brokeWaiting[0].name}.`;
+      } else {
+        concedeBtn.style.display = 'none';
+        if (hintEl) hintEl.innerHTML = `You have <strong style="color:#22c55e">£${me ? me.money : 0}</strong> · open the bidding, or vote to skip.`;
+      }
     }
   } else if (me && me.full) {
     if (fullEl) fullEl.style.display = 'block';
@@ -2584,30 +2606,49 @@ function renderBidders(room) {
     setTxt('bidders-turn-name', t ? t.name : '—');
   }
 
-  // Skip-game vote button
+  // Skip-current-item vote button
   const skipBtn = document.getElementById('bidders-skip-btn');
   if (skipBtn) {
     const votes = b.skipVotes || [];
     const iVoted = votes.includes(myId);
-    skipBtn.textContent = `🏳️ Vote to End Game (${votes.length}/${b.players.length})`;
+    skipBtn.textContent = `⏭️ Vote to Skip This Item (${votes.length}/${b.players.length})`;
     skipBtn.className = 'btn ' + (iVoted ? 'btn-warn' : 'btn-outline');
   }
 
+  // Two side-by-side list columns with the auction item in the middle
+  const left = document.getElementById('bidders-side-left');
+  const right = document.getElementById('bidders-side-right');
+  if (left) left.innerHTML = b.players[0] ? biddersColumnHtml(b.players[0], b) : '';
+  if (right) right.innerHTML = b.players[1] ? biddersColumnHtml(b.players[1], b) : '';
+
+  // Any 3rd+ players stack below
   const wrap = document.getElementById('bidders-players');
-  if (wrap) wrap.innerHTML = b.players.map(p => {
-    const isTurn = p.id === b.currentTurnId;
-    const isHigh = p.id === b.highBidderId;
-    const listHtml = p.list.length ? p.list.map(biddersChip).join('') : '<span style="color:var(--muted); font-size:0.75rem">empty</span>';
-    return `<div class="card" style="padding:12px; ${isTurn ? 'border-color:var(--accent2)' : ''}">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
-        <div style="font-weight:800">${p.name}${p.id === myId ? ' (you)' : ''}
-          ${isHigh ? ' <span style="color:#22c55e; font-size:0.75rem">▲ HIGH</span>' : ''}
-          ${isTurn ? ' <span style="color:var(--accent2); font-size:0.75rem">● BIDDING</span>' : ''}</div>
-        <div><span style="color:#22c55e; font-weight:800">£${p.money}</span> <span style="color:var(--muted); font-size:0.78rem">${p.list.length}/${b.listSize}</span></div>
-      </div>
-      <div>${listHtml}</div>
-    </div>`;
-  }).join('');
+  if (wrap) wrap.innerHTML = b.players.slice(2).map(p => biddersColumnHtml(p, b)).join('');
+}
+
+function biddersColumnHtml(p, b) {
+  const isTurn = p.id === b.currentTurnId;
+  const isHigh = p.id === b.highBidderId;
+  let slots = '';
+  for (let i = 0; i < b.listSize; i++) {
+    const it = p.list[i];
+    if (it != null) {
+      const label = (typeof it === 'string') ? it : (it.title || '?');
+      slots += `<div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 8px; margin-bottom:5px; font-size:0.74rem; font-weight:600; min-height:32px; display:flex; align-items:center; word-break:break-word">${label}</div>`;
+    } else {
+      slots += `<div style="border:1px dashed var(--border); border-radius:8px; padding:6px 8px; margin-bottom:5px; font-size:0.9rem; color:var(--muted); min-height:32px; display:flex; align-items:center; justify-content:center">·</div>`;
+    }
+  }
+  const border = isTurn ? 'border-color:var(--accent2)' : (isHigh ? 'border-color:#22c55e' : '');
+  return `<div class="card" style="padding:10px; ${border}">
+    <div style="text-align:center; margin-bottom:8px">
+      <div style="font-weight:800; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${p.name}${p.id === myId ? ' (you)' : ''}</div>
+      <div style="font-size:0.78rem; margin-top:1px"><span style="color:#22c55e; font-weight:800">£${p.money}</span> <span style="color:var(--muted)">${p.list.length}/${b.listSize}</span></div>
+      ${isHigh ? '<div style="font-size:0.65rem; color:#22c55e; font-weight:700">▲ HIGH BID</div>' : ''}
+      ${isTurn ? '<div style="font-size:0.65rem; color:var(--accent2); font-weight:700">● BIDDING</div>' : ''}
+    </div>
+    ${slots}
+  </div>`;
 }
 
 function renderBiddersFinal(results) {

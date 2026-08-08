@@ -818,6 +818,35 @@ async function parsePlaylistUrl(urlStr) {
     }
   }
 
+  // SoundCloud playlist / set — scrape the page's hydration JSON (best effort)
+  if (/soundcloud\.com\//i.test(cleanUrl)) {
+    try {
+      const scRes = await fetch(cleanUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      const scHtml = await scRes.text();
+      // The hydration blob is the last statement in its inline <script>, so anchor to </script>
+      const m = scHtml.match(/__sc_hydration\s*=\s*(\[[\s\S]*?\]);\s*<\/script>/);
+      if (m) {
+        const hydration = JSON.parse(m[1]);
+        const plEntry = hydration.find(h => h && (h.hydratable === 'playlist' || h.hydratable === 'system-playlist'));
+        const tracks = (plEntry && plEntry.data && plEntry.data.tracks) || [];
+        const out = tracks
+          .filter(t => t && t.title && t.permalink_url)
+          .map(t => ({
+            title: t.title,
+            artist: (t.user && t.user.username) || 'SoundCloud',
+            artwork: (t.artwork_url ? t.artwork_url.replace('-large', '-t200x200') : '') || (t.user && t.user.avatar_url) || '',
+            scUrl: t.permalink_url,
+            id: String(t.id || Math.random().toString(36).slice(2))
+          }));
+        if (out.length > 0) return out;
+      }
+    } catch (e) {
+      console.error('SoundCloud playlist parsing error:', e.message);
+    }
+  }
+
   return [];
 }
 
@@ -1360,7 +1389,10 @@ function tallyVotes(votes) {
 function biddersBuildPool(room) {
   const src = room.settings.biddersSource || 'musicArtists';
   if (src === 'playlist' && room.blindRankingPlaylist && room.blindRankingPlaylist.length) {
-    const items = room.blindRankingPlaylist.map(t => ({ title: t.title, artist: t.artist, artwork: t.artwork || '' }));
+    const items = room.blindRankingPlaylist.map(t => ({
+      title: t.title, artist: t.artist, artwork: t.artwork || '',
+      audioUrl: t.audioUrl || '', videoId: t.videoId || '', scUrl: t.scUrl || ''
+    }));
     return { items: shuffleArray(items), sourceName: room.blindRankingPlaylistName || 'Playlist' };
   }
   const cat = CATEGORIES[src] || CATEGORIES.musicArtists;

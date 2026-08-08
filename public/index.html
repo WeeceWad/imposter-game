@@ -1436,6 +1436,9 @@
   <!-- Extra players (3+) stack below the two-column arena -->
   <div id="bidders-players" style="width:100%; display:flex; flex-direction:column; gap:10px; margin-top:10px"></div>
 
+  <!-- Audio/video preview for playlist items (Spotify / YouTube / SoundCloud) -->
+  <div id="bidders-media" style="width:100%; margin-top:10px"></div>
+
   <!-- My controls -->
   <div id="bidders-my-turn" class="card" style="width:100%; display:none; border-color:var(--accent)">
     <div class="card-title" style="color:var(--accent2)">Your Move</div>
@@ -1984,6 +1987,7 @@ function initSocket() {
 
   // ── BIDDERS events ──
   socket.on('bidders-started', function() {
+    _biddersItemKey = null; // force fresh item/media render
     showScreen('bidders-playing');
   });
   socket.on('bidders-new-item', function() {
@@ -2527,12 +2531,34 @@ function passBid() { socket.emit('bidders-pass'); }
 function voteSkipBidders() { socket.emit('bidders-skip-item'); }
 function restartBiddersGame() { if (!isHost) return; socket.emit('bidders-restart'); showScreen('lobby'); }
 
+let _biddersItemKey = null; // guards item/media re-render so audio doesn't restart
+
 function biddersItemHtml(item) {
   if (item == null) return '';
   if (typeof item === 'string') return `<div style="font-size:1.5rem; font-weight:900; line-height:1.2">${item}</div>`;
-  return `${item.artwork ? `<img src="${item.artwork}" style="width:84px; height:84px; border-radius:12px; object-fit:cover" />` : '<div style="font-size:2.4rem">🎵</div>'}
-    <div style="font-size:1.2rem; font-weight:900; line-height:1.2">${item.title || ''}</div>
-    <div style="font-size:0.9rem; color:var(--accent2); font-weight:700">${item.artist || ''}</div>`;
+  return `${item.artwork ? `<img src="${item.artwork}" style="width:64px; height:64px; border-radius:10px; object-fit:cover" />` : '<div style="font-size:2rem">🎵</div>'}
+    <div style="font-size:1rem; font-weight:900; line-height:1.2">${item.title || ''}</div>
+    <div style="font-size:0.82rem; color:var(--accent2); font-weight:700">${item.artist || ''}</div>`;
+}
+
+// Full-width play controls for playlist songs (Spotify preview / YouTube / SoundCloud)
+function biddersMediaHtml(item) {
+  if (!item || typeof item === 'string') return '';
+  if (item.audioUrl) {
+    return `<audio controls preload="none" src="${item.audioUrl}" style="width:100%; height:40px"></audio>`;
+  }
+  if (item.scUrl) {
+    const u = encodeURIComponent(item.scUrl);
+    return `<iframe width="100%" height="120" scrolling="no" frameborder="no" allow="autoplay"
+      src="https://w.soundcloud.com/player/?url=${u}&color=%23a855f7&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false&show_teaser=false"
+      style="border-radius:10px"></iframe>`;
+  }
+  if (item.videoId) {
+    return `<iframe width="100%" height="90" src="https://www.youtube.com/embed/${item.videoId}?rel=0&modestbranding=1"
+      frameborder="0" allow="encrypted-media; picture-in-picture" allowfullscreen
+      style="border-radius:10px; border:1px solid var(--border)"></iframe>`;
+  }
+  return '';
 }
 function biddersChip(it) {
   const label = (typeof it === 'string') ? it : (it && it.title) || '?';
@@ -2545,8 +2571,17 @@ function renderBidders(room) {
   const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   setTxt('bidders-source-name', b.sourceName || '');
   setTxt('bidders-items-left', b.itemsLeft);
-  const itemEl = document.getElementById('bidders-item');
-  if (itemEl) itemEl.innerHTML = biddersItemHtml(b.currentItem);
+  // Only rebuild the item + media when the item actually changes, so the audio/
+  // video player doesn't reset every time someone bids.
+  const it = b.currentItem;
+  const itemKey = it == null ? '' : (typeof it === 'string' ? it : (it.audioUrl || it.scUrl || it.videoId || it.id || (it.title + '|' + it.artist)));
+  if (itemKey !== _biddersItemKey) {
+    _biddersItemKey = itemKey;
+    const itemEl = document.getElementById('bidders-item');
+    if (itemEl) itemEl.innerHTML = biddersItemHtml(it);
+    const mediaEl = document.getElementById('bidders-media');
+    if (mediaEl) mediaEl.innerHTML = biddersMediaHtml(it);
+  }
   setTxt('bidders-high-bid', '£' + (b.highBid || 0));
   const hb = b.players.find(p => p.id === b.highBidderId);
   setTxt('bidders-high-bidder', hb ? hb.name : '—');

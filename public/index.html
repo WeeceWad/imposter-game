@@ -1454,6 +1454,9 @@
 
   <!-- Players -->
   <div id="bidders-players" style="width:100%; display:flex; flex-direction:column; gap:10px"></div>
+
+  <!-- Skip vote -->
+  <button class="btn btn-outline" id="bidders-skip-btn" onclick="voteSkipBidders()" style="margin-top:14px">🏳️ Vote to End Game (0/0)</button>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -1989,7 +1992,11 @@ function initSocket() {
   });
   socket.on('bidders-won', function(d) {
     const name = (typeof d.item === 'string') ? d.item : (d.item && d.item.title) || 'the item';
-    showToast(`${d.winnerName} won "${name}" for £${d.price}`, 'success');
+    if (d.donated) showToast(`${d.winnerName} was given "${name}"`, 'success');
+    else showToast(`${d.winnerName} won "${name}" for £${d.price}`, 'success');
+  });
+  socket.on('bidders-skip-update', function(d) {
+    if (d.voted) showToast(`${d.voterName} voted to end the game (${d.count}/${d.total})`, '');
   });
   socket.on('bidders-ended', function(d) {
     renderBiddersFinal(d.results || []);
@@ -2517,6 +2524,7 @@ function placeBid() {
   socket.emit('bidders-bid', { amount: amt });
 }
 function passBid() { socket.emit('bidders-pass'); }
+function voteSkipBidders() { socket.emit('bidders-vote-skip'); }
 function restartBiddersGame() { if (!isHost) return; socket.emit('bidders-restart'); showScreen('lobby'); }
 
 function biddersItemHtml(item) {
@@ -2574,6 +2582,15 @@ function renderBidders(room) {
     if (waitEl) waitEl.style.display = 'block';
     const t = b.players.find(p => p.id === b.currentTurnId);
     setTxt('bidders-turn-name', t ? t.name : '—');
+  }
+
+  // Skip-game vote button
+  const skipBtn = document.getElementById('bidders-skip-btn');
+  if (skipBtn) {
+    const votes = b.skipVotes || [];
+    const iVoted = votes.includes(myId);
+    skipBtn.textContent = `🏳️ Vote to End Game (${votes.length}/${b.players.length})`;
+    skipBtn.className = 'btn ' + (iVoted ? 'btn-warn' : 'btn-outline');
   }
 
   const wrap = document.getElementById('bidders-players');

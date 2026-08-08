@@ -1330,6 +1330,7 @@ function sanitizeRoom(room) {
       highBidderId: room.biddersData.highBidderId,
       currentTurnId: room.biddersData.currentTurnId,
       activeBidders: room.biddersData.active || [],
+      skipVotes: room.biddersData.skipVotes || [],
       itemsLeft: Math.max(0, room.biddersData.pool.length - room.biddersData.poolIdx),
       players: room.biddersData.order.map(id => {
         const pl = room.players.find(p => p.id === id);
@@ -1394,22 +1395,19 @@ function biddersAdvance(room, fromId) {
 
 function biddersStartItem(room) {
   const d = room.biddersData;
-  // End when nobody has any space left
-  const anySpace = d.order.some(id => d.players[id] && d.players[id].list.length < d.listSize);
-  if (!anySpace) return biddersEndGame(room);
-  const eligible = biddersEligible(room);
-  if (eligible.length === 0) return biddersEndGame(room);   // players have space but no money left
-  if (d.poolIdx >= d.pool.length) return biddersEndGame(room); // ran out of items
+  // Game only ends when everyone's list is full (or we run out of items)
+  const spacePlayers = d.order.filter(id => d.players[id] && d.players[id].list.length < d.listSize);
+  if (spacePlayers.length === 0) return biddersEndGame(room);
+  if (d.poolIdx >= d.pool.length) return biddersEndGame(room);
   d.currentItem = d.pool[d.poolIdx++];
   d.highBid = 0;
   d.highBidderId = null;
-  // Only one player can still afford to bid — nobody can outbid them, so the item
-  // goes to them automatically for free (no pointless solo bid).
-  if (eligible.length === 1) {
-    d.active = eligible;
-    return biddersAward(room, eligible[0], 0);
+  const bidders = biddersEligible(room); // players who can actually bid (space + money + connected)
+  if (bidders.length === 0) {
+    // Nobody can afford to bid — give the item to a broke player who still has empty slots
+    return biddersDonate(room);
   }
-  d.active = eligible;
+  d.active = bidders;
   const opener = d.active[(d.openerRot || 0) % d.active.length];
   d.openerRot = (d.openerRot || 0) + 1;
   d.currentTurnId = opener;
@@ -1417,7 +1415,21 @@ function biddersStartItem(room) {
   io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
-function biddersAward(room, winnerId, price) {
+// Give the current item, for free, to a broke player who still needs items.
+// Used when nobody can (or wants to) bid, so lists still get filled.
+function biddersDonate(room) {
+  const d = room.biddersData;
+  const broke = d.order.filter(id => d.players[id].list.length < d.listSize && d.players[id].money <= 0);
+  if (broke.length === 0) {
+    // No broke player needs it — discard and move on
+    d.currentItem = null; d.currentTurnId = null; d.active = [];
+    return biddersStartItem(room);
+  }
+  broke.sort((a, b) => d.players[a].list.length - d.players[b].list.length); // fill lists evenly
+  biddersAward(room, broke[0], 0, true);
+}
+
+function biddersAward(room, winnerId, price, donated) {
   const d = room.biddersData;
   const b = d.players[winnerId];
   const item = d.currentItem;
@@ -1425,7 +1437,7 @@ function biddersAward(room, winnerId, price) {
   b.list.push(item);
   const winner = room.players.find(p => p.id === winnerId);
   io.to(room.code).emit('bidders-won', {
-    winnerId, winnerName: winner ? winner.name : '?', item, price
+    winnerId, winnerName: winner ? winner.name : '?', item, price, donated: !!donated
   });
   d.currentItem = null; d.highBid = 0; d.highBidderId = null; d.currentTurnId = null; d.active = [];
   biddersStartItem(room);
@@ -1441,9 +1453,8 @@ function biddersDoPass(room, passerId) {
   } else {
     // No bids yet
     if (d.active.length === 0) {
-      // Nobody wanted it — discard and move on
-      d.currentItem = null; d.currentTurnId = null;
-      return biddersStartItem(room);
+      // Every solvent player passed — hand it to a broke player who still needs items
+      return biddersDonate(room);
     }
     biddersAdvance(room, passerId);
   }
@@ -2201,7 +2212,7 @@ io.on('connection', (socket) => {
       room.biddersData = {
         money, listSize, pool: items, poolIdx: 0, order, players,
         currentItem: null, highBid: 0, highBidderId: null, currentTurnId: null,
-        active: [], openerRot: 0, sourceName
+        active: [], openerRot: 0, sourceName, skipVotes: []
       };
       room.result = null;
       room.gameState = 'bidders-playing';
@@ -2856,6 +2867,7 @@ io.on('connection', (socket) => {
       const d = room.biddersData;
       d.order = d.order.map(id => id === oldId ? socket.id : id);
       d.active = d.active.map(id => id === oldId ? socket.id : id);
+      if (d.skipVotes) d.skipVotes = d.skipVotes.map(id => id === oldId ? socket.id : id);
       if (d.players[oldId]) { d.players[socket.id] = d.players[oldId]; delete d.players[oldId]; }
       if (d.highBidderId === oldId) d.highBidderId = socket.id;
       if (d.currentTurnId === oldId) d.currentTurnId = socket.id;
@@ -3328,6 +3340,30 @@ io.on('connection', (socket) => {
     const d = room.biddersData;
     if (socket.id !== d.currentTurnId || !d.active.includes(socket.id)) return;
     biddersDoPass(room, socket.id);
+  });
+
+  // ── BIDDERS: vote to end the game early (all connected players must vote) ──
+  socket.on('bidders-vote-skip', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'bidders-playing' || !room.biddersData) return;
+    const d = room.biddersData;
+    if (!d.skipVotes) d.skipVotes = [];
+    const idx = d.skipVotes.indexOf(socket.id);
+    if (idx >= 0) d.skipVotes.splice(idx, 1); else d.skipVotes.push(socket.id);
+    // Only count votes from players still connected
+    const connected = d.order.filter(id => io.sockets.sockets.has(id));
+    d.skipVotes = d.skipVotes.filter(id => connected.includes(id));
+    const voter = room.players.find(p => p.id === socket.id);
+    io.to(room.code).emit('bidders-skip-update', {
+      voterName: voter ? voter.name : '?',
+      count: d.skipVotes.length,
+      total: connected.length,
+      voted: idx < 0
+    });
+    if (connected.length > 0 && d.skipVotes.length >= connected.length) {
+      return biddersEndGame(room);
+    }
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
   // ── BIDDERS: host starts a new game / back to lobby ──

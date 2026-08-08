@@ -481,21 +481,18 @@
     </div>
 
     <!-- Starting money -->
-    <div class="setting-label" style="margin-bottom:6px">Starting Money</div>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px" id="bidders-money-row">
-      <button class="btn btn-sm" onclick="setBiddersMoney(50)" data-money="50">£50</button>
-      <button class="btn btn-sm" onclick="setBiddersMoney(100)" data-money="100">£100</button>
-      <button class="btn btn-sm" onclick="setBiddersMoney(250)" data-money="250">£250</button>
-      <button class="btn btn-sm" onclick="setBiddersMoney(500)" data-money="500">£500</button>
+    <div class="setting-label" style="margin-bottom:6px">Starting Money (£ per player)</div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px">
+      <span style="font-size:1.2rem; font-weight:800; color:var(--muted)">£</span>
+      <input type="number" id="bidders-money-input" min="1" step="1" placeholder="100"
+             onchange="setBiddersMoney(this.value)" style="flex:1; font-size:1.05rem; text-align:center" />
     </div>
 
     <!-- List size -->
-    <div class="setting-label" style="margin-bottom:6px">List Size (slots to fill)</div>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px" id="bidders-list-row">
-      <button class="btn btn-sm" onclick="setBiddersListSize(3)" data-size="3">3</button>
-      <button class="btn btn-sm" onclick="setBiddersListSize(5)" data-size="5">5</button>
-      <button class="btn btn-sm" onclick="setBiddersListSize(8)" data-size="8">8</button>
-      <button class="btn btn-sm" onclick="setBiddersListSize(10)" data-size="10">10</button>
+    <div class="setting-label" style="margin-bottom:6px">List Size (slots to fill per player)</div>
+    <div style="margin-bottom:14px">
+      <input type="number" id="bidders-list-input" min="1" step="1" placeholder="5"
+             onchange="setBiddersListSize(this.value)" style="width:100%; font-size:1.05rem; text-align:center" />
     </div>
 
     <!-- Source -->
@@ -2479,12 +2476,11 @@ function renderBiddersSettings(room) {
   const money = s.biddersMoney || 100;
   const size = s.biddersListSize || 5;
   const src = s.biddersSource || 'musicArtists';
-  document.querySelectorAll('#bidders-money-row .btn').forEach(b => {
-    b.className = 'btn btn-sm' + (Number(b.dataset.money) === money ? ' btn-primary' : ' btn-outline');
-  });
-  document.querySelectorAll('#bidders-list-row .btn').forEach(b => {
-    b.className = 'btn btn-sm' + (Number(b.dataset.size) === size ? ' btn-primary' : ' btn-outline');
-  });
+  // Don't clobber the field the host is actively typing in
+  const moneyInp = document.getElementById('bidders-money-input');
+  const listInp = document.getElementById('bidders-list-input');
+  if (moneyInp && document.activeElement !== moneyInp) moneyInp.value = money;
+  if (listInp && document.activeElement !== listInp) listInp.value = size;
   const grid = document.getElementById('bidders-source-grid');
   if (grid) grid.innerHTML = BIDDERS_SOURCES.map(c => `
     <div class="cat-chip ${src === c.key ? 'selected' : ''}" onclick="setBiddersSource('${c.key}')">
@@ -2493,8 +2489,18 @@ function renderBiddersSettings(room) {
   const loader = document.getElementById('bidders-playlist-loader');
   if (loader) loader.style.display = src === 'playlist' ? 'block' : 'none';
 }
-function setBiddersMoney(v)    { if (!isHost) return; socket.emit('update-settings', { settings: { biddersMoney: v } }); }
-function setBiddersListSize(v) { if (!isHost) return; socket.emit('update-settings', { settings: { biddersListSize: v } }); }
+function setBiddersMoney(v) {
+  if (!isHost) return;
+  const n = Math.max(1, Math.floor(Number(v) || 0));
+  if (!n) return;
+  socket.emit('update-settings', { settings: { biddersMoney: n } });
+}
+function setBiddersListSize(v) {
+  if (!isHost) return;
+  const n = Math.max(1, Math.floor(Number(v) || 0));
+  if (!n) return;
+  socket.emit('update-settings', { settings: { biddersListSize: n } });
+}
 function setBiddersSource(key) { if (!isHost) return; socket.emit('update-settings', { settings: { biddersSource: key } }); }
 function loadBiddersPlaylist() {
   const url = (document.getElementById('bidders-url-input').value || '').trim();

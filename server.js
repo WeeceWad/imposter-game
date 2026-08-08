@@ -1321,6 +1321,25 @@ function sanitizeRoom(room) {
       placedPlayers: room.blindRankingData ? room.blindRankingData.placedPlayers : [],
       playerRankings: room.blindRankingData ? room.blindRankingData.playerRankings : {},
       playlistName: room.blindRankingPlaylistName || 'Playlist'
+    } : null,
+    biddersPublic: (room.gameState && room.gameState.startsWith('bidders-') && room.biddersData) ? {
+      listSize: room.biddersData.listSize,
+      sourceName: room.biddersData.sourceName,
+      currentItem: room.biddersData.currentItem,
+      highBid: room.biddersData.highBid,
+      highBidderId: room.biddersData.highBidderId,
+      currentTurnId: room.biddersData.currentTurnId,
+      activeBidders: room.biddersData.active || [],
+      itemsLeft: Math.max(0, room.biddersData.pool.length - room.biddersData.poolIdx),
+      players: room.biddersData.order.map(id => {
+        const pl = room.players.find(p => p.id === id);
+        const b = room.biddersData.players[id];
+        return {
+          id, name: pl ? pl.name : '?',
+          money: b.money, list: b.list,
+          full: b.list.length >= room.biddersData.listSize
+        };
+      })
     } : null
   };
 }
@@ -1332,6 +1351,109 @@ function tallyVotes(votes) {
     arr.forEach(id => { tally[id] = (tally[id] || 0) + 1; });
   });
   return tally;
+}
+
+// ─────────────────────────────────────────────
+// BIDDERS — turn-based ascending auction
+// ─────────────────────────────────────────────
+function biddersBuildPool(room) {
+  const src = room.settings.biddersSource || 'musicArtists';
+  if (src === 'playlist' && room.blindRankingPlaylist && room.blindRankingPlaylist.length) {
+    const items = room.blindRankingPlaylist.map(t => ({ title: t.title, artist: t.artist, artwork: t.artwork || '' }));
+    return { items: shuffleArray(items), sourceName: room.blindRankingPlaylistName || 'Playlist' };
+  }
+  const cat = CATEGORIES[src] || CATEGORIES.musicArtists;
+  return { items: shuffleArray(cat.items), sourceName: cat.name };
+}
+
+// Players who could still bid on a new item: have space, have money, and are connected
+function biddersEligible(room) {
+  const d = room.biddersData;
+  return d.order.filter(id => {
+    const b = d.players[id];
+    return b && b.list.length < d.listSize && b.money > 0 && io.sockets.sockets.has(id);
+  });
+}
+
+// Move the turn to the next active player who ISN'T the current high bidder.
+// Returns false if nobody else needs to act (i.e. the high bidder has won).
+function biddersAdvance(room, fromId) {
+  const d = room.biddersData;
+  const ord = d.order;
+  const start = ord.indexOf(fromId);
+  for (let i = 1; i <= ord.length; i++) {
+    const cand = ord[(start + i) % ord.length];
+    // Skip the high bidder (waiting) and anyone currently disconnected (can't act)
+    if (d.active.includes(cand) && cand !== d.highBidderId && io.sockets.sockets.has(cand)) {
+      d.currentTurnId = cand;
+      return true;
+    }
+  }
+  return false;
+}
+
+function biddersStartItem(room) {
+  const d = room.biddersData;
+  // End when nobody has any space left
+  const anySpace = d.order.some(id => d.players[id] && d.players[id].list.length < d.listSize);
+  if (!anySpace) return biddersEndGame(room);
+  const eligible = biddersEligible(room);
+  if (eligible.length === 0) return biddersEndGame(room);   // players have space but no money left
+  if (d.poolIdx >= d.pool.length) return biddersEndGame(room); // ran out of items
+  d.currentItem = d.pool[d.poolIdx++];
+  d.highBid = 0;
+  d.highBidderId = null;
+  d.active = eligible;
+  const opener = d.active[(d.openerRot || 0) % d.active.length];
+  d.openerRot = (d.openerRot || 0) + 1;
+  d.currentTurnId = opener;
+  io.to(room.code).emit('bidders-new-item', { item: d.currentItem, itemsLeft: d.pool.length - d.poolIdx });
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
+function biddersAward(room, winnerId, price) {
+  const d = room.biddersData;
+  const b = d.players[winnerId];
+  const item = d.currentItem;
+  b.money -= price;
+  b.list.push(item);
+  const winner = room.players.find(p => p.id === winnerId);
+  io.to(room.code).emit('bidders-won', {
+    winnerId, winnerName: winner ? winner.name : '?', item, price
+  });
+  d.currentItem = null; d.highBid = 0; d.highBidderId = null; d.currentTurnId = null; d.active = [];
+  biddersStartItem(room);
+}
+
+function biddersDoPass(room, passerId) {
+  const d = room.biddersData;
+  if (!d.active.includes(passerId)) return;
+  d.active = d.active.filter(id => id !== passerId);
+  if (d.highBidderId != null) {
+    // Someone holds a bid — if no one else will contest, they win
+    if (!biddersAdvance(room, passerId)) return biddersAward(room, d.highBidderId, d.highBid);
+  } else {
+    // No bids yet
+    if (d.active.length === 0) {
+      // Nobody wanted it — discard and move on
+      d.currentItem = null; d.currentTurnId = null;
+      return biddersStartItem(room);
+    }
+    biddersAdvance(room, passerId);
+  }
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
+function biddersEndGame(room) {
+  const d = room.biddersData;
+  room.gameState = 'bidders-ended';
+  const results = d.order.map(id => {
+    const p = room.players.find(pl => pl.id === id);
+    const b = d.players[id];
+    return { id, name: p ? p.name : '?', money: b.money, list: b.list };
+  });
+  io.to(room.code).emit('bidders-ended', { results });
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
 function buildResultPayload(room, extra = {}) {
@@ -2058,6 +2180,30 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // ── BIDDERS MODE ──
+    if (room.settings.gameType === 'bidders') {
+      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players for Bidders.' });
+      const money = Math.max(1, room.settings.biddersMoney || 100);
+      const listSize = Math.max(1, room.settings.biddersListSize || 5);
+      const { items, sourceName } = biddersBuildPool(room);
+      if (!items || items.length === 0) {
+        return socket.emit('error', { message: 'No items to bid on — pick a category or load a playlist first.' });
+      }
+      const order = shuffleArray(room.players).map(p => p.id);
+      const players = {};
+      order.forEach(id => { players[id] = { money, list: [] }; });
+      room.biddersData = {
+        money, listSize, pool: items, poolIdx: 0, order, players,
+        currentItem: null, highBid: 0, highBidderId: null, currentTurnId: null,
+        active: [], openerRot: 0, sourceName
+      };
+      room.result = null;
+      room.gameState = 'bidders-playing';
+      io.to(room.code).emit('bidders-started', { listSize, money, sourceName });
+      biddersStartItem(room); // draws first item (or ends), broadcasts room-update
+      return;
+    }
+
     // ── IMPOSTER MODE ──
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
     const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
@@ -2574,6 +2720,7 @@ io.on('connection', (socket) => {
     room.wvOpposingGuess = null;
     room.wvCurrentPsychicId = null;
     room.wvUsedSpectraIdx = new Set();
+    room.biddersData = null;
     // Reset game mode back to word so video mode doesn't persist into the next game
     if (room.settings.gameMode && room.settings.gameMode !== 'word') {
       room.settings.gameMode = 'word';
@@ -2697,6 +2844,15 @@ io.on('connection', (socket) => {
       room.wvTeams.forEach(t => {
         t.playerIds = (t.playerIds || []).map(id => id === oldId ? socket.id : id);
       });
+    }
+    // Bidders: remap the reconnecting player's id everywhere in the auction state
+    if (room.biddersData) {
+      const d = room.biddersData;
+      d.order = d.order.map(id => id === oldId ? socket.id : id);
+      d.active = d.active.map(id => id === oldId ? socket.id : id);
+      if (d.players[oldId]) { d.players[socket.id] = d.players[oldId]; delete d.players[oldId]; }
+      if (d.highBidderId === oldId) d.highBidderId = socket.id;
+      if (d.currentTurnId === oldId) d.currentTurnId = socket.id;
     }
 
     socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
@@ -3140,6 +3296,43 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
+  // ── BIDDERS: place a bid (raise) ──
+  socket.on('bidders-bid', ({ amount }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'bidders-playing' || !room.biddersData) return;
+    const d = room.biddersData;
+    if (socket.id !== d.currentTurnId || !d.active.includes(socket.id)) return;
+    const b = d.players[socket.id];
+    if (!b || b.list.length >= d.listSize) return;
+    const amt = Math.floor(Number(amount));
+    if (!Number.isFinite(amt) || amt < 1) return;
+    if (amt <= d.highBid) return;   // must beat the current high bid
+    if (amt > b.money) return;      // can't bid more than you have
+    d.highBid = amt;
+    d.highBidderId = socket.id;
+    // If nobody else is left to contest, they win outright
+    if (!biddersAdvance(room, socket.id)) return biddersAward(room, socket.id, d.highBid);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // ── BIDDERS: pass (drop out of the current item) ──
+  socket.on('bidders-pass', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState !== 'bidders-playing' || !room.biddersData) return;
+    const d = room.biddersData;
+    if (socket.id !== d.currentTurnId || !d.active.includes(socket.id)) return;
+    biddersDoPass(room, socket.id);
+  });
+
+  // ── BIDDERS: host starts a new game / back to lobby ──
+  socket.on('bidders-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    room.gameState = 'lobby';
+    room.biddersData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
   // Disconnect — grace period so brief blips don't destroy rooms
   // Deliberate leave (pressed "Leave") — remove immediately, no grace period
   socket.on('leave-room', () => {
@@ -3168,6 +3361,10 @@ io.on('connection', (socket) => {
         if (connectedActive.length > 0 && Object.keys(room.votes).length >= connectedActive.length) {
           try { resolveVotes(room); } catch(e) { console.error('resolveVotes (dc) error:', e); }
         }
+      }
+      // If a player drops while it's their turn in Bidders, auto-pass so it doesn't stall
+      if (room.gameState === 'bidders-playing' && room.biddersData && room.biddersData.currentTurnId === socket.id) {
+        try { biddersDoPass(room, socket.id); } catch(e) { console.error('bidders pass (dc) error:', e); }
       }
       const dcPlayer = room.players.find(p => p.id === socket.id);
       if (dcPlayer) {

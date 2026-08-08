@@ -428,6 +428,7 @@
       <button class="mode-tile" id="gametype-collab-btn" onclick="setGameType('collab')"><span class="mode-tile-emoji">🖌️</span><span class="mode-tile-label">Collab Draw</span></button>
       <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span></button>
       <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span></button>
+      <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span></button>
     </div>
   </div>
 
@@ -469,6 +470,45 @@
         <div style="font-weight:800; color:var(--accent2)" id="blind-ranking-loaded-name">🎵 Top Hits & Chart Toppers</div>
         <div style="font-size:0.78rem; color:var(--muted)" id="blind-ranking-loaded-count">Ready with 14 songs</div>
       </div>
+    </div>
+  </div>
+
+  <!-- BIDDERS SETTINGS (bidders only) -->
+  <div id="host-bidders-settings" class="card" style="width:100%; display:none">
+    <div class="card-title">Bidders Settings</div>
+    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:14px">
+      Items appear one at a time. Take turns bidding — outbid your rivals or pass. Highest bidder wins it. Fill your list before the money runs out!
+    </div>
+
+    <!-- Starting money -->
+    <div class="setting-label" style="margin-bottom:6px">Starting Money</div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px" id="bidders-money-row">
+      <button class="btn btn-sm" onclick="setBiddersMoney(50)" data-money="50">£50</button>
+      <button class="btn btn-sm" onclick="setBiddersMoney(100)" data-money="100">£100</button>
+      <button class="btn btn-sm" onclick="setBiddersMoney(250)" data-money="250">£250</button>
+      <button class="btn btn-sm" onclick="setBiddersMoney(500)" data-money="500">£500</button>
+    </div>
+
+    <!-- List size -->
+    <div class="setting-label" style="margin-bottom:6px">List Size (slots to fill)</div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px" id="bidders-list-row">
+      <button class="btn btn-sm" onclick="setBiddersListSize(3)" data-size="3">3</button>
+      <button class="btn btn-sm" onclick="setBiddersListSize(5)" data-size="5">5</button>
+      <button class="btn btn-sm" onclick="setBiddersListSize(8)" data-size="8">8</button>
+      <button class="btn btn-sm" onclick="setBiddersListSize(10)" data-size="10">10</button>
+    </div>
+
+    <!-- Source -->
+    <div class="setting-label" style="margin-bottom:6px">What are you bidding on?</div>
+    <div class="category-grid" id="bidders-source-grid" style="margin-bottom:12px"></div>
+
+    <!-- Custom playlist loader (shown when Custom Playlist chosen) -->
+    <div id="bidders-playlist-loader" style="display:none">
+      <div style="display:flex; gap:8px; margin-bottom:8px">
+        <input type="text" id="bidders-url-input" placeholder="Spotify / YouTube playlist URL" style="flex:1; font-size:0.9rem" />
+        <button class="btn btn-sm btn-primary" onclick="loadBiddersPlaylist()" style="white-space:nowrap; padding:0 16px">📥 Load</button>
+      </div>
+      <div id="bidders-playlist-status" style="font-size:0.8rem; color:var(--muted)">No playlist loaded yet.</div>
     </div>
   </div>
 
@@ -1370,6 +1410,73 @@
   <button class="btn btn-outline" onclick="showScreen('lobby')" style="margin-top:8px">🏠 Return to Lobby</button>
 </div>
 
+<!-- ══════════════════════════════════════════ -->
+<!-- BIDDERS — PLAYING -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-bidders-playing" class="screen" style="justify-content:flex-start; padding-top:20px; max-width:560px">
+  <div class="lobby-top" style="width:100%">
+    <div>
+      <span class="phase-badge" style="background:rgba(245,158,11,0.2); color:#fbbf24; border:1px solid #f59e0b">💰 Bidders</span>
+    </div>
+    <div style="font-size:0.8rem; color:var(--muted)"><span id="bidders-source-name">—</span> · <span id="bidders-items-left">0</span> left</div>
+  </div>
+
+  <!-- Current item up for auction -->
+  <div class="card" style="width:100%; text-align:center; border-color:#f59e0b">
+    <div class="card-title" style="color:#fbbf24">Up For Auction</div>
+    <div id="bidders-item" style="display:flex; flex-direction:column; align-items:center; gap:8px; margin:6px 0 10px"></div>
+    <div style="display:flex; justify-content:center; gap:24px; margin-top:6px">
+      <div>
+        <div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">High Bid</div>
+        <div style="font-size:1.6rem; font-weight:900; color:#22c55e" id="bidders-high-bid">£0</div>
+      </div>
+      <div>
+        <div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Held By</div>
+        <div style="font-size:1rem; font-weight:800; margin-top:8px" id="bidders-high-bidder">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- My controls -->
+  <div id="bidders-my-turn" class="card" style="width:100%; display:none; border-color:var(--accent)">
+    <div class="card-title" style="color:var(--accent2)">Your Move</div>
+    <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px">You have <strong id="bidders-my-money" style="color:#22c55e">£0</strong> · Bid higher than the current high bid, or pass.</div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <span style="font-size:1.2rem; font-weight:800; color:var(--muted)">£</span>
+      <input type="number" id="bidders-bid-input" min="1" step="1" style="flex:1; font-size:1.1rem; text-align:center" />
+      <button class="btn btn-success" style="width:auto; padding:12px 18px" onclick="placeBid()">Bid</button>
+    </div>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="passBid()">🙅 Pass</button>
+  </div>
+  <div id="bidders-wait" class="card text-center pulse" style="width:100%; display:none; color:var(--muted)">
+    Waiting for <strong id="bidders-turn-name" style="color:var(--text)">—</strong>…
+  </div>
+  <div id="bidders-full-msg" class="card text-center" style="width:100%; display:none; color:var(--muted)">
+    ✅ Your list is full — sit back and watch the rest bid it out.
+  </div>
+
+  <!-- Players -->
+  <div id="bidders-players" style="width:100%; display:flex; flex-direction:column; gap:10px"></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- BIDDERS — ENDED -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-bidders-ended" class="screen" style="justify-content:flex-start; padding-top:24px; max-width:680px">
+  <div style="text-align:center; margin-bottom:16px">
+    <div style="font-size:2.8rem; margin-bottom:2px">💰</div>
+    <div style="font-size:1.8rem; font-weight:900; background:linear-gradient(135deg, #f59e0b, #ef4444); -webkit-background-clip:text; -webkit-text-fill-color:transparent">The Final Lists!</div>
+    <div style="font-size:0.85rem; color:var(--muted)">Here's what everyone walked away with</div>
+  </div>
+
+  <div id="bidders-final-boards" style="width:100%; display:flex; flex-direction:column; gap:16px; margin-bottom:20px"></div>
+
+  <div id="bidders-restart-wrap" style="width:100%; display:none">
+    <button class="btn btn-primary" onclick="restartBiddersGame()">🔄 Play Again</button>
+  </div>
+  <button class="btn btn-outline" onclick="showScreen('lobby')" style="margin-top:8px">🏠 Return to Lobby</button>
+</div>
+
 
 
 <!-- TOAST -->
@@ -1870,6 +1977,26 @@ function initSocket() {
     const countEl = document.getElementById('blind-ranking-loaded-count');
     if (nameEl) nameEl.textContent = data.name;
     if (countEl) countEl.textContent = `Ready with ${data.count} songs`;
+    // Also reflect in the Bidders custom-playlist loader
+    const bst = document.getElementById('bidders-playlist-status');
+    if (bst) bst.textContent = `✅ ${data.name} — ${data.count} items ready`;
+  });
+
+  // ── BIDDERS events ──
+  socket.on('bidders-started', function() {
+    showScreen('bidders-playing');
+  });
+  socket.on('bidders-new-item', function() {
+    const inp = document.getElementById('bidders-bid-input');
+    if (inp) inp.value = '';
+  });
+  socket.on('bidders-won', function(d) {
+    const name = (typeof d.item === 'string') ? d.item : (d.item && d.item.title) || 'the item';
+    showToast(`${d.winnerName} won "${name}" for £${d.price}`, 'success');
+  });
+  socket.on('bidders-ended', function(d) {
+    renderBiddersFinal(d.results || []);
+    showScreen('bidders-ended');
   });
 
   socket.on('blind-ranking-started', function() {
@@ -2240,7 +2367,20 @@ function applyRoomUpdate(room) {
     showScreen('lobby');
   }
 
+  // ── BIDDERS STATES ──
+  if (room.gameState === 'bidders-playing') {
+    if (active !== 'screen-bidders-playing') showScreen('bidders-playing');
+    renderBidders(room);
+  }
 
+  if (room.gameState === 'bidders-ended') {
+    if (active !== 'screen-bidders-ended') showScreen('bidders-ended');
+    if (room.biddersPublic) renderBiddersFinal(room.biddersPublic.players.map(p => ({ name: p.name, money: p.money, list: p.list })));
+  }
+
+  if (room.gameState === 'lobby' && (active === 'screen-bidders-playing' || active === 'screen-bidders-ended')) {
+    showScreen('lobby');
+  }
 
 }
 
@@ -2315,6 +2455,151 @@ function goToCollabCanvas() {
 function wvRandomTeams() {
   if (!isHost || !currentRoom) return;
   socket.emit('wv-random-teams');
+}
+
+// ──────────────────────────────────────────
+// BIDDERS
+// ──────────────────────────────────────────
+const BIDDERS_SOURCES = [
+  { key:'musicArtists',        label:'Music Artists',   emoji:'🎵' },
+  { key:'videoGames',          label:'Video Games',     emoji:'🎮' },
+  { key:'movies',              label:'Movies',          emoji:'🎬' },
+  { key:'tvShows',             label:'TV Shows',        emoji:'📺' },
+  { key:'actors',              label:'Actors',          emoji:'🎭' },
+  { key:'athletes',            label:'Athletes',        emoji:'⚽' },
+  { key:'youtubers',           label:'YouTubers',       emoji:'📱' },
+  { key:'fictionalCharacters', label:'Characters',      emoji:'🦸' },
+  { key:'gameCharacters',      label:'Game Characters', emoji:'👾' },
+  { key:'randomWords',         label:'Random Words',    emoji:'🎲' },
+  { key:'playlist',            label:'Custom Playlist', emoji:'🎧' }
+];
+
+function renderBiddersSettings(room) {
+  const s = room.settings || {};
+  const money = s.biddersMoney || 100;
+  const size = s.biddersListSize || 5;
+  const src = s.biddersSource || 'musicArtists';
+  document.querySelectorAll('#bidders-money-row .btn').forEach(b => {
+    b.className = 'btn btn-sm' + (Number(b.dataset.money) === money ? ' btn-primary' : ' btn-outline');
+  });
+  document.querySelectorAll('#bidders-list-row .btn').forEach(b => {
+    b.className = 'btn btn-sm' + (Number(b.dataset.size) === size ? ' btn-primary' : ' btn-outline');
+  });
+  const grid = document.getElementById('bidders-source-grid');
+  if (grid) grid.innerHTML = BIDDERS_SOURCES.map(c => `
+    <div class="cat-chip ${src === c.key ? 'selected' : ''}" onclick="setBiddersSource('${c.key}')">
+      <span class="cat-emoji">${c.emoji}</span>${c.label}
+    </div>`).join('');
+  const loader = document.getElementById('bidders-playlist-loader');
+  if (loader) loader.style.display = src === 'playlist' ? 'block' : 'none';
+}
+function setBiddersMoney(v)    { if (!isHost) return; socket.emit('update-settings', { settings: { biddersMoney: v } }); }
+function setBiddersListSize(v) { if (!isHost) return; socket.emit('update-settings', { settings: { biddersListSize: v } }); }
+function setBiddersSource(key) { if (!isHost) return; socket.emit('update-settings', { settings: { biddersSource: key } }); }
+function loadBiddersPlaylist() {
+  const url = (document.getElementById('bidders-url-input').value || '').trim();
+  if (!url) return showToast('Paste a playlist URL', 'error');
+  socket.emit('blind-ranking-fetch-playlist', { source: 'url', playlistUrl: url });
+  const st = document.getElementById('bidders-playlist-status');
+  if (st) st.textContent = 'Loading…';
+}
+
+function placeBid() {
+  const inp = document.getElementById('bidders-bid-input');
+  const amt = parseInt(inp.value, 10);
+  if (!Number.isFinite(amt)) return showToast('Enter a bid amount', 'error');
+  socket.emit('bidders-bid', { amount: amt });
+}
+function passBid() { socket.emit('bidders-pass'); }
+function restartBiddersGame() { if (!isHost) return; socket.emit('bidders-restart'); showScreen('lobby'); }
+
+function biddersItemHtml(item) {
+  if (item == null) return '';
+  if (typeof item === 'string') return `<div style="font-size:1.5rem; font-weight:900; line-height:1.2">${item}</div>`;
+  return `${item.artwork ? `<img src="${item.artwork}" style="width:84px; height:84px; border-radius:12px; object-fit:cover" />` : '<div style="font-size:2.4rem">🎵</div>'}
+    <div style="font-size:1.2rem; font-weight:900; line-height:1.2">${item.title || ''}</div>
+    <div style="font-size:0.9rem; color:var(--accent2); font-weight:700">${item.artist || ''}</div>`;
+}
+function biddersChip(it) {
+  const label = (typeof it === 'string') ? it : (it && it.title) || '?';
+  return `<span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:2px 8px; margin:2px; font-size:0.72rem">${label}</span>`;
+}
+
+function renderBidders(room) {
+  const b = room.biddersPublic;
+  if (!b) return;
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setTxt('bidders-source-name', b.sourceName || '');
+  setTxt('bidders-items-left', b.itemsLeft);
+  const itemEl = document.getElementById('bidders-item');
+  if (itemEl) itemEl.innerHTML = biddersItemHtml(b.currentItem);
+  setTxt('bidders-high-bid', '£' + (b.highBid || 0));
+  const hb = b.players.find(p => p.id === b.highBidderId);
+  setTxt('bidders-high-bidder', hb ? hb.name : '—');
+
+  const me = b.players.find(p => p.id === myId);
+  const myTurn = b.currentTurnId === myId;
+  const turnEl = document.getElementById('bidders-my-turn');
+  const waitEl = document.getElementById('bidders-wait');
+  const fullEl = document.getElementById('bidders-full-msg');
+  if (turnEl) turnEl.style.display = 'none';
+  if (waitEl) waitEl.style.display = 'none';
+  if (fullEl) fullEl.style.display = 'none';
+
+  if (myTurn) {
+    if (turnEl) turnEl.style.display = 'block';
+    setTxt('bidders-my-money', '£' + (me ? me.money : 0));
+    const inp = document.getElementById('bidders-bid-input');
+    const bidBtn = turnEl ? turnEl.querySelector('.btn-success') : null;
+    const min = (b.highBid || 0) + 1;
+    const canAfford = me && me.money >= min;
+    if (inp) {
+      inp.min = min; inp.max = me ? me.money : min;
+      inp.disabled = !canAfford;
+      if (!inp.value || parseInt(inp.value, 10) < min) inp.value = Math.min(min, me ? me.money : min);
+    }
+    if (bidBtn) {
+      bidBtn.disabled = !canAfford;
+      bidBtn.textContent = canAfford ? 'Bid' : 'Too rich';
+    }
+  } else if (me && me.full) {
+    if (fullEl) fullEl.style.display = 'block';
+  } else {
+    if (waitEl) waitEl.style.display = 'block';
+    const t = b.players.find(p => p.id === b.currentTurnId);
+    setTxt('bidders-turn-name', t ? t.name : '—');
+  }
+
+  const wrap = document.getElementById('bidders-players');
+  if (wrap) wrap.innerHTML = b.players.map(p => {
+    const isTurn = p.id === b.currentTurnId;
+    const isHigh = p.id === b.highBidderId;
+    const listHtml = p.list.length ? p.list.map(biddersChip).join('') : '<span style="color:var(--muted); font-size:0.75rem">empty</span>';
+    return `<div class="card" style="padding:12px; ${isTurn ? 'border-color:var(--accent2)' : ''}">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+        <div style="font-weight:800">${p.name}${p.id === myId ? ' (you)' : ''}
+          ${isHigh ? ' <span style="color:#22c55e; font-size:0.75rem">▲ HIGH</span>' : ''}
+          ${isTurn ? ' <span style="color:var(--accent2); font-size:0.75rem">● BIDDING</span>' : ''}</div>
+        <div><span style="color:#22c55e; font-weight:800">£${p.money}</span> <span style="color:var(--muted); font-size:0.78rem">${p.list.length}/${b.listSize}</span></div>
+      </div>
+      <div>${listHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderBiddersFinal(results) {
+  const el = document.getElementById('bidders-final-boards');
+  if (!el) return;
+  el.innerHTML = results.map(r => `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <div style="font-weight:800; font-size:1.05rem">${r.name}</div>
+        <div style="color:#22c55e; font-weight:800">£${r.money} left</div>
+      </div>
+      <div>${r.list.length ? r.list.map(biddersChip).join('') : '<span style="color:var(--muted)">Won nothing</span>'}</div>
+    </div>`).join('');
+  const restart = document.getElementById('bidders-restart-wrap');
+  if (restart) restart.style.display = isHost ? 'block' : 'none';
 }
 
 // ──────────────────────────────────────────
@@ -2661,6 +2946,7 @@ function renderLobbyData(room) {
   const isDraw        = gameType === 'draw';
   const isCollab      = gameType === 'collab';
   const isWavelength  = gameType === 'wavelength';
+  const isBidders     = gameType === 'bidders';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -2676,7 +2962,8 @@ function renderLobbyData(room) {
       draw: isDraw,
       collab: isCollab,
       wavelength: isWavelength,
-      'blind-ranking': gameType === 'blind-ranking'
+      'blind-ranking': gameType === 'blind-ranking',
+      bidders: isBidders
     };
     Object.entries(modeSelected).forEach(([type, on]) => {
       const el = document.getElementById('gametype-' + type + '-btn');
@@ -2695,11 +2982,29 @@ function renderLobbyData(room) {
 
     // Always hide wavelength & blind ranking settings cards unless active
     const wvSettingsCard = document.getElementById('host-wavelength-settings');
+    const biddersSettings = document.getElementById('host-bidders-settings');
     if (wvSettingsCard && !isWavelength) wvSettingsCard.style.display = 'none';
     if (brSettings && !isBlindRanking) brSettings.style.display = 'none';
+    if (biddersSettings && !isBidders) biddersSettings.style.display = 'none';
+
+    // ── BIDDERS MODE ──
+    if (isBidders) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettingsB = document.getElementById('host-draw-settings');
+      const drawCatsB = document.getElementById('host-draw-categories');
+      if (drawSettingsB) drawSettingsB.style.display = 'none';
+      if (drawCatsB) drawCatsB.style.display = 'none';
+      if (biddersSettings) biddersSettings.style.display = 'block';
+      renderBiddersSettings(room);
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 2 players';
 
     // ── BLIND RANKING MODE ──
-    if (isBlindRanking) {
+    } else if (isBlindRanking) {
       if (hostSettings) hostSettings.style.display = 'none';
       if (wordCats)    wordCats.style.display    = 'none';
       if (videoCats)   videoCats.style.display   = 'none';

@@ -179,6 +179,12 @@
     .toggle::after { content: ''; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: left .2s; }
     .toggle.on::after { left: 25px; }
 
+    /* Tap-to-hide (privacy blur for secret roles/words) */
+    .tap-hide { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .tap-hide.tap-blurred { filter: blur(16px); -webkit-filter: blur(16px); }
+    .tap-hide.tap-blurred * { user-select: none; }
+    .tap-hint { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 6px; }
+
     /* Category checkboxes */
     .category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .cat-chip {
@@ -741,10 +747,11 @@
     <div style="font-size:0.8rem; color:var(--muted)" id="discussion-room-code"></div>
   </div>
 
-  <div class="card text-center" style="width:100%">
+  <div class="card text-center tap-hide" style="width:100%">
     <div class="discussion-word" id="discussion-label">THE WORD IS</div>
     <div id="discussion-word-display" class="word-reveal">---</div>
   </div>
+  <div class="tap-hint">👁️ Tap to hide the word</div>
 
   <div class="instructions">
     Talk about the word without giving it away. Find the imposter among you!
@@ -2034,13 +2041,14 @@ function initSocket() {
       : isUnknown
         ? 'Draw this word. You might not be who you think you are…'
         : "Draw this — but don't make it too obvious!";
-    const cardHtml = '<div class="role-card ' + cardClass + '" style="text-align:center">' +
+    const cardHtml = '<div class="role-card tap-hide ' + cardClass + '" style="text-align:center">' +
       '<div class="role-icon">' + icon + '</div>' +
       '<div class="role-title">' + title + '</div>' +
       '<div class="role-category">' + data.category + '</div>' +
       '<div class="role-word">' + data.word + '</div>' +
       '<div class="role-hint">' + hint + '</div>' +
-      '</div>';
+      '</div>' +
+      '<div class="tap-hint">👁️ Tap the card to hide it</div>';
     const card = document.getElementById('draw-role-card');
     if (card) card.innerHTML = cardHtml;
     myWord = data.word;
@@ -2132,14 +2140,15 @@ function initSocket() {
     const imposterBody = isUnknown
       ? '<div class="role-word">' + data.word + '</div><div class="role-hint">You might not be who you think you are…</div>'
       : '<div class="role-hint">You have no word — watch what others draw and try to blend in!</div>';
-    const cardHtml = '<div class="role-card ' + cardClass + '" style="text-align:center">' +
+    const cardHtml = '<div class="role-card tap-hide ' + cardClass + '" style="text-align:center">' +
       '<div class="role-icon">' + (isImposter ? '🎭' : '🖌️') + '</div>' +
       '<div class="role-title">' + (isImposter ? "You're the Imposter!" : 'Your Word') + '</div>' +
       '<div class="role-category">' + data.category + '</div>' +
       ((isImposter || isUnknown)
         ? imposterBody
         : '<div class="role-word">' + data.word + '</div>') +
-      '</div>';
+      '</div>' +
+      '<div class="tap-hint">👁️ Tap the card to hide it</div>';
     const card = document.getElementById('collab-role-card');
     if (card) card.innerHTML = cardHtml;
 
@@ -3372,6 +3381,18 @@ function renderRoleCard(data) {
 
   document.getElementById('role-card-container').innerHTML = html;
 
+  // Make the card tap-to-hide (privacy blur) — except video mode (iframe)
+  if (gameMode !== 'video') {
+    const rcEl = document.querySelector('#role-card-container .role-card');
+    if (rcEl) {
+      rcEl.classList.add('tap-hide');
+      const hint = document.createElement('div');
+      hint.className = 'tap-hint';
+      hint.textContent = '👁️ Tap the card to hide it';
+      rcEl.after(hint);
+    }
+  }
+
   // Update "I don't know this" button label
   const dontKnowBtn = document.getElementById('dont-know-btn');
   if (dontKnowBtn) {
@@ -4482,13 +4503,14 @@ function renderSpyfallRoleCard(data) {
       </div>`;
   } else {
     el.innerHTML = `
-      <div style="background:linear-gradient(135deg,rgba(14,165,233,.15),rgba(99,102,241,.1)); border:2px solid #0ea5e9; border-radius:14px; padding:28px 20px; text-align:center">
+      <div class="tap-hide" style="background:linear-gradient(135deg,rgba(14,165,233,.15),rgba(99,102,241,.1)); border:2px solid #0ea5e9; border-radius:14px; padding:28px 20px; text-align:center">
         <div style="font-size:2.5rem">${data.locationEmoji || '📍'}</div>
         <div style="color:var(--muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; margin-top:8px">Location</div>
         <div style="font-size:1.8rem; font-weight:900; color:#38bdf8; margin-top:4px">${data.locationName}</div>
         <div style="color:var(--muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; margin-top:14px">Your Role</div>
         <div style="font-size:1.3rem; font-weight:700; color:#a78bfa; margin-top:4px">${data.role}</div>
-      </div>`;
+      </div>
+      <div class="tap-hint">👁️ Tap to hide</div>`;
   }
 }
 
@@ -4498,7 +4520,7 @@ function renderSpyfallDiscCard() {
   if (mySfRole.isSpy) {
     el.innerHTML = `<div style="background:rgba(239,68,68,.1); border:1px solid #ef4444; border-radius:10px; padding:14px; text-align:center; color:#ef4444; font-weight:700">🕵️ You are the SPY</div>`;
   } else {
-    el.innerHTML = `<div style="background:rgba(14,165,233,.1); border:1px solid #0ea5e9; border-radius:10px; padding:14px; text-align:center">
+    el.innerHTML = `<div class="tap-hide" style="background:rgba(14,165,233,.1); border:1px solid #0ea5e9; border-radius:10px; padding:14px; text-align:center">
       <div style="color:var(--muted); font-size:0.75rem">Location: <strong style="color:#38bdf8">${mySfRole.locationName}</strong> &nbsp;|&nbsp; Role: <strong style="color:#a78bfa">${mySfRole.role}</strong></div>
     </div>`;
   }
@@ -5267,6 +5289,13 @@ function initWavelengthSocketHandlers() {
 
 // Keep Render server awake — ping every 4 minutes
 setInterval(() => fetch('/ping').catch(() => {}), 4 * 60 * 1000);
+
+// Tap any secret role/word to blur it (privacy — hide it from people nearby).
+// Tap again to reveal. Delegated so it works for every game's dynamically-rendered cards.
+document.addEventListener('click', function(e) {
+  const el = e.target.closest('.tap-hide');
+  if (el) el.classList.toggle('tap-blurred');
+});
 
 // Auto-restore session on page load or refresh.
 // initSocket()'s 'connect' handler does the actual rejoin once the socket is up.

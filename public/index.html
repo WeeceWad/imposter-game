@@ -1542,8 +1542,10 @@
 
   <!-- Prompt -->
   <div class="card text-center" style="width:100%; border-color:var(--accent)">
-    <div class="card-title" style="color:var(--accent2)">Your Challenge</div>
-    <div id="cat-prompt" style="font-size:1.35rem; font-weight:800; line-height:1.35; margin:6px 0">—</div>
+    <div class="card-title" style="color:var(--accent2)">Category</div>
+    <div id="cat-category" style="font-size:1.4rem; font-weight:900; line-height:1.3; margin:4px 0 10px">—</div>
+    <div id="cat-question" style="font-size:1.2rem; font-weight:700; line-height:1.35; color:var(--text)"></div>
+    <div id="cat-question-hidden" style="font-size:0.9rem; color:var(--muted); font-style:italic">❓ Question hidden — host will reveal it</div>
   </div>
 
   <!-- Timer -->
@@ -1554,6 +1556,7 @@
 
   <!-- Host controls -->
   <div id="cat-host-buttons" style="width:100%; display:none; flex-direction:column; gap:8px">
+    <button class="btn btn-warn" onclick="catReveal()" id="cat-reveal-btn" style="display:none">👁️ Reveal Question</button>
     <button class="btn btn-primary" onclick="catStartTimer()" id="cat-start-btn">▶️ Start Timer</button>
     <button class="btn btn-outline" onclick="catNewQuestion()">🎲 New Question</button>
     <button class="btn-ghost" onclick="restartCategoriesGame()" style="margin-top:2px">🏁 End & Back to Lobby</button>
@@ -2820,6 +2823,7 @@ function setCatTeam(i, val) {
 function setCatDuration(v) { if (!isHost) return; socket.emit('update-settings', { settings: { catDuration: v } }); }
 
 function catNewQuestion() { socket.emit('categories-new-question'); }
+function catReveal() { socket.emit('categories-reveal'); }
 function catStartTimer() { socket.emit('categories-start-timer'); }
 function catAward(team) { socket.emit('categories-award', { team }); }
 function catAdjust(team, delta) { socket.emit('categories-adjust', { team, delta }); }
@@ -2834,10 +2838,18 @@ function renderCategories(room) {
   setTxt('cat-team1-name', c.teams[1] ? c.teams[1].name : 'Team 2');
   setTxt('cat-team0-score', c.teams[0] ? c.teams[0].score : 0);
   setTxt('cat-team1-score', c.teams[1] ? c.teams[1].score : 0);
-  const promptEl = document.getElementById('cat-prompt');
-  if (promptEl) promptEl.innerHTML = c.prompt
-    ? `How many <span style="color:var(--accent2)">${c.prompt}</span> can you name in ${c.duration} seconds?`
-    : '—';
+
+  // Category always shown; the question is hidden until the host reveals it
+  setTxt('cat-category', c.category || '—');
+  const qEl = document.getElementById('cat-question');
+  const qHidden = document.getElementById('cat-question-hidden');
+  if (c.revealed && c.topic) {
+    if (qEl) { qEl.innerHTML = `How many <span style="color:var(--accent2)">${c.topic}</span> can you name in ${c.duration} seconds?`; qEl.style.display = 'block'; }
+    if (qHidden) qHidden.style.display = 'none';
+  } else {
+    if (qEl) qEl.style.display = 'none';
+    if (qHidden) qHidden.style.display = 'block';
+  }
 
   // Host vs spectator controls
   document.querySelectorAll('.cat-host-ctrl').forEach(el => { el.style.display = isHost ? 'flex' : 'none'; });
@@ -2845,6 +2857,9 @@ function renderCategories(room) {
   const waitMsg = document.getElementById('cat-wait-msg');
   if (hostBtns) hostBtns.style.display = isHost ? 'flex' : 'none';
   if (waitMsg) waitMsg.style.display = isHost ? 'none' : 'block';
+  // Reveal button only before the question is shown
+  const revealBtn = document.getElementById('cat-reveal-btn');
+  if (revealBtn) revealBtn.style.display = (isHost && !c.revealed) ? 'block' : 'none';
 
   // Synced countdown timer
   clearInterval(_catTimer);

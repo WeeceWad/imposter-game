@@ -435,6 +435,7 @@
       <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span></button>
       <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span></button>
       <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span></button>
+      <button class="mode-tile" id="gametype-categories-btn" onclick="setGameType('categories')"><span class="mode-tile-emoji">⏱️</span><span class="mode-tile-label">Categories</span></button>
     </div>
   </div>
 
@@ -512,6 +513,29 @@
         <button class="btn btn-sm btn-primary" onclick="loadBiddersPlaylist()" style="white-space:nowrap; padding:0 16px">📥 Load</button>
       </div>
       <div id="bidders-playlist-status" style="font-size:0.8rem; color:var(--muted)">No playlist loaded yet.</div>
+    </div>
+  </div>
+
+  <!-- CATEGORIES SETTINGS (categories only) -->
+  <div id="host-categories-settings" class="card" style="width:100%; display:none">
+    <div class="card-title">Categories Settings</div>
+    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:14px">
+      One player races to name as many things as they can before the timer runs out. The host decides who scored the point. First to whatever score you agree on wins!
+    </div>
+
+    <div class="setting-label" style="margin-bottom:6px">Team Names</div>
+    <div style="display:flex; gap:8px; margin-bottom:14px">
+      <input type="text" id="cat-team1-input" maxlength="16" placeholder="Team 1"
+             onchange="setCatTeam(0, this.value)" style="flex:1; font-size:0.95rem; text-align:center" />
+      <input type="text" id="cat-team2-input" maxlength="16" placeholder="Team 2"
+             onchange="setCatTeam(1, this.value)" style="flex:1; font-size:0.95rem; text-align:center" />
+    </div>
+
+    <div class="setting-label" style="margin-bottom:6px">Timer Length</div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap" id="cat-duration-row">
+      <button class="btn btn-sm" onclick="setCatDuration(30)" data-dur="30">30s</button>
+      <button class="btn btn-sm" onclick="setCatDuration(45)" data-dur="45">45s</button>
+      <button class="btn btn-sm" onclick="setCatDuration(60)" data-dur="60">60s</button>
     </div>
   </div>
 
@@ -1487,6 +1511,56 @@
   <button class="btn btn-outline" onclick="showScreen('lobby')" style="margin-top:8px">🏠 Return to Lobby</button>
 </div>
 
+<!-- ══════════════════════════════════════════ -->
+<!-- CATEGORIES — PLAYING -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-categories-playing" class="screen" style="justify-content:flex-start; padding-top:18px; max-width:560px">
+  <div class="lobby-top" style="width:100%">
+    <div><span class="phase-badge" style="background:rgba(168,85,247,0.2); color:var(--accent2); border:1px solid var(--accent)">⏱️ Categories</span></div>
+    <button class="btn-ghost" onclick="leaveRoom()">← Leave</button>
+  </div>
+
+  <!-- Scoreboard -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%">
+    <div class="card" style="text-align:center; padding:14px 8px" id="cat-team0-card">
+      <div style="font-weight:800; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" id="cat-team0-name">Team 1</div>
+      <div style="font-size:2.6rem; font-weight:900; color:var(--accent2)" id="cat-team0-score">0</div>
+      <div class="cat-host-ctrl" style="display:none; gap:6px; justify-content:center">
+        <button class="btn btn-sm btn-outline" style="padding:4px 12px" onclick="catAdjust(0,-1)">−</button>
+        <button class="btn btn-sm btn-success" style="padding:4px 14px" onclick="catAward(0)">+1</button>
+      </div>
+    </div>
+    <div class="card" style="text-align:center; padding:14px 8px" id="cat-team1-card">
+      <div style="font-weight:800; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" id="cat-team1-name">Team 2</div>
+      <div style="font-size:2.6rem; font-weight:900; color:#38bdf8" id="cat-team1-score">0</div>
+      <div class="cat-host-ctrl" style="display:none; gap:6px; justify-content:center">
+        <button class="btn btn-sm btn-outline" style="padding:4px 12px" onclick="catAdjust(1,-1)">−</button>
+        <button class="btn btn-sm btn-success" style="padding:4px 14px" onclick="catAward(1)">+1</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="card text-center" style="width:100%; border-color:var(--accent)">
+    <div class="card-title" style="color:var(--accent2)">Your Challenge</div>
+    <div id="cat-prompt" style="font-size:1.35rem; font-weight:800; line-height:1.35; margin:6px 0">—</div>
+  </div>
+
+  <!-- Timer -->
+  <div class="card text-center" style="width:100%">
+    <div id="cat-timer" style="font-size:4rem; font-weight:900; line-height:1">30</div>
+    <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px">seconds</div>
+  </div>
+
+  <!-- Host controls -->
+  <div id="cat-host-buttons" style="width:100%; display:none; flex-direction:column; gap:8px">
+    <button class="btn btn-primary" onclick="catStartTimer()" id="cat-start-btn">▶️ Start Timer</button>
+    <button class="btn btn-outline" onclick="catNewQuestion()">🎲 New Question</button>
+    <button class="btn-ghost" onclick="restartCategoriesGame()" style="margin-top:2px">🏁 End & Back to Lobby</button>
+  </div>
+  <div id="cat-wait-msg" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
+</div>
+
 
 
 <!-- TOAST -->
@@ -1997,6 +2071,9 @@ function initSocket() {
     _biddersItemKey = null; // force fresh item/media render
     showScreen('bidders-playing');
   });
+  socket.on('categories-started', function() {
+    showScreen('categories-playing');
+  });
   socket.on('bidders-new-item', function() {
     const inp = document.getElementById('bidders-bid-input');
     if (inp) inp.value = '';
@@ -2399,6 +2476,15 @@ function applyRoomUpdate(room) {
     showScreen('lobby');
   }
 
+  // ── CATEGORIES STATE ──
+  if (room.gameState === 'categories-playing') {
+    if (active !== 'screen-categories-playing') showScreen('categories-playing');
+    renderCategories(room);
+  }
+  if (room.gameState === 'lobby' && active === 'screen-categories-playing') {
+    showScreen('lobby');
+  }
+
 }
 
 function showWaitingForRole() {
@@ -2708,6 +2794,84 @@ function renderBiddersFinal(results) {
     </div>`).join('');
   const restart = document.getElementById('bidders-restart-wrap');
   if (restart) restart.style.display = isHost ? 'block' : 'none';
+}
+
+// ──────────────────────────────────────────
+// CATEGORIES
+// ──────────────────────────────────────────
+function renderCategoriesSettings(room) {
+  const s = room.settings || {};
+  const teams = s.catTeams || ['Team 1', 'Team 2'];
+  const dur = s.catDuration || 30;
+  const t1 = document.getElementById('cat-team1-input');
+  const t2 = document.getElementById('cat-team2-input');
+  if (t1 && document.activeElement !== t1) t1.value = teams[0] || '';
+  if (t2 && document.activeElement !== t2) t2.value = teams[1] || '';
+  document.querySelectorAll('#cat-duration-row .btn').forEach(b => {
+    b.className = 'btn btn-sm' + (Number(b.dataset.dur) === dur ? ' btn-primary' : ' btn-outline');
+  });
+}
+function setCatTeam(i, val) {
+  if (!isHost || !currentRoom) return;
+  const teams = [...((currentRoom.settings && currentRoom.settings.catTeams) || ['Team 1', 'Team 2'])];
+  teams[i] = (val || '').trim() || ('Team ' + (i + 1));
+  socket.emit('update-settings', { settings: { catTeams: teams } });
+}
+function setCatDuration(v) { if (!isHost) return; socket.emit('update-settings', { settings: { catDuration: v } }); }
+
+function catNewQuestion() { socket.emit('categories-new-question'); }
+function catStartTimer() { socket.emit('categories-start-timer'); }
+function catAward(team) { socket.emit('categories-award', { team }); }
+function catAdjust(team, delta) { socket.emit('categories-adjust', { team, delta }); }
+function restartCategoriesGame() { if (!isHost) return; socket.emit('categories-restart'); showScreen('lobby'); }
+
+let _catTimer = null;
+function renderCategories(room) {
+  const c = room.categoriesPublic;
+  if (!c) return;
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setTxt('cat-team0-name', c.teams[0] ? c.teams[0].name : 'Team 1');
+  setTxt('cat-team1-name', c.teams[1] ? c.teams[1].name : 'Team 2');
+  setTxt('cat-team0-score', c.teams[0] ? c.teams[0].score : 0);
+  setTxt('cat-team1-score', c.teams[1] ? c.teams[1].score : 0);
+  const promptEl = document.getElementById('cat-prompt');
+  if (promptEl) promptEl.innerHTML = c.prompt
+    ? `How many <span style="color:var(--accent2)">${c.prompt}</span> can you name in ${c.duration} seconds?`
+    : '—';
+
+  // Host vs spectator controls
+  document.querySelectorAll('.cat-host-ctrl').forEach(el => { el.style.display = isHost ? 'flex' : 'none'; });
+  const hostBtns = document.getElementById('cat-host-buttons');
+  const waitMsg = document.getElementById('cat-wait-msg');
+  if (hostBtns) hostBtns.style.display = isHost ? 'flex' : 'none';
+  if (waitMsg) waitMsg.style.display = isHost ? 'none' : 'block';
+
+  // Synced countdown timer
+  clearInterval(_catTimer);
+  const timerEl = document.getElementById('cat-timer');
+  const startBtn = document.getElementById('cat-start-btn');
+  function upd() {
+    if (!timerEl) return;
+    if (!c.timerEndsAt) {
+      timerEl.textContent = c.duration;
+      timerEl.style.color = '';
+      if (startBtn) startBtn.textContent = '▶️ Start Timer';
+      return;
+    }
+    const rem = Math.max(0, Math.ceil((c.timerEndsAt - Date.now()) / 1000));
+    if (rem <= 0) {
+      timerEl.textContent = "⏰ Time!";
+      timerEl.style.color = 'var(--danger)';
+      clearInterval(_catTimer);
+      if (startBtn) startBtn.textContent = '🔁 Restart Timer';
+    } else {
+      timerEl.textContent = rem;
+      timerEl.style.color = rem <= 5 ? 'var(--danger)' : '';
+      if (startBtn) startBtn.textContent = '⏱️ Running…';
+    }
+  }
+  upd();
+  if (c.timerEndsAt && c.timerEndsAt > Date.now()) _catTimer = setInterval(upd, 200);
 }
 
 // ──────────────────────────────────────────
@@ -3055,6 +3219,7 @@ function renderLobbyData(room) {
   const isCollab      = gameType === 'collab';
   const isWavelength  = gameType === 'wavelength';
   const isBidders     = gameType === 'bidders';
+  const isCategories  = gameType === 'categories';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -3071,7 +3236,8 @@ function renderLobbyData(room) {
       collab: isCollab,
       wavelength: isWavelength,
       'blind-ranking': gameType === 'blind-ranking',
-      bidders: isBidders
+      bidders: isBidders,
+      categories: isCategories
     };
     Object.entries(modeSelected).forEach(([type, on]) => {
       const el = document.getElementById('gametype-' + type + '-btn');
@@ -3091,12 +3257,30 @@ function renderLobbyData(room) {
     // Always hide wavelength & blind ranking settings cards unless active
     const wvSettingsCard = document.getElementById('host-wavelength-settings');
     const biddersSettings = document.getElementById('host-bidders-settings');
+    const catSettings = document.getElementById('host-categories-settings');
     if (wvSettingsCard && !isWavelength) wvSettingsCard.style.display = 'none';
     if (brSettings && !isBlindRanking) brSettings.style.display = 'none';
     if (biddersSettings && !isBidders) biddersSettings.style.display = 'none';
+    if (catSettings && !isCategories) catSettings.style.display = 'none';
+
+    // ── CATEGORIES MODE ──
+    if (isCategories) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettingsC = document.getElementById('host-draw-settings');
+      const drawCatsC = document.getElementById('host-draw-categories');
+      if (drawSettingsC) drawSettingsC.style.display = 'none';
+      if (drawCatsC) drawCatsC.style.display = 'none';
+      if (catSettings) catSettings.style.display = 'block';
+      renderCategoriesSettings(room);
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Just 1 player needed';
 
     // ── BIDDERS MODE ──
-    if (isBidders) {
+    } else if (isBidders) {
       if (hostSettings) hostSettings.style.display = 'none';
       if (wordCats)    wordCats.style.display    = 'none';
       if (videoCats)   videoCats.style.display   = 'none';

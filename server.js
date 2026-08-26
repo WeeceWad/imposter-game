@@ -1388,6 +1388,95 @@ function advanceBlindRankingTrack(room) {
 
 
 
+// ─────────────────────────────────────────────
+// CATEGORIES GAME — "How many ___ can you name in 30 seconds?"
+// ─────────────────────────────────────────────
+const CATEGORY_TOPICS = [
+  // Gaming
+  "video games", "video game characters", "Pokémon", "Mario characters", "Zelda games",
+  "Call of Duty games", "Nintendo consoles", "PlayStation exclusives", "Xbox games",
+  "fighting games", "racing games", "FPS games", "retro/arcade games", "gaming YouTubers",
+  "Fortnite items", "Minecraft mobs", "Sonic characters", "Final Fantasy games",
+  "GTA games", "Assassin's Creed games", "Street Fighter characters", "indie games",
+  "battle royale games", "Among Us tasks", "Mario Kart tracks", "Pokémon starters",
+  // Movies
+  "Marvel movies", "DC movies", "Disney movies", "Pixar movies", "Star Wars characters",
+  "James Bond actors", "horror movies", "Christmas movies", "animated movies",
+  "Harry Potter characters", "Lord of the Rings characters", "Batman actors",
+  "superhero movies", "film directors", "Tom Hanks movies", "Adam Sandler movies",
+  "movie villains", "Oscar-winning films", "movie franchises", "Quentin Tarantino films",
+  "movies set in space", "zombie movies", "Fast & Furious characters", "Shrek characters",
+  // TV
+  "sitcoms", "Netflix shows", "cartoons", "reality TV shows", "Game of Thrones characters",
+  "The Office characters", "Friends characters", "Simpsons characters", "anime series",
+  "TV game shows", "Breaking Bad characters", "SpongeBob characters", "Family Guy characters",
+  "British sitcoms", "crime dramas", "kids TV shows", "talent shows", "soap operas",
+  // Music
+  "boy bands", "girl groups", "rappers", "pop stars", "rock bands", "Beatles songs",
+  "Taylor Swift songs", "music genres", "musical instruments", "one-hit wonders",
+  "80s bands", "90s songs", "Christmas songs", "Ed Sheeran songs", "Eminem songs",
+  "DJs", "country singers", "female singers", "British bands", "boybands from the 2000s",
+  // Food & drink
+  "types of pasta", "pizza toppings", "fruits", "vegetables", "types of cheese",
+  "fast food chains", "chocolate bars", "cocktails", "breakfast foods", "ice cream flavours",
+  "cuisines", "spices", "sandwich fillings", "crisp flavours", "types of bread",
+  "hot drinks", "fizzy drinks", "sweets/candy", "types of cake", "condiments",
+  "cereals", "takeaway foods", "British foods", "herbs", "types of coffee", "curries",
+  // Animals
+  "dog breeds", "cat breeds", "jungle animals", "ocean animals", "birds", "insects",
+  "dinosaurs", "farm animals", "reptiles", "animals that hibernate", "big cats",
+  "endangered animals", "pets", "animals with tails", "African animals", "sea creatures",
+  "types of shark", "flightless birds", "animals that live underground", "amphibians",
+  // Geography
+  "countries", "capital cities", "US states", "European countries", "African countries",
+  "oceans", "rivers", "mountains", "world landmarks", "islands", "deserts", "UK cities",
+  "countries in Asia", "South American countries", "US cities", "world capitals",
+  "countries that start with S", "landlocked countries", "flags with red on them",
+  "wonders of the world", "counties in England", "Scottish cities",
+  // Sports
+  "football teams", "Premier League teams", "NBA teams", "sports played with a ball",
+  "Olympic sports", "boxers", "F1 drivers", "tennis players", "footballers",
+  "wrestling moves", "golf terms", "sports without a ball", "combat sports",
+  "cricket teams", "athletics events", "winter sports", "NFL teams", "rugby teams",
+  "world cup winning countries", "famous stadiums", "tennis grand slams",
+  // Brands & companies
+  "car brands", "phone brands", "clothing brands", "trainer/sneaker brands",
+  "soft drink brands", "supermarkets", "tech companies", "makeup brands",
+  "fast food brands", "sportswear brands", "airlines", "banks", "streaming services",
+  "social media apps", "chocolate brands", "crisp brands", "energy drinks",
+  // Random / everyday
+  "things in a kitchen", "things that are red", "things in a bathroom", "board games",
+  "card games", "superheroes", "superpowers", "jobs/professions", "school subjects",
+  "colours", "shapes", "planets", "chemical elements", "languages", "dances",
+  "things you find at the beach", "things in a toolbox", "things that fly",
+  "things with wheels", "things in space", "modes of transport", "Greek gods",
+  "zodiac signs", "chess pieces", "things that are cold", "round things",
+  "things in a pencil case", "things at a birthday party", "kitchen appliances",
+  "garden tools", "types of weather", "emotions", "body parts", "currencies",
+  "nationalities", "US presidents", "historical figures", "types of dance",
+  "things in a hospital", "things you plug in", "things that are square",
+  "things in a classroom", "things in a garage", "words that rhyme with cat",
+  "things that are sticky", "things you can throw", "things in a wallet",
+  "things that make noise", "things that are soft", "board games for kids",
+  "reasons to be late", "things in a first aid kit", "things in the sky",
+  "things you wear on your feet", "types of hat", "things in a fridge",
+  "famous scientists", "inventions", "ancient civilizations", "types of cloud",
+  "human bones", "constellations", "Disney princesses", "fairy tale characters",
+  "nursery rhymes", "Christmas traditions", "Halloween costumes", "party games"
+];
+
+function categoriesNewPrompt(room) {
+  const d = room.categoriesData;
+  if (!d.usedIdx) d.usedIdx = new Set();
+  if (d.usedIdx.size >= CATEGORY_TOPICS.length) d.usedIdx.clear();
+  let idx;
+  do { idx = Math.floor(Math.random() * CATEGORY_TOPICS.length); }
+  while (d.usedIdx.has(idx));
+  d.usedIdx.add(idx);
+  d.prompt = CATEGORY_TOPICS[idx];
+  d.timerEndsAt = null;
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -1441,6 +1530,12 @@ function sanitizeRoom(room) {
           full: b.list.length >= room.biddersData.listSize
         };
       })
+    } : null,
+    categoriesPublic: (room.gameState && room.gameState.startsWith('categories-') && room.categoriesData) ? {
+      teams: room.categoriesData.teams,
+      prompt: room.categoriesData.prompt,
+      duration: room.categoriesData.duration || 30,
+      timerEndsAt: room.categoriesData.timerEndsAt || null
     } : null
   };
 }
@@ -2333,6 +2428,25 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // ── CATEGORIES MODE ──
+    if (room.settings.gameType === 'categories') {
+      if (room.players.length < 1) return socket.emit('error', { message: 'Need at least 1 player for Categories.' });
+      const t1 = (room.settings.catTeams && room.settings.catTeams[0]) || 'Team 1';
+      const t2 = (room.settings.catTeams && room.settings.catTeams[1]) || 'Team 2';
+      room.categoriesData = {
+        teams: [{ name: t1, score: 0 }, { name: t2, score: 0 }],
+        duration: room.settings.catDuration || 30,
+        prompt: null,
+        usedIdx: new Set(),
+        timerEndsAt: null
+      };
+      categoriesNewPrompt(room);
+      room.gameState = 'categories-playing';
+      io.to(room.code).emit('categories-started');
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
     // ── IMPOSTER MODE ──
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
     const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
@@ -2850,6 +2964,7 @@ io.on('connection', (socket) => {
     room.wvCurrentPsychicId = null;
     room.wvUsedSpectraIdx = new Set();
     room.biddersData = null;
+    room.categoriesData = null;
     // Reset game mode back to word so video mode doesn't persist into the next game
     if (room.settings.gameMode && room.settings.gameMode !== 'word') {
       room.settings.gameMode = 'word';
@@ -3496,6 +3611,48 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     room.gameState = 'lobby';
     room.biddersData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // ── CATEGORIES: host controls ──
+  socket.on('categories-new-question', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.categoriesData) return;
+    categoriesNewPrompt(room);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('categories-start-timer', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.categoriesData) return;
+    const d = room.categoriesData;
+    d.timerEndsAt = Date.now() + (d.duration || 30) * 1000;
+    io.to(room.code).emit('categories-timer-started');
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('categories-award', ({ team }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.categoriesData) return;
+    const d = room.categoriesData;
+    if (d.teams[team]) { d.teams[team].score++; io.to(room.code).emit('room-update', sanitizeRoom(room)); }
+  });
+
+  socket.on('categories-adjust', ({ team, delta }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.categoriesData) return;
+    const d = room.categoriesData;
+    if (d.teams[team]) {
+      d.teams[team].score = Math.max(0, d.teams[team].score + (delta > 0 ? 1 : -1));
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+    }
+  });
+
+  socket.on('categories-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    room.gameState = 'lobby';
+    room.categoriesData = null;
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 

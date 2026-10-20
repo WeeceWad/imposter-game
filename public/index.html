@@ -376,7 +376,7 @@
 <div id="screen-home" class="screen active">
   <div class="logo-eye">🎉</div>
   <div class="logo">PARTY GAMES</div>
-  <div class="logo-sub">Pick a game. Grab your friends. Play.</div>
+  <div class="logo-sub" id="home-sub">Pick a game. Grab your friends. Play.</div>
   <div style="height:8px"></div>
 
   <div style="width:100%">
@@ -384,16 +384,16 @@
     <input type="text" id="home-name" placeholder="Enter your name..." maxlength="20" autocomplete="off" />
   </div>
 
-  <button class="btn btn-primary" onclick="createRoom()">✨ Create Room</button>
+  <button class="btn btn-primary" id="home-create-btn" onclick="createRoom()">✨ Create Room</button>
 
-  <div class="sep"><div class="sep-line"></div><div class="sep-text">or join one</div><div class="sep-line"></div></div>
+  <div class="sep" id="home-sep"><div class="sep-line"></div><div class="sep-text">or join one</div><div class="sep-line"></div></div>
 
-  <div style="width:100%">
+  <div style="width:100%" id="home-code-section">
     <div class="card-title" style="margin-bottom:8px">Room Code</div>
     <input type="text" id="home-code" class="code-input" placeholder="XXXXXX" maxlength="6" autocomplete="off" />
   </div>
 
-  <button class="btn btn-outline" onclick="joinRoom()">🚪 Join Room</button>
+  <button class="btn btn-outline" id="home-join-btn" onclick="joinRoom()">🚪 Join Room</button>
 
 </div>
 
@@ -595,6 +595,16 @@
   <div id="host-whoami-categories" class="card" style="width:100%; display:none">
     <div class="card-title">Who Am I? — Category</div>
     <div class="category-grid" id="whoami-category-grid"></div>
+    <div id="whoami-subs-wrap" style="display:none; margin-top:14px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <div class="card-title" style="margin:0">Sub-categories</div>
+        <div style="display:flex; gap:6px">
+          <button class="btn btn-sm btn-outline" style="padding:4px 10px" onclick="setWhoamiAllSubs(true)">All</button>
+          <button class="btn btn-sm btn-outline" style="padding:4px 10px" onclick="setWhoamiAllSubs(false)">None</button>
+        </div>
+      </div>
+      <div class="category-grid" id="whoami-subs-grid"></div>
+    </div>
   </div>
 
   <!-- SPYFALL INFO (spyfall only) -->
@@ -3188,9 +3198,43 @@ function renderBlindRankingEndScreen(room) {
   boardsEl.innerHTML = html;
 }
 
+let whoamiCatStructure = null; // { key: { name, subs:[{key,name,count}]|null } }
+async function loadWhoamiCats() {
+  try {
+    const res = await fetch('/api/whoami-cats');
+    whoamiCatStructure = await res.json();
+    if (currentRoom && currentRoom.gameState === 'lobby') renderLobbyData(currentRoom);
+  } catch (e) {}
+}
+
 function setWhoamiCategory(key) {
   if (!currentRoom || !isHost) return;
-  socket.emit('update-settings', { settings: { whoamiCategory: key } });
+  // Switching category selects all its sub-categories by default
+  const cat = whoamiCatStructure && whoamiCatStructure[key];
+  const subs = (cat && cat.subs) ? cat.subs.map(s => s.key) : [];
+  socket.emit('update-settings', { settings: { whoamiCategory: key, whoamiSubs: subs } });
+}
+
+function toggleWhoamiSub(subKey) {
+  if (!currentRoom || !isHost) return;
+  const catKey = currentRoom.settings.whoamiCategory || 'famous';
+  const cat = whoamiCatStructure && whoamiCatStructure[catKey];
+  if (!cat || !cat.subs) return;
+  const allKeys = cat.subs.map(s => s.key);
+  let sel = Array.isArray(currentRoom.settings.whoamiSubs) ? [...currentRoom.settings.whoamiSubs] : [...allKeys];
+  if (sel.includes(subKey)) sel = sel.filter(k => k !== subKey);
+  else sel.push(subKey);
+  if (sel.length === 0) return showToast('Pick at least one sub-category', 'error');
+  socket.emit('update-settings', { settings: { whoamiSubs: sel } });
+}
+
+function setWhoamiAllSubs(all) {
+  if (!currentRoom || !isHost) return;
+  const catKey = currentRoom.settings.whoamiCategory || 'famous';
+  const cat = whoamiCatStructure && whoamiCatStructure[catKey];
+  if (!cat || !cat.subs) return;
+  if (!all) return showToast('Pick at least one sub-category', 'error');
+  socket.emit('update-settings', { settings: { whoamiSubs: cat.subs.map(s => s.key) } });
 }
 
 function endWhoamiGame() {
@@ -3348,19 +3392,30 @@ function renderLobbyData(room) {
       if (drawCats3) drawCats3.style.display = 'none';
 
       const whoamiGrid = document.getElementById('whoami-category-grid');
-      if (whoamiGrid) {
-        const WHOAMI_CAT_DEFS = [
-          { key: 'famous',      label: '🌟 Famous People' },
-          { key: 'famousBands', label: '🎸 Famous People w/ Bands' },
-          { key: 'fictional',   label: '🦸 Fictional Characters' },
-          { key: 'videoGames',  label: '🎮 Video Games' }
-        ];
+      if (whoamiGrid && whoamiCatStructure) {
         const selWam = room.settings.whoamiCategory || 'famous';
-        whoamiGrid.innerHTML = WHOAMI_CAT_DEFS.map(c => `
-          <div class="cat-chip ${selWam === c.key ? 'selected' : ''}" onclick="setWhoamiCategory('${c.key}')">
-            ${c.label}
+        whoamiGrid.innerHTML = Object.entries(whoamiCatStructure).map(([key, c]) => `
+          <div class="cat-chip ${selWam === key ? 'selected' : ''}" onclick="setWhoamiCategory('${key}')">
+            ${c.name}
           </div>
         `).join('');
+
+        // Sub-category multi-select (only for categories that have subs)
+        const subsWrap = document.getElementById('whoami-subs-wrap');
+        const subsGrid = document.getElementById('whoami-subs-grid');
+        const cat = whoamiCatStructure[selWam];
+        if (cat && cat.subs && subsWrap && subsGrid) {
+          subsWrap.style.display = 'block';
+          const sel = Array.isArray(room.settings.whoamiSubs) ? room.settings.whoamiSubs : cat.subs.map(s => s.key);
+          subsGrid.innerHTML = cat.subs.map(s => `
+            <div class="cat-chip ${sel.includes(s.key) ? 'selected' : ''}" onclick="toggleWhoamiSub('${s.key}')">
+              ${s.name}
+              <div class="cat-count">${s.count}</div>
+            </div>
+          `).join('');
+        } else if (subsWrap) {
+          subsWrap.style.display = 'none';
+        }
       }
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Need at least 2 players';
@@ -4113,6 +4168,7 @@ function showScreen(name) {
 
   if (name === 'lobby') {
     if (categories.length === 0) loadCategories();
+    if (!whoamiCatStructure) loadWhoamiCats();
     if (currentRoom) renderLobbyData(currentRoom);
   }
   if (name === 'role') {
@@ -4660,13 +4716,25 @@ document.getElementById('home-code').addEventListener('keydown', e => { if (e.ke
 document.getElementById('whoami-guess-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitWhoamiGuess(); });
 
 // ── Invite link: auto-fill code from ?code= URL param ──
+// People arriving via an invite link only join — no "Create Room" option.
 (function() {
   const params = new URLSearchParams(window.location.search);
   const inviteCode = params.get('code');
   if (inviteCode) {
-    document.getElementById('home-code').value = inviteCode.toUpperCase();
+    const codeInput = document.getElementById('home-code');
+    codeInput.value = inviteCode.toUpperCase();
+    codeInput.setAttribute('readonly', 'readonly');
+    // Hide the create-room path — invited players only join
+    const createBtn = document.getElementById('home-create-btn');
+    const sep = document.getElementById('home-sep');
+    const joinBtn = document.getElementById('home-join-btn');
+    const sub = document.getElementById('home-sub');
+    if (createBtn) createBtn.style.display = 'none';
+    if (sep) sep.style.display = 'none';
+    if (joinBtn) joinBtn.className = 'btn btn-primary';
+    if (sub) sub.textContent = "You've been invited! Enter your name to join.";
     document.getElementById('home-name').focus();
-    showToast('Room code filled in — enter your name to join!', 'success');
+    showToast('Enter your name to join the game!', 'success');
   }
 })();
 

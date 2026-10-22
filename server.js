@@ -1899,7 +1899,7 @@ const WHOAMI_SOLO_MUSIC = CATEGORIES.musicArtists.items.filter(a => !WHOAMI_MUSI
 const WHOAMI_SOLO_YT = CATEGORIES.youtubers.items.filter(a => !WHOAMI_YT_GROUPS.has(a));
 
 const WHOAMI_CATS = {
-  famous: { name: "🌟 Famous People", subs: {
+  people: { name: "🧑 People (Real & Fictional)", subs: {
     footballers: { name: "⚽ Footballers", items: [
       "Cristiano Ronaldo","Lionel Messi","David Beckham","Harry Kane","Wayne Rooney",
       "Jude Bellingham","Mohamed Salah","Erling Haaland","Kylian Mbappe","Kevin De Bruyne",
@@ -2109,13 +2109,130 @@ const WHOAMI_CATS = {
       "Spinosaurus","Pterodactyl","Diplodocus","Ankylosaurus","Allosaurus",
       "Brontosaurus","Pteranodon","Iguanodon","Parasaurolophus","Dilophosaurus"
     ]}
+  }},
+  things: { name: "📦 Things", subs: {
+    food: { name: "🍔 Food & Drink", items: [
+      "Pizza","Burger","Hot Dog","Taco","Burrito","Sushi","Pasta","Spaghetti","Lasagne",
+      "Sandwich","Toast","Pancake","Waffle","Doughnut","Croissant","Bagel","Cereal",
+      "Ice Cream","Chocolate","Cookie","Cake","Cupcake","Pie","Brownie","Jelly",
+      "Apple","Banana","Orange","Strawberry","Watermelon","Pineapple","Grapes","Mango",
+      "Carrot","Potato","Broccoli","Tomato","Cucumber","Onion","Mushroom","Corn",
+      "Cheese","Egg","Bacon","Sausage","Steak","Chicken","Fish","Rice","Noodles","Soup",
+      "Coffee","Tea","Milkshake","Lemonade","Smoothie","Hot Chocolate","Orange Juice"
+    ]},
+    household: { name: "🛋️ Household", items: [
+      "Sofa","Armchair","Bed","Pillow","Blanket","Lamp","Television","Remote Control",
+      "Clock","Mirror","Rug","Curtains","Bookshelf","Wardrobe","Drawer","Table","Chair",
+      "Vase","Picture Frame","Candle","Cushion","Doormat","Coat Hanger","Laundry Basket",
+      "Vacuum Cleaner","Broom","Mop","Bucket","Bin","Toothbrush","Towel","Soap","Shampoo",
+      "Hairdryer","Umbrella","Keys","Wallet","Backpack","Suitcase","Torch","Battery"
+    ]},
+    tech: { name: "📱 Tech & Gadgets", items: [
+      "Phone","Laptop","Tablet","Smartwatch","Headphones","Earbuds","Speaker","Camera",
+      "Drone","Games Console","Controller","Keyboard","Mouse","Monitor","Printer","Router",
+      "Charger","Power Bank","USB Stick","Hard Drive","Webcam","Microphone","VR Headset",
+      "E-Reader","Fitness Tracker","Robot Vacuum","Microwave","Toaster","Kettle","Blender"
+    ]},
+    clothing: { name: "👕 Clothing & Accessories", items: [
+      "T-Shirt","Hoodie","Jumper","Jacket","Coat","Jeans","Shorts","Dress","Skirt","Suit",
+      "Trainers","Boots","Sandals","Socks","Hat","Cap","Beanie","Scarf","Gloves","Belt",
+      "Tie","Sunglasses","Watch","Necklace","Ring","Earrings","Bracelet","Backpack","Handbag","Wallet"
+    ]},
+    sports: { name: "⚽ Sports Equipment", items: [
+      "Football","Basketball","Tennis Racket","Golf Club","Cricket Bat","Baseball Bat",
+      "Hockey Stick","Skateboard","Surfboard","Skis","Snowboard","Boxing Gloves","Dumbbell",
+      "Yoga Mat","Bicycle","Helmet","Shin Pads","Goggles","Whistle","Trophy","Medal","Net"
+    ]},
+    space: { name: "🚀 Outer Space", items: [
+      "Rocket","Spaceship","Satellite","Space Station","Astronaut","Telescope","Planet",
+      "Star","Moon","Sun","Comet","Asteroid","Meteor","Black Hole","Galaxy","Nebula",
+      "Alien","UFO","Space Suit","Mars Rover","Constellation","Shooting Star","Solar System"
+    ]},
+    nature: { name: "🌳 Nature", items: [
+      "Tree","Flower","Rose","Sunflower","Cactus","Mushroom","Leaf","Grass","Bush",
+      "Mountain","River","Lake","Waterfall","Ocean","Beach","Forest","Volcano","Cave",
+      "Rainbow","Cloud","Snowflake","Raindrop","Lightning","Rock","Seashell","Coral"
+    ]},
+    vehicles: { name: "🚗 Vehicles", items: [
+      "Car","Bus","Train","Aeroplane","Helicopter","Motorbike","Bicycle","Scooter","Truck",
+      "Van","Taxi","Ambulance","Fire Engine","Police Car","Tractor","Boat","Ship","Submarine",
+      "Jet Ski","Hot Air Balloon","Rocket","Tank","Golf Cart","Caravan","Skateboard"
+    ]},
+    instruments: { name: "🎸 Musical Instruments", items: [
+      "Guitar","Piano","Drums","Violin","Cello","Flute","Trumpet","Saxophone","Clarinet",
+      "Harp","Accordion","Harmonica","Ukulele","Banjo","Tambourine","Xylophone","Keyboard",
+      "Trombone","Bagpipes","Microphone","Triangle","Maracas","Bongos"
+    ]},
+    tools: { name: "🔧 Tools & DIY", items: [
+      "Hammer","Screwdriver","Drill","Saw","Wrench","Pliers","Spanner","Tape Measure",
+      "Spirit Level","Paintbrush","Paint Roller","Ladder","Toolbox","Nail","Screw","Bolt",
+      "Sandpaper","Glue Gun","Chisel","Wheelbarrow","Shovel","Rake","Lawnmower","Hose"
+    ]}
+  }},
+  places: { name: "🌍 Places", subs: {
+    countries: { name: "🏳️ Countries", items: [
+      "England","Scotland","Wales","Ireland","France","Spain","Italy","Germany","Portugal",
+      "Greece","Netherlands","Belgium","Switzerland","Sweden","Norway","Poland","Russia",
+      "USA","Canada","Mexico","Brazil","Argentina","Australia","New Zealand","Japan","China",
+      "India","Thailand","Egypt","South Africa","Morocco","Turkey","Jamaica","Iceland","Croatia"
+    ]},
+    cities: { name: "🏙️ Cities", items: [
+      "London","Paris","New York","Tokyo","Rome","Barcelona","Madrid","Berlin","Amsterdam",
+      "Dubai","Sydney","Los Angeles","Las Vegas","Miami","Toronto","Rio de Janeiro","Cairo",
+      "Istanbul","Bangkok","Hong Kong","Singapore","Moscow","Venice","Athens","Dublin",
+      "Edinburgh","Manchester","Liverpool","Lisbon","Prague","Vienna","Shanghai","Mumbai"
+    ]},
+    geo: { name: "🗺️ Continents & Oceans", items: [
+      "Europe","Asia","Africa","North America","South America","Antarctica","Australia (Oceania)",
+      "Pacific Ocean","Atlantic Ocean","Indian Ocean","Arctic Ocean","Southern Ocean",
+      "The Sahara","The Amazon","The Alps","The Himalayas","The Andes","The Nile","The Mediterranean"
+    ]},
+    landmarks: { name: "🗽 Landmarks & Monuments", items: [
+      "Eiffel Tower","Big Ben","Statue of Liberty","Great Wall of China","Colosseum",
+      "Taj Mahal","Pyramids of Giza","Leaning Tower of Pisa","Sydney Opera House",
+      "Golden Gate Bridge","Mount Rushmore","Christ the Redeemer","Stonehenge","Buckingham Palace",
+      "The Sphinx","Burj Khalifa","Tower Bridge","Empire State Building","Niagara Falls",
+      "The Louvre","Sagrada Familia","Brandenburg Gate","Angkor Wat","Machu Picchu"
+    ]},
+    vacation: { name: "🏖️ Vacation Spots", items: [
+      "Hawaii","Bali","Maldives","Ibiza","Las Vegas","Disney World","Caribbean","Santorini",
+      "The Bahamas","Costa del Sol","Lake District","Cornwall","The Swiss Alps","Aspen",
+      "Cancun","Phuket","Dubai","Florida","Tenerife","Majorca","Venice","Amsterdam"
+    ]},
+    nature: { name: "🏔️ Natural Wonders", items: [
+      "Grand Canyon","Mount Everest","Niagara Falls","The Great Barrier Reef","Northern Lights",
+      "Amazon Rainforest","Sahara Desert","Victoria Falls","The Grand Tetons","Yellowstone",
+      "The Dead Sea","Mount Fuji","Lake Como","The Serengeti","Iguazu Falls","Ayers Rock"
+    ]},
+    space: { name: "🪐 Planets & Space", items: [
+      "Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto",
+      "The Moon","The Sun","The Milky Way","Andromeda","The International Space Station",
+      "Halley's Comet","The Asteroid Belt","A Black Hole"
+    ]},
+    usstates: { name: "🇺🇸 US States", items: [
+      "California","Texas","Florida","New York","Nevada","Hawaii","Alaska","Arizona",
+      "Colorado","Washington","Oregon","Georgia","Louisiana","Tennessee","Ohio","Michigan",
+      "Illinois","Massachusetts","Virginia","North Carolina","Utah","Montana","Maine"
+    ]},
+    fictional: { name: "🏰 Fictional Places", items: [
+      "Hogwarts","Narnia","Middle-earth","The Shire","Mordor","Gotham City","Metropolis",
+      "Wakanda","Asgard","Atlantis","Neverland","Oz","Westeros","Winterfell","King's Landing",
+      "Springfield","Bikini Bottom","Jurassic Park","The Upside Down","Hyrule","Mushroom Kingdom",
+      "Pandora","Tatooine","The Death Star","Emerald City"
+    ]}
   }}
 };
+
+// People = real famous + fictional characters, all together (as one big category)
+if (WHOAMI_CATS.fictional) {
+  Object.assign(WHOAMI_CATS.people.subs, WHOAMI_CATS.fictional.subs);
+  delete WHOAMI_CATS.fictional;
+}
 
 // Build the pool of names for a Who Am I game from the chosen category + selected sub-categories.
 // If a category has sub-categories and none are selected, all of them are used.
 function whoamiBuildPool(room) {
-  const cat = WHOAMI_CATS[(room.settings && room.settings.whoamiCategory) || 'famous'] || WHOAMI_CATS.famous;
+  const cat = WHOAMI_CATS[(room.settings && room.settings.whoamiCategory) || 'people'] || WHOAMI_CATS.people;
   if (!cat.subs) return [...(cat.items || [])];
   const subKeys = Object.keys(cat.subs);
   let sel = Array.isArray(room.settings && room.settings.whoamiSubs)
@@ -2168,7 +2285,7 @@ io.on('connection', (socket) => {
         gameMode: 'word',
         videoCategory: 'funny',
         selectedCategories: ['movies', 'tvShows', 'videoGames', 'gameCharacters'],
-        whoamiCategory: 'famous'
+        whoamiCategory: 'people'
       },
       currentWord: null,
       currentCategory: null,
@@ -2259,7 +2376,7 @@ io.on('connection', (socket) => {
     // ── WHO AM I MODE ──
     if (room.settings.gameType === 'whoami') {
       if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players.' });
-      const cat = WHOAMI_CATS[room.settings.whoamiCategory || 'famous'] || WHOAMI_CATS.famous;
+      const cat = WHOAMI_CATS[room.settings.whoamiCategory || 'people'] || WHOAMI_CATS.people;
       const pool = shuffleArray(whoamiBuildPool(room));
       if (pool.length === 0) return socket.emit('error', { message: 'Pick at least one sub-category.' });
       room.whoamiAssignments = {};
@@ -3217,7 +3334,7 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players.' });
 
-    const cat = WHOAMI_CATS[room.settings.category] || WHOAMI_CATS.famous;
+    const cat = WHOAMI_CATS[room.settings.category] || WHOAMI_CATS.people;
     let allItems = cat.items;
     if (!allItems && cat.subs) { allItems = []; Object.values(cat.subs).forEach(s => allItems.push(...s.items)); }
     const pool = [...(allItems || [])].sort(() => Math.random() - 0.5);

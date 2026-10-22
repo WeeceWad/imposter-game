@@ -1583,6 +1583,15 @@
 // ──────────────────────────────────────────
 // STATE
 // ──────────────────────────────────────────
+// Persistent session store — localStorage survives the phone OS unloading a
+// backgrounded tab (sessionStorage does not), so players can tab away / lock
+// their phone and still be put back in the room. Wrapped in try/catch for
+// private-mode browsers where storage can throw.
+const safeStore = {
+  getItem(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  setItem(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  removeItem(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
 let socket = null;
 let myId = null;
 let myRole = null;
@@ -1628,11 +1637,12 @@ function initSocket() {
   // focus/visibility/online events don't spam the server.
   let _rejoinTimer = null;
   let _reconnectToast = null;
+  let _rejoinRetries = 0;
   function tryRejoin() {
     if (!socket) return;
     if (!socket.connected) { socket.connect(); return; } // 'connect' handler rejoins once back
-    const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
-    const name = myPlayerName || sessionStorage.getItem('imposter_name');
+    const roomCode = currentRoom ? currentRoom.code : safeStore.getItem('imposter_room');
+    const name = myPlayerName || safeStore.getItem('imposter_name');
     if (roomCode && name) {
       clearTimeout(_rejoinTimer);
       _rejoinTimer = setTimeout(() => socket.emit('rejoin-room', { code: roomCode, name: name }), 150);
@@ -1649,36 +1659,48 @@ function initSocket() {
   // On every (re)connect — if we're mid-session, rejoin the room
   socket.on('connect', () => {
     clearTimeout(_reconnectToast); // cancel any pending "reconnecting" toast
-    const roomCode = currentRoom ? currentRoom.code : sessionStorage.getItem('imposter_room');
-    const name = myPlayerName || sessionStorage.getItem('imposter_name');
+    const roomCode = currentRoom ? currentRoom.code : safeStore.getItem('imposter_room');
+    const name = myPlayerName || safeStore.getItem('imposter_name');
     if (roomCode && name) {
       socket.emit('rejoin-room', { code: roomCode, name: name });
     }
   });
 
-  // Server couldn't put us back in the room — clean up instead of getting stuck
+  // Server couldn't put us back in the room
   socket.on('rejoin-failed', ({ reason, gameState, code }) => {
-    if (reason === 'not-in-room' && gameState === 'lobby' && code && myPlayerName) {
-      // We were removed but the room is still open — silently re-join fresh
-      socket.emit('join-room', { code: code, name: myPlayerName });
+    const savedRoom = (currentRoom && currentRoom.code) || safeStore.getItem('imposter_room');
+    const savedName = myPlayerName || safeStore.getItem('imposter_name');
+    // Removed but the room's still in the lobby — silently re-join fresh
+    if (reason === 'not-in-room' && gameState === 'lobby' && savedName) {
+      const c = code || savedRoom;
+      if (c) { socket.emit('join-room', { code: c, name: savedName }); return; }
+    }
+    // Be tolerant of transient failures (server briefly restarting, a reconnect
+    // race): retry a few times before actually giving up, so people aren't kicked
+    // just for tabbing away for a moment.
+    if (savedRoom && savedName && _rejoinRetries < 5) {
+      _rejoinRetries++;
+      setTimeout(() => {
+        if (socket && socket.connected) socket.emit('rejoin-room', { code: savedRoom, name: savedName });
+      }, 2000);
       return;
     }
-    // Room is gone, or a game is in progress and we're no longer part of it
-    sessionStorage.removeItem('imposter_room');
-    sessionStorage.removeItem('imposter_name');
+    // Genuinely gone — clean up
+    _rejoinRetries = 0;
+    safeStore.removeItem('imposter_room');
+    safeStore.removeItem('imposter_name');
     currentRoom = null; myId = null; gameIsOver = false;
     const activeScreen = document.querySelector('.screen.active');
     const wasInGame = activeScreen && activeScreen.id !== 'screen-home';
     showScreen('home');
-    // Only tell them they were dropped if they were actually in a room —
-    // on a fresh load with an expired session, clean up silently.
-    if (wasInGame) showToast('You left the room', 'error');
+    if (wasInGame) showToast('The game has ended', 'error');
   });
 
   socket.on('rejoin-ack', ({ code, playerId }) => {
     myId = playerId;
-    if (code) sessionStorage.setItem('imposter_room', code);
-    if (myPlayerName) sessionStorage.setItem('imposter_name', myPlayerName);
+    _rejoinRetries = 0;
+    if (code) safeStore.setItem('imposter_room', code);
+    if (myPlayerName) safeStore.setItem('imposter_name', myPlayerName);
     document.getElementById('lobby-code').textContent = code;
     showToast('Reconnected ✓', 'success');
   });
@@ -1686,16 +1708,16 @@ function initSocket() {
   // ── Room events ──
   socket.on('room-created', ({ code, playerId }) => {
     setMyId(playerId);
-    if (code) sessionStorage.setItem('imposter_room', code);
-    if (myPlayerName) sessionStorage.setItem('imposter_name', myPlayerName);
+    if (code) safeStore.setItem('imposter_room', code);
+    if (myPlayerName) safeStore.setItem('imposter_name', myPlayerName);
     showScreen('lobby');
     document.getElementById('lobby-code').textContent = code;
   });
 
   socket.on('room-joined', ({ code, playerId }) => {
     setMyId(playerId);
-    if (code) sessionStorage.setItem('imposter_room', code);
-    if (myPlayerName) sessionStorage.setItem('imposter_name', myPlayerName);
+    if (code) safeStore.setItem('imposter_room', code);
+    if (myPlayerName) safeStore.setItem('imposter_name', myPlayerName);
     showScreen('lobby');
     document.getElementById('lobby-code').textContent = code;
     // re-render immediately in case room-update already arrived
@@ -2537,8 +2559,10 @@ function joinRoom() {
 }
 
 function leaveRoom() {
-  sessionStorage.removeItem('imposter_room');
-  sessionStorage.removeItem('imposter_name');
+  // Confirm first — stops accidental taps from booting people out of the game
+  if (!confirm('Leave the room? You\'ll need the code to rejoin.')) return;
+  safeStore.removeItem('imposter_room');
+  safeStore.removeItem('imposter_name');
   // Tell the server this is a deliberate leave so we're removed immediately
   // (not left as a ghost for the disconnect grace period).
   if (socket) { socket.emit('leave-room'); socket.disconnect(); socket = null; }
@@ -3217,7 +3241,7 @@ function setWhoamiCategory(key) {
 
 function toggleWhoamiSub(subKey) {
   if (!currentRoom || !isHost) return;
-  const catKey = currentRoom.settings.whoamiCategory || 'famous';
+  const catKey = currentRoom.settings.whoamiCategory || 'people';
   const cat = whoamiCatStructure && whoamiCatStructure[catKey];
   if (!cat || !cat.subs) return;
   const allKeys = cat.subs.map(s => s.key);
@@ -3230,7 +3254,7 @@ function toggleWhoamiSub(subKey) {
 
 function setWhoamiAllSubs(all) {
   if (!currentRoom || !isHost) return;
-  const catKey = currentRoom.settings.whoamiCategory || 'famous';
+  const catKey = currentRoom.settings.whoamiCategory || 'people';
   const cat = whoamiCatStructure && whoamiCatStructure[catKey];
   if (!cat || !cat.subs) return;
   if (!all) return showToast('Pick at least one sub-category', 'error');
@@ -3393,7 +3417,7 @@ function renderLobbyData(room) {
 
       const whoamiGrid = document.getElementById('whoami-category-grid');
       if (whoamiGrid && whoamiCatStructure) {
-        const selWam = room.settings.whoamiCategory || 'famous';
+        const selWam = room.settings.whoamiCategory || 'people';
         whoamiGrid.innerHTML = Object.entries(whoamiCatStructure).map(([key, c]) => `
           <div class="cat-chip ${selWam === key ? 'selected' : ''}" onclick="setWhoamiCategory('${key}')">
             ${c.name}
@@ -5563,8 +5587,8 @@ document.addEventListener('click', function(e) {
 // Auto-restore session on page load or refresh.
 // initSocket()'s 'connect' handler does the actual rejoin once the socket is up.
 window.addEventListener('DOMContentLoaded', () => {
-  const savedRoom = sessionStorage.getItem('imposter_room');
-  const savedName = sessionStorage.getItem('imposter_name');
+  const savedRoom = safeStore.getItem('imposter_room');
+  const savedName = safeStore.getItem('imposter_name');
   if (savedRoom && savedName) {
     myPlayerName = savedName;
     initSocket();

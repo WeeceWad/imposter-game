@@ -593,6 +593,67 @@ const CATEGORIES = {
       "Whiteboard Marker", "Dry Erase", "Overhead Projector", "Projector Screen", "Pointer", "Clicker",
       "Lanyard", "Name Badge", "Business Card", "Clipboard", "Ring Binder", "Lever Arch File"
     ]
+  },
+
+  things: {
+    name: "📦 Things",
+    items: [
+      // Food & drink
+      "Pizza", "Burger", "Hot Dog", "Taco", "Sushi", "Spaghetti", "Sandwich", "Pancake",
+      "Doughnut", "Ice Cream", "Chocolate", "Cookie", "Cake", "Apple", "Banana", "Watermelon",
+      "Carrot", "Potato", "Cheese", "Egg", "Bacon", "Coffee", "Milkshake",
+      // Household & everyday
+      "Sofa", "Bed", "Pillow", "Lamp", "Television", "Remote Control", "Clock", "Mirror",
+      "Umbrella", "Keys", "Wallet", "Backpack", "Suitcase", "Toothbrush", "Towel", "Candle",
+      "Vacuum Cleaner", "Kettle", "Toaster", "Microwave", "Fridge", "Washing Machine",
+      // Tech
+      "Phone", "Laptop", "Tablet", "Smartwatch", "Headphones", "Games Console", "Controller",
+      "Camera", "Drone", "Charger", "Speaker", "VR Headset", "Keyboard", "Mouse",
+      // Clothing
+      "T-Shirt", "Hoodie", "Jacket", "Jeans", "Dress", "Trainers", "Boots", "Hat", "Scarf",
+      "Gloves", "Sunglasses", "Watch", "Tie", "Socks", "Belt",
+      // Sports & instruments
+      "Football", "Basketball", "Tennis Racket", "Skateboard", "Surfboard", "Bicycle",
+      "Boxing Gloves", "Guitar", "Piano", "Drums", "Violin", "Trumpet", "Saxophone",
+      // Outer space
+      "Rocket", "Satellite", "Telescope", "Planet", "Star", "Moon", "Comet", "Asteroid",
+      "Alien", "Space Suit", "Black Hole", "Galaxy",
+      // Nature
+      "Tree", "Flower", "Cactus", "Mountain", "Waterfall", "Volcano", "Rainbow", "Snowflake",
+      "Lightning", "Seashell",
+      // Vehicles & tools
+      "Car", "Bus", "Train", "Aeroplane", "Helicopter", "Motorbike", "Boat", "Submarine",
+      "Hot Air Balloon", "Fire Engine", "Tractor", "Hammer", "Screwdriver", "Drill", "Ladder",
+      "Shovel", "Lawnmower", "Wheelbarrow"
+    ]
+  },
+
+  places: {
+    name: "🌍 Places",
+    items: [
+      // Countries
+      "England", "Scotland", "France", "Spain", "Italy", "Germany", "Greece", "Portugal",
+      "USA", "Canada", "Mexico", "Brazil", "Australia", "Japan", "China", "India", "Egypt",
+      "Iceland", "Jamaica", "Thailand", "Morocco", "Russia",
+      // Cities
+      "London", "Paris", "New York", "Tokyo", "Rome", "Barcelona", "Dubai", "Sydney",
+      "Las Vegas", "Los Angeles", "Amsterdam", "Venice", "Rio de Janeiro", "Cairo",
+      "Istanbul", "Bangkok", "Hong Kong", "Edinburgh", "Dublin",
+      // Continents, oceans, regions
+      "Europe", "Asia", "Africa", "North America", "South America", "Antarctica",
+      "Pacific Ocean", "Atlantic Ocean", "The Sahara", "The Amazon", "The Alps", "The Himalayas",
+      // Landmarks & monuments
+      "Eiffel Tower", "Big Ben", "Statue of Liberty", "Great Wall of China", "Colosseum",
+      "Taj Mahal", "Pyramids of Giza", "Leaning Tower of Pisa", "Sydney Opera House",
+      "Golden Gate Bridge", "Mount Rushmore", "Christ the Redeemer", "Stonehenge",
+      "Buckingham Palace", "Burj Khalifa", "Tower Bridge", "Niagara Falls", "Machu Picchu",
+      // Vacation & natural wonders
+      "Hawaii", "Bali", "Maldives", "Ibiza", "Disney World", "Santorini", "The Caribbean",
+      "Grand Canyon", "Mount Everest", "The Great Barrier Reef", "Northern Lights", "Mount Fuji",
+      // Planets & fictional
+      "Mars", "Jupiter", "Saturn", "The Moon", "The Milky Way",
+      "Hogwarts", "Narnia", "Gotham City", "Wakanda", "Atlantis", "Neverland", "Jurassic Park"
+    ]
   }
 };
 

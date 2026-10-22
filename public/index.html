@@ -55,10 +55,10 @@
     /* ─────────────── GAME MODE GRID ─────────────── */
     .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .mode-tile {
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
-      padding: 16px 8px; background: var(--surface); border: 2px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 5px;
+      padding: 14px 8px; background: var(--surface); border: 2px solid var(--border);
       border-radius: 14px; cursor: pointer; transition: all .15s; color: var(--text);
-      text-align: center; min-height: 84px;
+      text-align: center; min-height: 96px;
     }
     .mode-tile:hover { border-color: var(--accent2); transform: translateY(-2px); }
     .mode-tile:active { transform: scale(0.97); }
@@ -66,8 +66,9 @@
       border-color: var(--accent2); background: rgba(168,85,247,0.14);
       box-shadow: 0 0 0 1px var(--accent2), 0 6px 18px rgba(124,58,237,0.28);
     }
-    .mode-tile-emoji { font-size: 1.9rem; line-height: 1; }
+    .mode-tile-emoji { font-size: 1.7rem; line-height: 1; margin-top: 2px; }
     .mode-tile-label { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.2px; }
+    .mode-tile-desc { font-size: 0.66rem; color: var(--muted); line-height: 1.25; }
 
     /* ─────────────── CARDS ─────────────── */
     .card {
@@ -427,15 +428,15 @@
   <div id="host-game-type" class="card" style="width:100%; display:none">
     <div class="card-title">Choose a Game</div>
     <div class="mode-grid">
-      <button class="mode-tile" id="gametype-imposter-btn" onclick="setGameType('imposter')"><span class="mode-tile-emoji">🕵️</span><span class="mode-tile-label">Imposter</span></button>
-      <button class="mode-tile" id="gametype-whoami-btn" onclick="setGameType('whoami')"><span class="mode-tile-emoji">🤔</span><span class="mode-tile-label">Who Am I?</span></button>
-      <button class="mode-tile" id="gametype-spyfall-btn" onclick="setGameType('spyfall')"><span class="mode-tile-emoji">🔍</span><span class="mode-tile-label">Spyfall</span></button>
-      <button class="mode-tile" id="gametype-draw-btn" onclick="setGameType('draw')"><span class="mode-tile-emoji">🎨</span><span class="mode-tile-label">Draw</span></button>
-      <button class="mode-tile" id="gametype-collab-btn" onclick="setGameType('collab')"><span class="mode-tile-emoji">🖌️</span><span class="mode-tile-label">Collab Draw</span></button>
-      <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span></button>
-      <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span></button>
-      <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span></button>
-      <button class="mode-tile" id="gametype-categories-btn" onclick="setGameType('categories')"><span class="mode-tile-emoji">⏱️</span><span class="mode-tile-label">Categories</span></button>
+      <button class="mode-tile" id="gametype-imposter-btn" onclick="setGameType('imposter')"><span class="mode-tile-emoji">🕵️</span><span class="mode-tile-label">Imposter</span><span class="mode-tile-desc">Spot the faker</span></button>
+      <button class="mode-tile" id="gametype-whoami-btn" onclick="setGameType('whoami')"><span class="mode-tile-emoji">🤔</span><span class="mode-tile-label">Who Am I?</span><span class="mode-tile-desc">Guess your secret name</span></button>
+      <button class="mode-tile" id="gametype-spyfall-btn" onclick="setGameType('spyfall')"><span class="mode-tile-emoji">🔍</span><span class="mode-tile-label">Spyfall</span><span class="mode-tile-desc">Find the hidden spy</span></button>
+      <button class="mode-tile" id="gametype-draw-btn" onclick="setGameType('draw')"><span class="mode-tile-emoji">🎨</span><span class="mode-tile-label">Draw</span><span class="mode-tile-desc">Sketch &amp; catch the faker</span></button>
+      <button class="mode-tile" id="gametype-collab-btn" onclick="setGameType('collab')"><span class="mode-tile-emoji">🖌️</span><span class="mode-tile-label">Collab Draw</span><span class="mode-tile-desc">Draw together in turns</span></button>
+      <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span><span class="mode-tile-desc">Read your team's mind</span></button>
+      <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span><span class="mode-tile-desc">Rank songs as they play</span></button>
+      <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span><span class="mode-tile-desc">Auction to fill your list</span></button>
+      <button class="mode-tile" id="gametype-categories-btn" onclick="setGameType('categories')"><span class="mode-tile-emoji">⏱️</span><span class="mode-tile-label">Categories</span><span class="mode-tile-desc">Name as many as you can</span></button>
     </div>
   </div>
 
@@ -2934,7 +2935,7 @@ function renderCategoryGrid() {
   if (!categories.length) return;
   const grid = document.getElementById('category-grid');
   const selected = currentRoom?.settings?.selectedCategories || ['movies','tvShows','videoGames','gameCharacters'];
-  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸', randomWords:'🎲' };
+  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸', randomWords:'🎲', things:'📦', places:'🌍' };
   grid.innerHTML = categories.map(c => `
     <div class="cat-chip ${selected.includes(c.key) ? 'selected' : ''}" onclick="toggleCategory('${c.key}')" id="cat-${c.key}">
       <span class="cat-emoji">${emojiMap[c.key]||'📦'}</span>
@@ -4516,7 +4517,7 @@ function renderDrawCategoryGrid(room) {
   const grid = document.getElementById('draw-category-grid');
   if (!grid || !categories.length) return;
   const selected = (room && room.settings && room.settings.selectedCategories) || ['movies','tvShows','videoGames','gameCharacters'];
-  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸' };
+  const emojiMap = { movies:'🎬', tvShows:'📺', videoGames:'🎮', gameCharacters:'👾', athletes:'⚽', actors:'🎭', musicArtists:'🎵', youtubers:'📺', fictionalCharacters:'🦸', randomWords:'🎲', things:'📦', places:'🌍' };
   grid.innerHTML = categories.map(function(c) {
     return '<div class="cat-chip ' + (selected.includes(c.key) ? 'selected' : '') + '" onclick="toggleDrawCategory(\'' + c.key + '\')">' +
       '<span class="cat-emoji">' + (emojiMap[c.key] || '🎯') + '</span>' + c.name.replace(/^[^\s]+\s/, '') +

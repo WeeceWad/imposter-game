@@ -940,8 +940,6 @@
     <div id="whoami-game-list" style="display:flex; flex-direction:column; gap:10px"></div>
   </div>
 
-  <button class="btn btn-outline" onclick="showScreen('whoami-guess')">🤔 I think I know who I am!</button>
-
   <div id="whoami-host-self-change" style="display:none; width:100%">
     <button class="btn btn-ghost" onclick="changeWhoamiAssignment(myId, 'yourself')" style="width:100%">🔄 Change my own person</button>
   </div>
@@ -3447,7 +3445,6 @@ function renderLobbyData(room) {
           subsGrid.innerHTML = cat.subs.map(s => `
             <div class="cat-chip ${sel.includes(s.key) ? 'selected' : ''}" onclick="toggleWhoamiSub('${s.key}')">
               ${s.name}
-              <div class="cat-count">${s.count}</div>
             </div>
           `).join('');
         } else if (subsWrap) {
@@ -4748,7 +4745,9 @@ function goToCollabCanvas() {
 // ──────────────────────────────────────────
 // KEYBOARD
 // ──────────────────────────────────────────
-document.getElementById('home-name').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(); });
+// On an invite link, Enter should JOIN, not create a new game as host
+let inviteMode = false;
+document.getElementById('home-name').addEventListener('keydown', e => { if (e.key === 'Enter') { inviteMode ? joinRoom() : createRoom(); } });
 document.getElementById('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
 document.getElementById('whoami-guess-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitWhoamiGuess(); });
 
@@ -4758,6 +4757,7 @@ document.getElementById('whoami-guess-input').addEventListener('keydown', e => {
   const params = new URLSearchParams(window.location.search);
   const inviteCode = params.get('code');
   if (inviteCode) {
+    inviteMode = true;
     const codeInput = document.getElementById('home-code');
     codeInput.value = inviteCode.toUpperCase();
     codeInput.setAttribute('readonly', 'readonly');

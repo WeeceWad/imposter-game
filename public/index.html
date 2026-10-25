@@ -757,6 +757,10 @@
   <div id="player-waiting-msg" class="text-muted text-center" style="width:100%">
     <span class="pulse">⏳</span> Waiting for the host to start...
   </div>
+
+  <div id="host-end-lobby-btn" style="width:100%; display:none; margin-top:4px">
+    <button class="btn btn-ghost" onclick="closeLobby()" style="width:100%; color:var(--danger)">🛑 End Lobby for Everyone</button>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -1705,6 +1709,11 @@ function initSocket() {
     if (wasInGame) showToast('The game has ended', 'error');
   });
 
+  // Host ended the whole lobby — everyone returns home
+  socket.on('room-closed', () => {
+    resetToHome('The host ended the lobby');
+  });
+
   socket.on('rejoin-ack', ({ code, playerId }) => {
     myId = playerId;
     _rejoinRetries = 0;
@@ -2377,8 +2386,8 @@ function applyRoomUpdate(room) {
   const active = document.querySelector('.screen.active')?.id;
 
   if (room.gameState === 'lobby') {
-    // Only navigate to lobby from game-over or elimination (reset-game event handles normal reset)
-    if (active === 'screen-gameover') showScreen('lobby');
+    // Navigate to lobby from game-over, or from home after a page refresh/reconnect
+    if (active === 'screen-gameover' || active === 'screen-home') showScreen('lobby');
   }
 
   if (room.gameState === 'role-reveal') {
@@ -2391,7 +2400,7 @@ function applyRoomUpdate(room) {
   }
 
   if (room.gameState === 'discussion') {
-    const canTransition = ['screen-lobby', 'screen-role', 'screen-elimination', 'screen-voting'].includes(active);
+    const canTransition = ['screen-lobby', 'screen-role', 'screen-elimination', 'screen-voting', 'screen-home'].includes(active);
     if (canTransition) showScreen('discussion');
   }
 
@@ -2587,6 +2596,24 @@ function leaveRoom() {
   _wvActiveSvg = null; _wvActiveNeedle = null; wvDragging = false;
   clearInterval(wvClueTimer); clearInterval(wvGuessTimer);
   showScreen('home');
+}
+
+// Host closes the whole lobby for everyone
+function closeLobby() {
+  if (!isHost) return;
+  if (!confirm('End the lobby for everyone? This closes the room for all players.')) return;
+  socket.emit('close-room');
+}
+
+// Reset all local state and return to home (used on room-closed / kicked)
+function resetToHome(message) {
+  safeStore.removeItem('imposter_room');
+  safeStore.removeItem('imposter_name');
+  if (socket) { try { socket.disconnect(); } catch (e) {} socket = null; }
+  myId = null; currentRoom = null; myRole = null; myWord = null; myVote = null; myVotes = []; myPlayerName = null;
+  mySfRole = null; mySfVote = null; gameIsOver = false;
+  showScreen('home');
+  if (message) showToast(message, 'error');
 }
 
 function collabMarkReady() {
@@ -3315,6 +3342,8 @@ function renderLobbyData(room) {
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
   document.getElementById('host-start-btn').style.display = amHost ? 'block' : 'none';
   document.getElementById('player-waiting-msg').style.display = amHost ? 'none' : 'block';
+  const endLobbyBtn = document.getElementById('host-end-lobby-btn');
+  if (endLobbyBtn) endLobbyBtn.style.display = amHost ? 'block' : 'none';
 
   if (amHost) {
     // Game type tiles — highlight the selected one

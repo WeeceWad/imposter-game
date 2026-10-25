@@ -3922,6 +3922,16 @@ io.on('connection', (socket) => {
     socket.roomCode = null;
   });
 
+  // Host ends the whole lobby — close the room for everyone
+  socket.on('close-room', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    // Clear any pending disconnect timers
+    if (room._dcTimers) { Object.values(room._dcTimers).forEach(t => clearTimeout(t)); }
+    io.to(room.code).emit('room-closed');
+    delete rooms[room.code];
+  });
+
   socket.on('disconnect', () => {
     const name = socket.playerName || 'A player';
 

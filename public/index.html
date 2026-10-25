@@ -432,7 +432,13 @@
 
   <!-- GAME TYPE SELECTOR (host only) -->
   <div id="host-game-type" class="card" style="width:100%; display:none">
-    <div class="card-title">Choose a Game</div>
+    <div class="card-title" style="margin-bottom:6px">📣 One Phone — Shout It Out</div>
+    <div style="font-size:0.72rem; color:var(--muted); margin-bottom:10px">Just one phone needed — answers are said out loud, scores tracked here.</div>
+    <div class="mode-grid" style="margin-bottom:16px">
+      <button class="mode-tile" id="gametype-categories-btn" onclick="setGameType('categories')"><span class="mode-tile-emoji">⏱️</span><span class="mode-tile-label">Categories</span><span class="mode-tile-desc">Name as many as you can</span></button>
+      <button class="mode-tile" id="gametype-mindmeld-btn" onclick="setGameType('mindmeld')"><span class="mode-tile-emoji">🧠</span><span class="mode-tile-label">Mind Meld</span><span class="mode-tile-desc">Match answers to score</span></button>
+    </div>
+    <div class="card-title" style="margin-bottom:10px">📱 Everyone Joins</div>
     <div class="mode-grid">
       <button class="mode-tile" id="gametype-imposter-btn" onclick="setGameType('imposter')"><span class="mode-tile-emoji">🕵️</span><span class="mode-tile-label">Imposter</span><span class="mode-tile-desc">Spot the faker</span></button>
       <button class="mode-tile" id="gametype-whoami-btn" onclick="setGameType('whoami')"><span class="mode-tile-emoji">🤔</span><span class="mode-tile-label">Who Am I?</span><span class="mode-tile-desc">Guess your secret name</span></button>
@@ -442,7 +448,6 @@
       <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span><span class="mode-tile-desc">Read your team's mind</span></button>
       <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span><span class="mode-tile-desc">Rank songs as they play</span></button>
       <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span><span class="mode-tile-desc">Auction to fill your list</span></button>
-      <button class="mode-tile" id="gametype-categories-btn" onclick="setGameType('categories')"><span class="mode-tile-emoji">⏱️</span><span class="mode-tile-label">Categories</span><span class="mode-tile-desc">Name as many as you can</span></button>
     </div>
   </div>
 
@@ -1586,6 +1591,36 @@
   <div id="cat-wait-msg" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
 </div>
 
+<!-- ══════════════════════════════════════════ -->
+<!-- MIND MELD — PLAYING -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-mindmeld-playing" class="screen" style="justify-content:flex-start; padding-top:18px; max-width:560px">
+  <div class="lobby-top" style="width:100%">
+    <div><span class="phase-badge" style="background:rgba(168,85,247,0.2); color:var(--accent2); border:1px solid var(--accent)">🧠 Mind Meld</span></div>
+    <button class="btn-ghost" onclick="leaveRoom()">← Leave</button>
+  </div>
+
+  <!-- Prompt -->
+  <div class="card text-center" style="width:100%; border-color:var(--accent)">
+    <div class="card-title" style="color:var(--accent2)">Everyone shout an answer!</div>
+    <div id="mm-prompt" style="font-size:1.6rem; font-weight:900; line-height:1.3; margin:8px 0">—</div>
+    <div style="font-size:0.78rem; color:var(--muted)">Say it on 3… anyone who matches someone scores a point</div>
+  </div>
+
+  <!-- Host controls -->
+  <div id="mm-host-buttons" style="width:100%; display:none; flex-direction:column; gap:8px">
+    <button class="btn btn-primary" onclick="mmNewPrompt()">🎲 New Prompt</button>
+    <button class="btn-ghost" onclick="restartMindMeldGame()" style="margin-top:2px">🏁 End &amp; Back to Lobby</button>
+  </div>
+  <div id="mm-wait-msg" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
+
+  <!-- Scoreboard -->
+  <div class="card" style="width:100%">
+    <div class="card-title">Scoreboard — tap a player to score</div>
+    <div id="mm-scoreboard" style="display:flex; flex-direction:column; gap:8px"></div>
+  </div>
+</div>
+
 
 
 <!-- TOAST -->
@@ -2128,6 +2163,9 @@ function initSocket() {
   socket.on('categories-started', function() {
     showScreen('categories-playing');
   });
+  socket.on('mindmeld-started', function() {
+    showScreen('mindmeld-playing');
+  });
   socket.on('bidders-new-item', function() {
     const inp = document.getElementById('bidders-bid-input');
     if (inp) inp.value = '';
@@ -2539,6 +2577,14 @@ function applyRoomUpdate(room) {
     showScreen('lobby');
   }
 
+  if (room.gameState === 'mindmeld-playing') {
+    if (active !== 'screen-mindmeld-playing') showScreen('mindmeld-playing');
+    renderMindMeld(room);
+  }
+  if (room.gameState === 'lobby' && active === 'screen-mindmeld-playing') {
+    showScreen('lobby');
+  }
+
 }
 
 function showWaitingForRole() {
@@ -2899,6 +2945,39 @@ function catStartTimer() { socket.emit('categories-start-timer'); }
 function catAward(team) { socket.emit('categories-award', { team }); }
 function catAdjust(team, delta) { socket.emit('categories-adjust', { team, delta }); }
 function restartCategoriesGame() { if (!isHost) return; socket.emit('categories-restart'); showScreen('lobby'); }
+
+// ── MIND MELD ──
+function mmNewPrompt() { socket.emit('mindmeld-new-prompt'); }
+function mmAdjust(playerId, delta) { socket.emit('mindmeld-adjust', { playerId, delta }); }
+function restartMindMeldGame() { if (!isHost) return; socket.emit('mindmeld-restart'); showScreen('lobby'); }
+
+function renderMindMeld(room) {
+  const m = room.mindmeldPublic;
+  if (!m) return;
+  const promptEl = document.getElementById('mm-prompt');
+  if (promptEl) promptEl.textContent = m.prompt || '—';
+  const hostBtns = document.getElementById('mm-host-buttons');
+  const waitMsg = document.getElementById('mm-wait-msg');
+  if (hostBtns) hostBtns.style.display = isHost ? 'flex' : 'none';
+  if (waitMsg) waitMsg.style.display = isHost ? 'none' : 'block';
+  // Scoreboard, sorted high-to-low
+  const board = document.getElementById('mm-scoreboard');
+  if (board) {
+    const sorted = [...m.players].sort((a, b) => b.score - a.score);
+    board.innerHTML = sorted.map(p => `
+      <div class="player-item" style="justify-content:space-between">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0">
+          <div class="player-avatar">${p.name[0].toUpperCase()}</div>
+          <div class="player-name">${p.name}${p.id === myId ? ' (you)' : ''}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <span style="font-size:1.3rem; font-weight:900; color:var(--accent2); min-width:24px; text-align:center">${p.score}</span>
+          ${isHost ? `<button class="btn btn-sm btn-outline" style="padding:4px 11px" onclick="mmAdjust('${p.id}',-1)">−</button>
+                      <button class="btn btn-sm btn-success" style="padding:4px 13px" onclick="mmAdjust('${p.id}',1)">+1</button>` : ''}
+        </div>
+      </div>`).join('');
+  }
+}
 
 let _catTimer = null;
 function renderCategories(room) {
@@ -3337,6 +3416,7 @@ function renderLobbyData(room) {
   const isWavelength  = gameType === 'wavelength';
   const isBidders     = gameType === 'bidders';
   const isCategories  = gameType === 'categories';
+  const isMindmeld    = gameType === 'mindmeld';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -3356,7 +3436,8 @@ function renderLobbyData(room) {
       wavelength: isWavelength,
       'blind-ranking': gameType === 'blind-ranking',
       bidders: isBidders,
-      categories: isCategories
+      categories: isCategories,
+      mindmeld: isMindmeld
     };
     Object.entries(modeSelected).forEach(([type, on]) => {
       const el = document.getElementById('gametype-' + type + '-btn');
@@ -3397,6 +3478,20 @@ function renderLobbyData(room) {
       renderCategoriesSettings(room);
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Just 1 player needed';
+
+    // ── MIND MELD MODE (no settings) ──
+    } else if (isMindmeld) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettingsM = document.getElementById('host-draw-settings');
+      const drawCatsM = document.getElementById('host-draw-categories');
+      if (drawSettingsM) drawSettingsM.style.display = 'none';
+      if (drawCatsM) drawCatsM.style.display = 'none';
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Need at least 2 players';
 
     // ── BIDDERS MODE ──
     } else if (isBidders) {

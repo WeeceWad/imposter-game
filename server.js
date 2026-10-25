@@ -1556,6 +1556,75 @@ function categoriesNewPrompt(room) {
   d.timerEndsAt = null;
 }
 
+// ─────────────────────────────────────────────
+// MIND MELD — everyone says an answer out loud; matching answers score
+// ─────────────────────────────────────────────
+const MINDMELD_PROMPTS = [
+  "Name a type of fruit", "Name a wild animal", "Name a colour", "Name a country",
+  "Name a superhero", "Name a pizza topping", "Name a fast food chain", "Name a cartoon character",
+  "Name a board game", "Name a sport", "Name a breakfast food", "Name a type of dog",
+  "Name a famous singer", "Name a Disney movie", "Name an ice cream flavour", "Name a planet",
+  "Name a job", "Name a school subject", "Name a type of weather", "Name a holiday destination",
+  "Name a car brand", "Name a soft drink", "Name a chocolate bar", "Name a vegetable",
+  "Name a famous footballer", "Name a type of bird", "Name a musical instrument", "Name a season",
+  "Name a day of the week", "Name a month", "Name a flower", "Name a tree",
+  "Name a body part", "Name an item of clothing", "Name a kitchen appliance", "Name a zoo animal",
+  "Name a type of pasta", "Name a condiment", "Name a famous landmark", "Name a city",
+  "Name a mode of transport", "Name a superpower", "Name a sea creature", "Name a dinosaur",
+  "Name a reason to be late", "Name something in a fridge", "Name something that's cold",
+  "Name something that's round", "Name something sticky", "Name something that flies",
+  "Name something you find at the beach", "Name something in a bathroom", "Name something in a classroom",
+  "Name a thing you'd take to a desert island", "Name a reason to call in sick",
+  "Name something you shouldn't microwave", "Name a famous Chris", "Name a famous John",
+  "Name a boy band", "Name a video game", "Name a Pokémon", "Name a Harry Potter character",
+  "Name a Marvel character", "Name a Star Wars character", "Name a Simpsons character",
+  "Name a reality TV show", "Name a game show", "Name a cereal", "Name a sandwich filling",
+  "Name a crisp flavour", "Name a takeaway dish", "Name a cocktail (non-alcoholic counts!)",
+  "Name a hot drink", "Name a spice", "Name a type of cheese", "Name a nut",
+  "Name a thing with wheels", "Name a thing in space", "Name a thing in a toolbox",
+  "Name a thing you plug in", "Name a thing you'd find in a park", "Name a thing in a hospital",
+  "Name a farm animal", "Name an insect", "Name a type of fish", "Name a big cat",
+  "Name a card game", "Name a playground game", "Name a nursery rhyme", "Name a fairy tale",
+  "Name a type of dance", "Name a magic trick", "Name an Olympic sport", "Name a martial art",
+  "Name a famous scientist", "Name a US president", "Name a Greek god", "Name a king or queen",
+  "Name a brand of trainers", "Name a supermarket", "Name a phone brand", "Name a social media app",
+  "Name a streaming service", "Name a famous YouTuber", "Name a DJ", "Name a rapper",
+  "Name a thing you do before bed", "Name a chore", "Name a New Year's resolution",
+  "Name something you'd find in a handbag", "Name something you lose often", "Name a bad habit",
+  "Name a thing that beeps", "Name a thing that's annoying", "Name a thing that's loud",
+  "Name a thing that's soft", "Name a thing that's heavy", "Name a thing that melts",
+  "Name a holiday (celebration)", "Name a famous building", "Name a river", "Name a mountain",
+  "Name a thing in the sky", "Name a type of cake", "Name a thing at a birthday party",
+  "Name a thing you'd pack for a trip", "Name a thing in a first aid kit", "Name a garden tool",
+  "Name a thing you'd find in a garage", "Name a thing that's recycled", "Name a thing that floats",
+  "Name a famous robot", "Name a mythical creature", "Name a thing that glows in the dark",
+  "Name a type of hat", "Name a shoe type", "Name a thing you wear on your face",
+  "Name a thing that smells nice", "Name a thing you'd never share", "Name a childhood TV show",
+  "Name a thing you'd find in a wallet", "Name a thing on a pizza you'd remove",
+  "Name a food you eat with your hands", "Name a food that's green", "Name a food that's yellow",
+  "Name a thing associated with Christmas", "Name a thing associated with Halloween",
+  "Name a thing associated with summer", "Name a thing associated with winter",
+  "Name a famous duo", "Name a famous cat (real or fictional)", "Name a famous dog",
+  "Name a board game you'd play with family", "Name a thing you'd find in a cinema",
+  "Name an emoji you use a lot", "Name a word that rhymes with 'cat'", "Name a word that rhymes with 'star'",
+  "Name a thing you'd find in a kitchen drawer", "Name a type of berry", "Name a type of melon",
+  "Name a thing that comes in pairs", "Name a thing with buttons", "Name a thing that ticks",
+  "Name a superhero movie", "Name a scary movie", "Name a kids movie", "Name a Christmas movie",
+  "Name a thing you'd find on a desk", "Name a famous painting or artist", "Name a language",
+  "Name a currency", "Name a continent", "Name an ocean", "Name a famous bridge"
+];
+
+function mindmeldNewPrompt(room) {
+  const d = room.mindmeldData;
+  if (!d.usedIdx) d.usedIdx = new Set();
+  if (d.usedIdx.size >= MINDMELD_PROMPTS.length) d.usedIdx.clear();
+  let idx;
+  do { idx = Math.floor(Math.random() * MINDMELD_PROMPTS.length); }
+  while (d.usedIdx.has(idx));
+  d.usedIdx.add(idx);
+  d.prompt = MINDMELD_PROMPTS[idx];
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -1618,6 +1687,13 @@ function sanitizeRoom(room) {
       revealed: !!room.categoriesData.revealed,
       duration: room.categoriesData.duration || 30,
       timerEndsAt: room.categoriesData.timerEndsAt || null
+    } : null,
+    mindmeldPublic: (room.gameState && room.gameState.startsWith('mindmeld-') && room.mindmeldData) ? {
+      prompt: room.mindmeldData.prompt,
+      players: room.mindmeldData.order.map(id => {
+        const pl = room.players.find(p => p.id === id);
+        return { id, name: pl ? pl.name : '?', score: room.mindmeldData.scores[id] || 0 };
+      })
     } : null
   };
 }
@@ -2689,6 +2765,20 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // ── MIND MELD MODE ──
+    if (room.settings.gameType === 'mindmeld') {
+      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players for Mind Meld.' });
+      const order = room.players.map(p => p.id);
+      const scores = {};
+      order.forEach(id => { scores[id] = 0; });
+      room.mindmeldData = { order, scores, prompt: null, usedIdx: new Set() };
+      mindmeldNewPrompt(room);
+      room.gameState = 'mindmeld-playing';
+      io.to(room.code).emit('mindmeld-started');
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
     // ── IMPOSTER MODE ──
     if (room.players.length < 3) return socket.emit('error', { message: 'Need at least 3 players to start.' });
     const maxImposters = Math.max(1, Math.floor(room.players.length / 2));
@@ -3207,6 +3297,7 @@ io.on('connection', (socket) => {
     room.wvUsedSpectraIdx = new Set();
     room.biddersData = null;
     room.categoriesData = null;
+    room.mindmeldData = null;
     // Reset game mode back to word so video mode doesn't persist into the next game
     if (room.settings.gameMode && room.settings.gameMode !== 'word') {
       room.settings.gameMode = 'word';
@@ -3905,6 +3996,31 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     room.gameState = 'lobby';
     room.categoriesData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // ── MIND MELD: host controls ──
+  socket.on('mindmeld-new-prompt', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.mindmeldData) return;
+    mindmeldNewPrompt(room);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('mindmeld-adjust', ({ playerId, delta }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.mindmeldData) return;
+    const d = room.mindmeldData;
+    if (d.scores[playerId] === undefined) return;
+    d.scores[playerId] = Math.max(0, (d.scores[playerId] || 0) + (delta > 0 ? 1 : -1));
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('mindmeld-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    room.gameState = 'lobby';
+    room.mindmeldData = null;
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 

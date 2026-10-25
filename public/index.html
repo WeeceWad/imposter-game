@@ -551,6 +551,20 @@
     </div>
   </div>
 
+  <!-- MIND MELD SETTINGS (mindmeld only) -->
+  <div id="host-mindmeld-settings" class="card" style="width:100%; display:none">
+    <div class="card-title">Mind Meld — Players</div>
+    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:14px">
+      Add everyone playing. A prompt appears, you all shout an answer at once — anyone who matches someone else scores a point. One phone needed!
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:12px">
+      <input type="text" id="mm-add-name" maxlength="16" placeholder="Player name"
+             onkeydown="if(event.key==='Enter')addMindmeldPlayer()" style="flex:1; font-size:0.95rem" />
+      <button class="btn btn-sm btn-primary" onclick="addMindmeldPlayer()" style="white-space:nowrap; padding:0 16px">➕ Add</button>
+    </div>
+    <div id="mm-players-list" style="display:flex; flex-direction:column; gap:6px"></div>
+  </div>
+
   <!-- HOST SETTINGS (imposter only) -->
   <div id="host-settings" class="card" style="width:100%; display:none">
     <div class="card-title">Imposter Settings</div>
@@ -2947,8 +2961,42 @@ function catAdjust(team, delta) { socket.emit('categories-adjust', { team, delta
 function restartCategoriesGame() { if (!isHost) return; socket.emit('categories-restart'); showScreen('lobby'); }
 
 // ── MIND MELD ──
+function renderMindmeldSettings(room) {
+  const list = document.getElementById('mm-players-list');
+  if (!list) return;
+  const names = (room.settings && room.settings.mindmeldPlayers) || [];
+  if (names.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; text-align:center; padding:6px">No players yet — add everyone playing.</div>';
+    return;
+  }
+  list.innerHTML = names.map((n, i) => `
+    <div class="player-item" style="justify-content:space-between; padding:10px 14px">
+      <div style="display:flex; align-items:center; gap:10px; min-width:0">
+        <div class="player-avatar">${n[0].toUpperCase()}</div>
+        <div class="player-name">${n}</div>
+      </div>
+      <button class="kick-btn" onclick="removeMindmeldPlayer(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+function addMindmeldPlayer() {
+  if (!isHost || !currentRoom) return;
+  const inp = document.getElementById('mm-add-name');
+  const name = (inp.value || '').trim();
+  if (!name) return;
+  const names = [...((currentRoom.settings && currentRoom.settings.mindmeldPlayers) || [])];
+  if (names.length >= 20) return showToast('Max 20 players', 'error');
+  names.push(name);
+  inp.value = '';
+  socket.emit('update-settings', { settings: { mindmeldPlayers: names } });
+}
+function removeMindmeldPlayer(i) {
+  if (!isHost || !currentRoom) return;
+  const names = [...((currentRoom.settings && currentRoom.settings.mindmeldPlayers) || [])];
+  names.splice(i, 1);
+  socket.emit('update-settings', { settings: { mindmeldPlayers: names } });
+}
 function mmNewPrompt() { socket.emit('mindmeld-new-prompt'); }
-function mmAdjust(playerId, delta) { socket.emit('mindmeld-adjust', { playerId, delta }); }
+function mmAdjust(index, delta) { socket.emit('mindmeld-adjust', { index, delta }); }
 function restartMindMeldGame() { if (!isHost) return; socket.emit('mindmeld-restart'); showScreen('lobby'); }
 
 function renderMindMeld(room) {
@@ -2960,7 +3008,7 @@ function renderMindMeld(room) {
   const waitMsg = document.getElementById('mm-wait-msg');
   if (hostBtns) hostBtns.style.display = isHost ? 'flex' : 'none';
   if (waitMsg) waitMsg.style.display = isHost ? 'none' : 'block';
-  // Scoreboard, sorted high-to-low
+  // Scoreboard, sorted high-to-low (keeps original index for scoring)
   const board = document.getElementById('mm-scoreboard');
   if (board) {
     const sorted = [...m.players].sort((a, b) => b.score - a.score);
@@ -2968,12 +3016,12 @@ function renderMindMeld(room) {
       <div class="player-item" style="justify-content:space-between">
         <div style="display:flex; align-items:center; gap:10px; min-width:0">
           <div class="player-avatar">${p.name[0].toUpperCase()}</div>
-          <div class="player-name">${p.name}${p.id === myId ? ' (you)' : ''}</div>
+          <div class="player-name">${p.name}</div>
         </div>
         <div style="display:flex; align-items:center; gap:8px">
           <span style="font-size:1.3rem; font-weight:900; color:var(--accent2); min-width:24px; text-align:center">${p.score}</span>
-          ${isHost ? `<button class="btn btn-sm btn-outline" style="padding:4px 11px" onclick="mmAdjust('${p.id}',-1)">−</button>
-                      <button class="btn btn-sm btn-success" style="padding:4px 13px" onclick="mmAdjust('${p.id}',1)">+1</button>` : ''}
+          ${isHost ? `<button class="btn btn-sm btn-outline" style="padding:4px 11px" onclick="mmAdjust(${p.index},-1)">−</button>
+                      <button class="btn btn-sm btn-success" style="padding:4px 13px" onclick="mmAdjust(${p.index},1)">+1</button>` : ''}
         </div>
       </div>`).join('');
   }
@@ -3462,6 +3510,8 @@ function renderLobbyData(room) {
     if (brSettings && !isBlindRanking) brSettings.style.display = 'none';
     if (biddersSettings && !isBidders) biddersSettings.style.display = 'none';
     if (catSettings && !isCategories) catSettings.style.display = 'none';
+    const mmSettings = document.getElementById('host-mindmeld-settings');
+    if (mmSettings && !isMindmeld) mmSettings.style.display = 'none';
 
     // ── CATEGORIES MODE ──
     if (isCategories) {
@@ -3479,7 +3529,7 @@ function renderLobbyData(room) {
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Just 1 player needed';
 
-    // ── MIND MELD MODE (no settings) ──
+    // ── MIND MELD MODE (one phone — host adds player names) ──
     } else if (isMindmeld) {
       if (hostSettings) hostSettings.style.display = 'none';
       if (wordCats)    wordCats.style.display    = 'none';
@@ -3490,8 +3540,11 @@ function renderLobbyData(room) {
       const drawCatsM = document.getElementById('host-draw-categories');
       if (drawSettingsM) drawSettingsM.style.display = 'none';
       if (drawCatsM) drawCatsM.style.display = 'none';
+      if (mmSettings) mmSettings.style.display = 'block';
+      renderMindmeldSettings(room);
       const hint = document.getElementById('start-hint');
-      if (hint) hint.textContent = 'Need at least 2 players';
+      const n = (room.settings.mindmeldPlayers || []).length;
+      if (hint) hint.textContent = n >= 2 ? 'Ready to play!' : 'Add at least 2 players';
 
     // ── BIDDERS MODE ──
     } else if (isBidders) {

@@ -1690,10 +1690,7 @@ function sanitizeRoom(room) {
     } : null,
     mindmeldPublic: (room.gameState && room.gameState.startsWith('mindmeld-') && room.mindmeldData) ? {
       prompt: room.mindmeldData.prompt,
-      players: room.mindmeldData.order.map(id => {
-        const pl = room.players.find(p => p.id === id);
-        return { id, name: pl ? pl.name : '?', score: room.mindmeldData.scores[id] || 0 };
-      })
+      players: room.mindmeldData.players.map((p, i) => ({ index: i, name: p.name, score: p.score }))
     } : null
   };
 }
@@ -2765,13 +2762,15 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // ── MIND MELD MODE ──
+    // ── MIND MELD MODE (one phone — host-managed name scoreboard) ──
     if (room.settings.gameType === 'mindmeld') {
-      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players for Mind Meld.' });
-      const order = room.players.map(p => p.id);
-      const scores = {};
-      order.forEach(id => { scores[id] = 0; });
-      room.mindmeldData = { order, scores, prompt: null, usedIdx: new Set() };
+      const names = (room.settings.mindmeldPlayers || []).map(n => String(n).trim()).filter(Boolean);
+      if (names.length < 2) return socket.emit('error', { message: 'Add at least 2 players to the scoreboard first.' });
+      room.mindmeldData = {
+        players: names.map(n => ({ name: n, score: 0 })),
+        prompt: null,
+        usedIdx: new Set()
+      };
       mindmeldNewPrompt(room);
       room.gameState = 'mindmeld-playing';
       io.to(room.code).emit('mindmeld-started');
@@ -4007,12 +4006,12 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  socket.on('mindmeld-adjust', ({ playerId, delta }) => {
+  socket.on('mindmeld-adjust', ({ index, delta }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id || !room.mindmeldData) return;
-    const d = room.mindmeldData;
-    if (d.scores[playerId] === undefined) return;
-    d.scores[playerId] = Math.max(0, (d.scores[playerId] || 0) + (delta > 0 ? 1 : -1));
+    const p = room.mindmeldData.players[index];
+    if (!p) return;
+    p.score = Math.max(0, p.score + (delta > 0 ? 1 : -1));
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 

@@ -1335,6 +1335,25 @@ function selectImposters(players, count) {
   return shuffleArray(players).slice(0, count).map(p => p.id);
 }
 
+// Random selection that avoids repeating the SAME imposter(s) as the previous game.
+// Tracked by name (survives reconnects where socket IDs change). Pure chance means
+// the same person can be picked 2+ games running, which feels broken — this prevents it.
+function selectImpostersAvoiding(room, players, count) {
+  const prev = new Set(room.lastImposterNames || []);
+  let chosen = shuffleArray(players).slice(0, count);
+  // Only bother avoiding a repeat if there are enough players to actually differ
+  if (players.length > count) {
+    for (let tries = 0; tries < 15; tries++) {
+      const names = chosen.map(p => p.name);
+      const sameSet = names.length === prev.size && names.every(n => prev.has(n));
+      if (!sameSet) break;
+      chosen = shuffleArray(players).slice(0, count);
+    }
+  }
+  room.lastImposterNames = chosen.map(p => p.name);
+  return chosen.map(p => p.id);
+}
+
 // ─────────────────────────────────────────────
 // WAVELENGTH HELPERS
 // ─────────────────────────────────────────────
@@ -2540,7 +2559,7 @@ io.on('connection', (socket) => {
       room.currentCategory = category;
       room.currentCategoryKey = categoryKey;
       // Assign imposters — random via shared helper
-      room.imposters = selectImposters(room.players, room.settings.imposterCount || 1);
+      room.imposters = selectImpostersAvoiding(room, room.players, room.settings.imposterCount || 1);
       room.imposterWords = {};
       room.drawSubmissions = {};
       room.drawReadyPlayers = new Set();
@@ -2593,7 +2612,7 @@ io.on('connection', (socket) => {
       room.currentCategory = category;
       room.currentCategoryKey = categoryKey;
       // Assign imposters — random via shared helper
-      room.imposters = selectImposters(room.players, room.settings.imposterCount || 1);
+      room.imposters = selectImpostersAvoiding(room, room.players, room.settings.imposterCount || 1);
       room.imposterWords = {};
       // Random turn order — proper Fisher-Yates
       const turnOrderPool = [...room.players];
@@ -2823,7 +2842,7 @@ io.on('connection', (socket) => {
     }
 
     // Assign imposters — random via shared helper
-    room.imposters = selectImposters(room.players, room.settings.imposterCount || 1);
+    room.imposters = selectImpostersAvoiding(room, room.players, room.settings.imposterCount || 1);
 
     // Reset state
     room.gameState = 'role-reveal';

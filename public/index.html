@@ -436,7 +436,6 @@
     <div style="font-size:0.72rem; color:var(--muted); margin-bottom:10px">Just one phone needed — answers are said out loud, scores tracked here.</div>
     <div class="mode-grid" style="margin-bottom:16px">
       <button class="mode-tile" id="gametype-categories-btn" onclick="setGameType('categories')"><span class="mode-tile-emoji">⏱️</span><span class="mode-tile-label">Categories</span><span class="mode-tile-desc">Name as many as you can</span></button>
-      <button class="mode-tile" id="gametype-mindmeld-btn" onclick="setGameType('mindmeld')"><span class="mode-tile-emoji">🧠</span><span class="mode-tile-label">Mind Meld</span><span class="mode-tile-desc">Match answers to score</span></button>
     </div>
     <div class="card-title" style="margin-bottom:10px">📱 Everyone Joins</div>
     <div class="mode-grid">
@@ -448,6 +447,7 @@
       <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span><span class="mode-tile-desc">Read your team's mind</span></button>
       <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span><span class="mode-tile-desc">Rank songs as they play</span></button>
       <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span><span class="mode-tile-desc">Auction to fill your list</span></button>
+      <button class="mode-tile" id="gametype-mindmeld-btn" onclick="setGameType('mindmeld')"><span class="mode-tile-emoji">🧠</span><span class="mode-tile-label">Mind Meld</span><span class="mode-tile-desc">Type a word, match to score</span></button>
     </div>
   </div>
 
@@ -1616,21 +1616,35 @@
 
   <!-- Prompt -->
   <div class="card text-center" style="width:100%; border-color:var(--accent)">
-    <div class="card-title" style="color:var(--accent2)">Everyone shout an answer!</div>
+    <div class="card-title" id="mm-phase-title" style="color:var(--accent2)">Type your answer!</div>
     <div id="mm-prompt" style="font-size:1.6rem; font-weight:900; line-height:1.3; margin:8px 0">—</div>
-    <div style="font-size:0.78rem; color:var(--muted)">Say it on 3… anyone who matches someone scores a point</div>
+    <div id="mm-prompt-sub" style="font-size:0.78rem; color:var(--muted)">Match someone else's answer to score a point</div>
+  </div>
+
+  <!-- Your answer input (own device) -->
+  <div id="mm-answer-box" class="card" style="width:100%; display:none; flex-direction:column; gap:10px">
+    <input type="text" id="mm-answer-input" maxlength="60" placeholder="Your answer…"
+           onkeydown="if(event.key==='Enter')mmSubmitAnswer()" style="font-size:1.05rem; text-align:center" />
+    <button class="btn btn-primary" onclick="mmSubmitAnswer()">🔒 Lock It In</button>
+  </div>
+
+  <!-- Locked / waiting -->
+  <div id="mm-locked-box" class="card text-center" style="width:100%; display:none; border-color:var(--accent)">
+    <div class="card-title" style="color:var(--accent2)">Locked in ✓</div>
+    <div id="mm-your-answer" style="font-size:1.3rem; font-weight:900; margin:4px 0">—</div>
+    <div id="mm-waiting-count" class="text-muted pulse" style="font-size:0.82rem">Waiting for others…</div>
   </div>
 
   <!-- Host controls -->
   <div id="mm-host-buttons" style="width:100%; display:none; flex-direction:column; gap:8px">
+    <button id="mm-reveal-btn" class="btn btn-primary" onclick="mmReveal()">👀 Reveal All Answers</button>
     <button class="btn btn-primary" onclick="mmNewPrompt()">🎲 New Prompt</button>
     <button class="btn-ghost" onclick="restartMindMeldGame()" style="margin-top:2px">🏁 End &amp; Back to Lobby</button>
   </div>
-  <div id="mm-wait-msg" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
 
   <!-- Scoreboard -->
   <div class="card" style="width:100%">
-    <div class="card-title">Scoreboard — tap a player to score</div>
+    <div class="card-title" id="mm-board-title">Players</div>
     <div id="mm-scoreboard" style="display:flex; flex-direction:column; gap:8px"></div>
   </div>
 </div>
@@ -2997,33 +3011,96 @@ function removeMindmeldPlayer(i) {
 }
 function mmNewPrompt() { socket.emit('mindmeld-new-prompt'); }
 function mmAdjust(index, delta) { socket.emit('mindmeld-adjust', { index, delta }); }
+function mmReveal() { if (!isHost) return; socket.emit('mindmeld-reveal'); }
 function restartMindMeldGame() { if (!isHost) return; socket.emit('mindmeld-restart'); showScreen('lobby'); }
+
+let mmMyAnswer = null;
+let mmLastPrompt = null;
+function mmEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function mmSubmitAnswer() {
+  const inp = document.getElementById('mm-answer-input');
+  if (!inp) return;
+  const w = (inp.value || '').trim();
+  if (!w) return;
+  mmMyAnswer = w;
+  socket.emit('mindmeld-answer', { word: w });
+}
 
 function renderMindMeld(room) {
   const m = room.mindmeldPublic;
   if (!m) return;
+
+  // New prompt arrived → clear my local answer + the input box
+  if (m.prompt !== mmLastPrompt) {
+    mmLastPrompt = m.prompt;
+    mmMyAnswer = null;
+    const inp = document.getElementById('mm-answer-input');
+    if (inp) inp.value = '';
+  }
+
   const promptEl = document.getElementById('mm-prompt');
   if (promptEl) promptEl.textContent = m.prompt || '—';
+
+  // Who am I in this game?
+  const meP = (room.players || []).find(p => p.id === myId);
+  const myNm = (meP && meP.name) || myPlayerName;
+  const myEntry = m.players.find(p => p.name === myNm);
+  const iSubmitted = mmMyAnswer != null || (myEntry && myEntry.submitted);
+
+  const answerBox = document.getElementById('mm-answer-box');
+  const lockedBox = document.getElementById('mm-locked-box');
+  const showInput = !m.revealed && !iSubmitted;
+  if (answerBox) answerBox.style.display = showInput ? 'flex' : 'none';
+  if (lockedBox) lockedBox.style.display = (!m.revealed && iSubmitted) ? 'block' : 'none';
+  if (!m.revealed && iSubmitted) {
+    const ya = document.getElementById('mm-your-answer');
+    if (ya) ya.textContent = mmMyAnswer || '✓';
+    const wc = document.getElementById('mm-waiting-count');
+    if (wc) wc.textContent = `Waiting for others… (${m.submittedCount}/${m.totalCount} locked in)`;
+  }
+
+  const phaseTitle = document.getElementById('mm-phase-title');
+  const promptSub = document.getElementById('mm-prompt-sub');
+  if (phaseTitle) phaseTitle.textContent = m.revealed ? 'Answers revealed!' : 'Type your answer!';
+  if (promptSub) promptSub.textContent = m.revealed
+    ? 'Matching answers score — host awards the points'
+    : `Match someone else's answer to score (${m.submittedCount}/${m.totalCount} in)`;
+
   const hostBtns = document.getElementById('mm-host-buttons');
-  const waitMsg = document.getElementById('mm-wait-msg');
   if (hostBtns) hostBtns.style.display = isHost ? 'flex' : 'none';
-  if (waitMsg) waitMsg.style.display = isHost ? 'none' : 'block';
+  const revealBtn = document.getElementById('mm-reveal-btn');
+  if (revealBtn) revealBtn.style.display = (isHost && !m.revealed) ? 'block' : 'none';
+
   // Scoreboard, sorted high-to-low (keeps original index for scoring)
   const board = document.getElementById('mm-scoreboard');
+  const boardTitle = document.getElementById('mm-board-title');
+  if (boardTitle) boardTitle.textContent = m.revealed ? 'Answers — tap +1 for each match' : 'Players';
   if (board) {
     const sorted = [...m.players].sort((a, b) => b.score - a.score);
-    board.innerHTML = sorted.map(p => `
+    board.innerHTML = sorted.map(p => {
+      const sub = m.revealed
+        ? `<div style="font-size:0.92rem; color:var(--accent2); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${p.answer ? mmEsc(p.answer) : '— no answer —'}</div>`
+        : `<div style="font-size:0.74rem; color:var(--muted)">${p.submitted ? '🔒 locked in' : '…thinking'}</div>`;
+      return `
       <div class="player-item" style="justify-content:space-between">
         <div style="display:flex; align-items:center; gap:10px; min-width:0">
           <div class="player-avatar">${p.name[0].toUpperCase()}</div>
-          <div class="player-name">${p.name}</div>
+          <div style="min-width:0">
+            <div class="player-name">${p.name}</div>
+            ${sub}
+          </div>
         </div>
         <div style="display:flex; align-items:center; gap:8px">
           <span style="font-size:1.3rem; font-weight:900; color:var(--accent2); min-width:24px; text-align:center">${p.score}</span>
           ${isHost ? `<button class="btn btn-sm btn-outline" style="padding:4px 11px" onclick="mmAdjust(${p.index},-1)">−</button>
                       <button class="btn btn-sm btn-success" style="padding:4px 13px" onclick="mmAdjust(${p.index},1)">+1</button>` : ''}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 }
 
@@ -3529,7 +3606,7 @@ function renderLobbyData(room) {
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Just 1 player needed';
 
-    // ── MIND MELD MODE (one phone — host adds player names) ──
+    // ── MIND MELD MODE (everyone joins & types a word) ──
     } else if (isMindmeld) {
       if (hostSettings) hostSettings.style.display = 'none';
       if (wordCats)    wordCats.style.display    = 'none';
@@ -3540,11 +3617,10 @@ function renderLobbyData(room) {
       const drawCatsM = document.getElementById('host-draw-categories');
       if (drawSettingsM) drawSettingsM.style.display = 'none';
       if (drawCatsM) drawCatsM.style.display = 'none';
-      if (mmSettings) mmSettings.style.display = 'block';
-      renderMindmeldSettings(room);
+      if (mmSettings) mmSettings.style.display = 'none';
       const hint = document.getElementById('start-hint');
-      const n = (room.settings.mindmeldPlayers || []).length;
-      if (hint) hint.textContent = n >= 2 ? 'Ready to play!' : 'Add at least 2 players';
+      const n = (room.players || []).length;
+      if (hint) hint.textContent = n >= 2 ? 'Ready to play!' : 'Need at least 2 players';
 
     // ── BIDDERS MODE ──
     } else if (isBidders) {

@@ -1642,6 +1642,8 @@ function mindmeldNewPrompt(room) {
   while (d.usedIdx.has(idx));
   d.usedIdx.add(idx);
   d.prompt = MINDMELD_PROMPTS[idx];
+  d.answers = {};
+  d.revealed = false;
 }
 
 function sanitizeRoom(room) {
@@ -1709,7 +1711,16 @@ function sanitizeRoom(room) {
     } : null,
     mindmeldPublic: (room.gameState && room.gameState.startsWith('mindmeld-') && room.mindmeldData) ? {
       prompt: room.mindmeldData.prompt,
-      players: room.mindmeldData.players.map((p, i) => ({ index: i, name: p.name, score: p.score }))
+      revealed: !!room.mindmeldData.revealed,
+      submittedCount: Object.keys(room.mindmeldData.answers || {}).length,
+      totalCount: room.players.length,
+      players: room.mindmeldData.players.map((p, i) => ({
+        index: i,
+        name: p.name,
+        score: p.score,
+        submitted: (room.mindmeldData.answers || {})[p.name] != null,
+        answer: room.mindmeldData.revealed ? ((room.mindmeldData.answers || {})[p.name] || '') : null
+      }))
     } : null
   };
 }
@@ -2781,14 +2792,15 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // ── MIND MELD MODE (one phone — host-managed name scoreboard) ──
+    // ── MIND MELD MODE (everyone types a word on their own phone) ──
     if (room.settings.gameType === 'mindmeld') {
-      const names = (room.settings.mindmeldPlayers || []).map(n => String(n).trim()).filter(Boolean);
-      if (names.length < 2) return socket.emit('error', { message: 'Add at least 2 players to the scoreboard first.' });
+      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players to start.' });
       room.mindmeldData = {
-        players: names.map(n => ({ name: n, score: 0 })),
+        players: room.players.map(p => ({ name: p.name, score: 0 })),
         prompt: null,
-        usedIdx: new Set()
+        usedIdx: new Set(),
+        answers: {},
+        revealed: false
       };
       mindmeldNewPrompt(room);
       room.gameState = 'mindmeld-playing';
@@ -4022,6 +4034,33 @@ io.on('connection', (socket) => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id || !room.mindmeldData) return;
     mindmeldNewPrompt(room);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('mindmeld-answer', ({ word }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || !room.mindmeldData || room.gameState !== 'mindmeld-playing') return;
+    if (room.mindmeldData.revealed) return;
+    const name = socket.playerName;
+    if (!name) return;
+    const w = String(word || '').trim().slice(0, 60);
+    if (!w) return;
+    room.mindmeldData.answers[name] = w;
+    // Late joiner who wasn't on the board at start — add them
+    if (!room.mindmeldData.players.some(p => p.name === name)) {
+      room.mindmeldData.players.push({ name, score: 0 });
+    }
+    // Auto-reveal once everyone currently in the room has locked in
+    if (Object.keys(room.mindmeldData.answers).length >= room.players.length) {
+      room.mindmeldData.revealed = true;
+    }
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('mindmeld-reveal', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.mindmeldData) return;
+    room.mindmeldData.revealed = true;
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 

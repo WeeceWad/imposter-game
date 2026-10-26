@@ -323,14 +323,15 @@
     .draw-vote-progress { width:100%; text-align:center; color:var(--muted); font-size:0.88rem; padding:6px 0; font-weight:600; }
 
     /* ─── WAVELENGTH ─── */
-    .wv-screen { justify-content:flex-start; padding-top:24px; overflow-y:auto; }
+    .wv-screen { justify-content:flex-start; padding-top:24px; overflow-y:auto; max-width:680px; }
+    .wv-screen .wv-spectrum-wrap { padding:14px 10px; }
     .wv-spectrum-wrap { width:100%; }
     .wv-labels { display:flex; justify-content:space-between; gap:8px; margin-bottom:10px; }
     .wv-label { font-size:0.78rem; font-weight:800; padding:5px 10px; border-radius:8px; text-align:center; max-width:44%; line-height:1.3; }
     .wv-label-left  { background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.4); }
     .wv-label-right { background:rgba(239,68,68,0.18); color:#f87171; border:1px solid rgba(239,68,68,0.4); }
     /* ── SVG dial ── */
-    .wv-dial-outer { width:100%; max-width:380px; margin:0 auto 8px; user-select:none; touch-action:none; }
+    .wv-dial-outer { width:100%; max-width:640px; margin:0 auto 4px; user-select:none; touch-action:none; }
     .wv-dial-svg { width:100%; height:auto; display:block; }
     .wv-face-outer { fill:#0a0a18; }
     .wv-face-inner { fill:#ede8de; }
@@ -5390,6 +5391,8 @@ function wvRenderScoreStrip(teams, containerId) {
 // ── SVG dial math helpers ──
 // Center of all dials is at SVG coordinate (100, 101), outer face radius 85
 const WV_CX = 100, WV_CY = 101, WV_R = 85, WV_NEEDLE_LEN = 78;
+// Scoring bands (distance from target on the 0–100 dial) — must match server.js WV_BAND_*
+const WV_BANDS = { 4: 4, 3: 8, 2: 12 };
 
 function wvPosToAngleRad(pos) {
   // pos 0 = left (180°), pos 100 = right (0°)
@@ -5514,9 +5517,9 @@ document.addEventListener('touchend', function() { wvDragging = false; });
 function wvShowZones(targetPos) {
   // Fill the SVG zone paths on the reveal dial
   const zones = [
-    { id: 'wv-zone-2', p1: targetPos - 24, p2: targetPos + 24, fill: 'rgba(249,115,22,0.60)' },
-    { id: 'wv-zone-3', p1: targetPos - 16, p2: targetPos + 16, fill: 'rgba(234,179,8,0.72)' },
-    { id: 'wv-zone-4', p1: targetPos - 8,  p2: targetPos + 8,  fill: 'rgba(34,197,94,0.88)'  },
+    { id: 'wv-zone-2', p1: targetPos - WV_BANDS[2], p2: targetPos + WV_BANDS[2], fill: 'rgba(249,115,22,0.60)' },
+    { id: 'wv-zone-3', p1: targetPos - WV_BANDS[3], p2: targetPos + WV_BANDS[3], fill: 'rgba(234,179,8,0.72)' },
+    { id: 'wv-zone-4', p1: targetPos - WV_BANDS[4], p2: targetPos + WV_BANDS[4], fill: 'rgba(34,197,94,0.88)'  },
   ];
   zones.forEach(z => {
     const el = document.getElementById(z.id);
@@ -5704,9 +5707,9 @@ function initWavelengthSocketHandlers() {
     svg.querySelectorAll('.wv-dyn-zone').forEach(el => el.remove());
     const NS = 'http://www.w3.org/2000/svg';
     const zoneDefs = [
-      { p1: target - 24, p2: target + 24, fill: 'rgba(249,115,22,0.45)' },
-      { p1: target - 16, p2: target + 16, fill: 'rgba(234,179,8,0.60)'  },
-      { p1: target - 8,  p2: target + 8,  fill: 'rgba(34,197,94,0.80)'  },
+      { p1: target - WV_BANDS[2], p2: target + WV_BANDS[2], fill: 'rgba(249,115,22,0.45)' },
+      { p1: target - WV_BANDS[3], p2: target + WV_BANDS[3], fill: 'rgba(234,179,8,0.60)'  },
+      { p1: target - WV_BANDS[4], p2: target + WV_BANDS[4], fill: 'rgba(34,197,94,0.80)'  },
     ];
     const pivotEl = svg.querySelector('.wv-pivot-bg');
     zoneDefs.forEach(z => {

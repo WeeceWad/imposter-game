@@ -1378,8 +1378,16 @@ function startWavelengthTurn(room) {
   room.wvUsedSpectraIdx.add(idx);
 
   room.wvSpectrum = WAVELENGTH_SPECTRA[idx];
-  room.wvTarget = 12 + Math.floor(Math.random() * 77); // 12–88, avoids extreme edges
+  // Fresh random target anywhere on the dial (4–96); re-roll if it lands close to last turn's
+  const prevTarget = room.wvTarget;
+  let target;
+  for (let tries = 0; tries < 20; tries++) {
+    target = 4 + Math.floor(Math.random() * 93);
+    if (prevTarget == null || Math.abs(target - prevTarget) >= 15) break;
+  }
+  room.wvTarget = target;
   room.wvClue = null;
+  room.wvLastReveal = null;
   room.wvDial = 50;
   room.wvOpposingGuess = null;
   room.wvDialLocked = false;
@@ -1389,6 +1397,12 @@ function startWavelengthTurn(room) {
   const psychicIdx = (team.psychicIdx || 0) % team.playerIds.length;
   room.wvCurrentPsychicId = team.playerIds[psychicIdx];
 
+  io.to(room.code).emit('wavelength-turn-start', wvTurnStartPayload(room));
+  io.to(room.wvCurrentPsychicId).emit('wavelength-your-target', { target: room.wvTarget });
+}
+
+function wvTurnStartPayload(room) {
+  const team = room.wvTeams[room.wvCurrentTeamIdx];
   const psychicName = (room.players.find(p => p.id === room.wvCurrentPsychicId) || {}).name || '?';
   // In duo mode, find the non-psychic player (the guesser)
   const duoMode = !!room.settings.wvDuoMode;
@@ -1398,8 +1412,7 @@ function startWavelengthTurn(room) {
     guesserId = allIds.find(id => id !== room.wvCurrentPsychicId) || null;
   }
   const guesserName = guesserId ? ((room.players.find(p => p.id === guesserId) || {}).name || '?') : null;
-
-  io.to(room.code).emit('wavelength-turn-start', {
+  return {
     spectrum: room.wvSpectrum,
     teamIdx: room.wvCurrentTeamIdx,
     teamName: team.name,
@@ -1412,13 +1425,36 @@ function startWavelengthTurn(room) {
     totalTurns: room.wvTotalTurns,
     teams: getWvPublicTeams(room),
     settings: { wvOpposingBonus: room.settings.wvOpposingBonus, wvOneWord: room.settings.wvOneWord, wvClueTimer: room.settings.wvClueTimer || 0, wvGuessTimer: room.settings.wvGuessTimer || 0 }
-  });
-  io.to(room.wvCurrentPsychicId).emit('wavelength-your-target', { target: room.wvTarget });
+  };
 }
+
+// Re-send the current wavelength turn to one (re)connecting socket so their
+// dial shows THIS turn — not whatever was left over from the last one.
+function wvResyncSocket(room, socket) {
+  if (!room.wvTeams || !room.gameState || !room.gameState.startsWith('wavelength-')) return;
+  if (room.gameState === 'wavelength-end') return;
+  if (room.gameState === 'wavelength-reveal' && room.wvLastReveal) {
+    socket.emit('wavelength-turn-start', wvTurnStartPayload(room));
+    socket.emit('wavelength-reveal', room.wvLastReveal);
+    return;
+  }
+  socket.emit('wavelength-turn-start', wvTurnStartPayload(room));
+  if (socket.id === room.wvCurrentPsychicId) socket.emit('wavelength-your-target', { target: room.wvTarget });
+  if (room.gameState === 'wavelength-guessing' || room.gameState === 'wavelength-opposing') {
+    socket.emit('wavelength-clue-given', { clue: room.wvClue || '' });
+    socket.emit('wavelength-dial-update', { position: room.wvDial });
+  }
+  if (room.gameState === 'wavelength-opposing') {
+    socket.emit('wavelength-locked', { dial: room.wvDial });
+  }
+}
+
+// Scoring bands (distance from target, on a 0–100 dial). Mirrored in index.html WV_BANDS.
+const WV_BAND_4 = 4, WV_BAND_3 = 8, WV_BAND_2 = 12;
 
 function resolveWavelengthTurn(room) {
   const diff = Math.abs(room.wvDial - room.wvTarget);
-  let score = diff <= 8 ? 4 : diff <= 16 ? 3 : diff <= 24 ? 2 : 0;
+  let score = diff <= WV_BAND_4 ? 4 : diff <= WV_BAND_3 ? 3 : diff <= WV_BAND_2 ? 2 : 0;
 
   let opposingBonus = 0;
   let opposingCorrect = false;
@@ -1437,7 +1473,7 @@ function resolveWavelengthTurn(room) {
   room.wvTurnsDone++;
   room.gameState = 'wavelength-reveal';
 
-  io.to(room.code).emit('wavelength-reveal', {
+  room.wvLastReveal = {
     target: room.wvTarget,
     dial: room.wvDial,
     score,
@@ -1448,7 +1484,8 @@ function resolveWavelengthTurn(room) {
     spectrum: room.wvSpectrum,
     clue: room.wvClue,
     isLastTurn: room.wvTurnsDone >= room.wvTotalTurns
-  });
+  };
+  io.to(room.code).emit('wavelength-reveal', room.wvLastReveal);
   io.to(room.code).emit('room-update', sanitizeRoom(room));
 }
 
@@ -3399,6 +3436,7 @@ io.on('connection', (socket) => {
       socket.playerName = name;
       socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
       socket.emit('room-update', sanitizeRoom(room));
+      wvResyncSocket(room, socket);
       return;
     }
     player.id = socket.id;
@@ -3466,6 +3504,7 @@ io.on('connection', (socket) => {
         t.playerIds = (t.playerIds || []).map(id => id === oldId ? socket.id : id);
       });
     }
+    if (room.wvCurrentPsychicId === oldId) room.wvCurrentPsychicId = socket.id;
     // Bidders: remap the reconnecting player's id everywhere in the auction state
     if (room.biddersData) {
       const d = room.biddersData;
@@ -3487,6 +3526,7 @@ io.on('connection', (socket) => {
     if (room.gameState === 'collab-drawing' && room.collabStrokes && room.collabStrokes.length > 0) {
       socket.emit('collab-full-state', { strokes: room.collabStrokes });
     }
+    wvResyncSocket(room, socket);
   });
 
   // ─────────────────────────────────────────────

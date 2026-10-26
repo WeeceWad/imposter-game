@@ -447,7 +447,7 @@
       <button class="mode-tile" id="gametype-wavelength-btn" onclick="setGameType('wavelength')"><span class="mode-tile-emoji">🌊</span><span class="mode-tile-label">Wavelength</span><span class="mode-tile-desc">Read your team's mind</span></button>
       <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span><span class="mode-tile-desc">Rank songs as they play</span></button>
       <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span><span class="mode-tile-desc">Auction to fill your list</span></button>
-      <button class="mode-tile" id="gametype-mindmeld-btn" onclick="setGameType('mindmeld')"><span class="mode-tile-emoji">🧠</span><span class="mode-tile-label">Mind Meld</span><span class="mode-tile-desc">Type a word, match to score</span></button>
+      <button class="mode-tile" id="gametype-mindmeld-btn" onclick="setGameType('mindmeld')"><span class="mode-tile-emoji">🧠</span><span class="mode-tile-label">Mind Meld</span><span class="mode-tile-desc">Match answers · online or 1 phone</span></button>
     </div>
   </div>
 
@@ -553,16 +553,37 @@
 
   <!-- MIND MELD SETTINGS (mindmeld only) -->
   <div id="host-mindmeld-settings" class="card" style="width:100%; display:none">
-    <div class="card-title">Mind Meld — Players</div>
-    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:14px">
-      Add everyone playing. A prompt appears, you all shout an answer at once — anyone who matches someone else scores a point. One phone needed!
+    <div class="card-title">Mind Meld</div>
+
+    <!-- Online / Offline toggle -->
+    <div class="setting-row" style="margin-bottom:12px">
+      <div>
+        <div class="setting-label">How are you playing?</div>
+        <div class="setting-desc">Everyone on their own phone, or all together on one</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn btn-sm" id="mm-mode-online-btn" onclick="setMindmeldMode('online')">📱 Online</button>
+        <button class="btn btn-sm" id="mm-mode-offline-btn" onclick="setMindmeldMode('offline')">🗣️ Offline</button>
+      </div>
     </div>
-    <div style="display:flex; gap:8px; margin-bottom:12px">
-      <input type="text" id="mm-add-name" maxlength="16" placeholder="Player name"
-             onkeydown="if(event.key==='Enter')addMindmeldPlayer()" style="flex:1; font-size:0.95rem" />
-      <button class="btn btn-sm btn-primary" onclick="addMindmeldPlayer()" style="white-space:nowrap; padding:0 16px">➕ Add</button>
+
+    <!-- Online info -->
+    <div id="mm-online-info" style="font-size:0.85rem; color:var(--muted)">
+      Everyone joins on their own phone. A prompt appears, each person types an answer and locks it in. Once everyone's in, all answers show — matching answers score and you award the points.
     </div>
-    <div id="mm-players-list" style="display:flex; flex-direction:column; gap:6px"></div>
+
+    <!-- Offline setup (name list) -->
+    <div id="mm-offline-setup" style="display:none">
+      <div style="font-size:0.85rem; color:var(--muted); margin-bottom:14px">
+        Just one phone needed. Add everyone playing below. A prompt appears, you all shout an answer at once — anyone who matches someone else scores a point.
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:12px">
+        <input type="text" id="mm-add-name" maxlength="16" placeholder="Player name"
+               onkeydown="if(event.key==='Enter')addMindmeldPlayer()" style="flex:1; font-size:0.95rem" />
+        <button class="btn btn-sm btn-primary" onclick="addMindmeldPlayer()" style="white-space:nowrap; padding:0 16px">➕ Add</button>
+      </div>
+      <div id="mm-players-list" style="display:flex; flex-direction:column; gap:6px"></div>
+    </div>
   </div>
 
   <!-- HOST SETTINGS (imposter only) -->
@@ -1641,6 +1662,7 @@
     <button class="btn btn-primary" onclick="mmNewPrompt()">🎲 New Prompt</button>
     <button class="btn-ghost" onclick="restartMindMeldGame()" style="margin-top:2px">🏁 End &amp; Back to Lobby</button>
   </div>
+  <div id="mm-wait-msg" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
 
   <!-- Scoreboard -->
   <div class="card" style="width:100%">
@@ -3009,6 +3031,10 @@ function removeMindmeldPlayer(i) {
   names.splice(i, 1);
   socket.emit('update-settings', { settings: { mindmeldPlayers: names } });
 }
+function setMindmeldMode(mode) {
+  if (!isHost || !currentRoom) return;
+  socket.emit('update-settings', { settings: { mindmeldMode: mode } });
+}
 function mmNewPrompt() { socket.emit('mindmeld-new-prompt'); }
 function mmAdjust(index, delta) { socket.emit('mindmeld-adjust', { index, delta }); }
 function mmReveal() { if (!isHost) return; socket.emit('mindmeld-reveal'); }
@@ -3033,6 +3059,7 @@ function mmSubmitAnswer() {
 function renderMindMeld(room) {
   const m = room.mindmeldPublic;
   if (!m) return;
+  const offline = m.mode === 'offline';
 
   // New prompt arrived → clear my local answer + the input box
   if (m.prompt !== mmLastPrompt) {
@@ -3053,10 +3080,11 @@ function renderMindMeld(room) {
 
   const answerBox = document.getElementById('mm-answer-box');
   const lockedBox = document.getElementById('mm-locked-box');
-  const showInput = !m.revealed && !iSubmitted;
+  // Offline: no typing on this phone — answers are shouted out loud.
+  const showInput = !offline && !m.revealed && !iSubmitted;
   if (answerBox) answerBox.style.display = showInput ? 'flex' : 'none';
-  if (lockedBox) lockedBox.style.display = (!m.revealed && iSubmitted) ? 'block' : 'none';
-  if (!m.revealed && iSubmitted) {
+  if (lockedBox) lockedBox.style.display = (!offline && !m.revealed && iSubmitted) ? 'block' : 'none';
+  if (!offline && !m.revealed && iSubmitted) {
     const ya = document.getElementById('mm-your-answer');
     if (ya) ya.textContent = mmMyAnswer || '✓';
     const wc = document.getElementById('mm-waiting-count');
@@ -3065,26 +3093,38 @@ function renderMindMeld(room) {
 
   const phaseTitle = document.getElementById('mm-phase-title');
   const promptSub = document.getElementById('mm-prompt-sub');
-  if (phaseTitle) phaseTitle.textContent = m.revealed ? 'Answers revealed!' : 'Type your answer!';
-  if (promptSub) promptSub.textContent = m.revealed
-    ? 'Matching answers score — host awards the points'
-    : `Match someone else's answer to score (${m.submittedCount}/${m.totalCount} in)`;
+  if (offline) {
+    if (phaseTitle) phaseTitle.textContent = 'Everyone shout an answer!';
+    if (promptSub) promptSub.textContent = 'Say it on 3 — anyone who matches someone scores a point';
+  } else {
+    if (phaseTitle) phaseTitle.textContent = m.revealed ? 'Answers revealed!' : 'Type your answer!';
+    if (promptSub) promptSub.textContent = m.revealed
+      ? 'Matching answers score — host awards the points'
+      : `Match someone else's answer to score (${m.submittedCount}/${m.totalCount} in)`;
+  }
 
   const hostBtns = document.getElementById('mm-host-buttons');
   if (hostBtns) hostBtns.style.display = isHost ? 'flex' : 'none';
   const revealBtn = document.getElementById('mm-reveal-btn');
-  if (revealBtn) revealBtn.style.display = (isHost && !m.revealed) ? 'block' : 'none';
+  // Reveal button only matters online, before everyone's locked in.
+  if (revealBtn) revealBtn.style.display = (isHost && !offline && !m.revealed) ? 'block' : 'none';
+  const waitMsg = document.getElementById('mm-wait-msg');
+  if (waitMsg) waitMsg.style.display = (offline && !isHost) ? 'block' : 'none';
 
   // Scoreboard, sorted high-to-low (keeps original index for scoring)
   const board = document.getElementById('mm-scoreboard');
   const boardTitle = document.getElementById('mm-board-title');
-  if (boardTitle) boardTitle.textContent = m.revealed ? 'Answers — tap +1 for each match' : 'Players';
+  if (boardTitle) boardTitle.textContent = offline
+    ? 'Scoreboard — tap +1 to score'
+    : (m.revealed ? 'Answers — tap +1 for each match' : 'Players');
   if (board) {
     const sorted = [...m.players].sort((a, b) => b.score - a.score);
     board.innerHTML = sorted.map(p => {
-      const sub = m.revealed
-        ? `<div style="font-size:0.92rem; color:var(--accent2); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${p.answer ? mmEsc(p.answer) : '— no answer —'}</div>`
-        : `<div style="font-size:0.74rem; color:var(--muted)">${p.submitted ? '🔒 locked in' : '…thinking'}</div>`;
+      const sub = offline
+        ? ''
+        : (m.revealed
+          ? `<div style="font-size:0.92rem; color:var(--accent2); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${p.answer ? mmEsc(p.answer) : '— no answer —'}</div>`
+          : `<div style="font-size:0.74rem; color:var(--muted)">${p.submitted ? '🔒 locked in' : '…thinking'}</div>`);
       return `
       <div class="player-item" style="justify-content:space-between">
         <div style="display:flex; align-items:center; gap:10px; min-width:0">
@@ -3617,10 +3657,25 @@ function renderLobbyData(room) {
       const drawCatsM = document.getElementById('host-draw-categories');
       if (drawSettingsM) drawSettingsM.style.display = 'none';
       if (drawCatsM) drawCatsM.style.display = 'none';
-      if (mmSettings) mmSettings.style.display = 'none';
+      if (mmSettings) mmSettings.style.display = 'block';
+      const mmMode = room.settings.mindmeldMode === 'offline' ? 'offline' : 'online';
+      const mmOnBtn = document.getElementById('mm-mode-online-btn');
+      const mmOffBtn = document.getElementById('mm-mode-offline-btn');
+      if (mmOnBtn)  mmOnBtn.className  = 'btn btn-sm' + (mmMode === 'online'  ? ' btn-primary' : ' btn-outline');
+      if (mmOffBtn) mmOffBtn.className = 'btn btn-sm' + (mmMode === 'offline' ? ' btn-primary' : ' btn-outline');
+      const mmOnlineInfo = document.getElementById('mm-online-info');
+      const mmOfflineSetup = document.getElementById('mm-offline-setup');
+      if (mmOnlineInfo)   mmOnlineInfo.style.display   = mmMode === 'online'  ? 'block' : 'none';
+      if (mmOfflineSetup) mmOfflineSetup.style.display = mmMode === 'offline' ? 'block' : 'none';
       const hint = document.getElementById('start-hint');
-      const n = (room.players || []).length;
-      if (hint) hint.textContent = n >= 2 ? 'Ready to play!' : 'Need at least 2 players';
+      if (mmMode === 'offline') {
+        renderMindmeldSettings(room);
+        const n = (room.settings.mindmeldPlayers || []).length;
+        if (hint) hint.textContent = n >= 2 ? 'Ready to play!' : 'Add at least 2 players';
+      } else {
+        const n = (room.players || []).length;
+        if (hint) hint.textContent = n >= 2 ? 'Ready to play!' : 'Need at least 2 players';
+      }
 
     // ── BIDDERS MODE ──
     } else if (isBidders) {

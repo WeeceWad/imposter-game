@@ -1643,7 +1643,8 @@ function mindmeldNewPrompt(room) {
   d.usedIdx.add(idx);
   d.prompt = MINDMELD_PROMPTS[idx];
   d.answers = {};
-  d.revealed = false;
+  // Offline (one phone, shouted answers) has no hidden phase — always "revealed".
+  d.revealed = (d.mode === 'offline');
 }
 
 function sanitizeRoom(room) {
@@ -1711,6 +1712,7 @@ function sanitizeRoom(room) {
     } : null,
     mindmeldPublic: (room.gameState && room.gameState.startsWith('mindmeld-') && room.mindmeldData) ? {
       prompt: room.mindmeldData.prompt,
+      mode: room.mindmeldData.mode || 'online',
       revealed: !!room.mindmeldData.revealed,
       submittedCount: Object.keys(room.mindmeldData.answers || {}).length,
       totalCount: room.players.length,
@@ -2792,11 +2794,23 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // ── MIND MELD MODE (everyone types a word on their own phone) ──
+    // ── MIND MELD MODE ──
+    // online  = everyone joins & types a word on their own phone
+    // offline = one phone, host-managed name list, answers shouted out loud
     if (room.settings.gameType === 'mindmeld') {
-      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players to start.' });
+      const mmMode = room.settings.mindmeldMode === 'offline' ? 'offline' : 'online';
+      let mmPlayers;
+      if (mmMode === 'offline') {
+        const names = (room.settings.mindmeldPlayers || []).map(n => String(n).trim()).filter(Boolean);
+        if (names.length < 2) return socket.emit('error', { message: 'Add at least 2 players to the scoreboard first.' });
+        mmPlayers = names.map(n => ({ name: n, score: 0 }));
+      } else {
+        if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players to start.' });
+        mmPlayers = room.players.map(p => ({ name: p.name, score: 0 }));
+      }
       room.mindmeldData = {
-        players: room.players.map(p => ({ name: p.name, score: 0 })),
+        mode: mmMode,
+        players: mmPlayers,
         prompt: null,
         usedIdx: new Set(),
         answers: {},
@@ -4040,6 +4054,7 @@ io.on('connection', (socket) => {
   socket.on('mindmeld-answer', ({ word }) => {
     const room = rooms[socket.roomCode];
     if (!room || !room.mindmeldData || room.gameState !== 'mindmeld-playing') return;
+    if (room.mindmeldData.mode === 'offline') return; // offline answers are verbal
     if (room.mindmeldData.revealed) return;
     const name = socket.playerName;
     if (!name) return;

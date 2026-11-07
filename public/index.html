@@ -449,6 +449,7 @@
       <button class="mode-tile" id="gametype-blind-ranking-btn" onclick="setGameType('blind-ranking')"><span class="mode-tile-emoji">🏆</span><span class="mode-tile-label">Blind Ranking</span><span class="mode-tile-desc">Rank songs as they play</span></button>
       <button class="mode-tile" id="gametype-bidders-btn" onclick="setGameType('bidders')"><span class="mode-tile-emoji">💰</span><span class="mode-tile-label">Bidders</span><span class="mode-tile-desc">Auction to fill your list</span></button>
       <button class="mode-tile" id="gametype-mindmeld-btn" onclick="setGameType('mindmeld')"><span class="mode-tile-emoji">🧠</span><span class="mode-tile-label">Mind Meld</span><span class="mode-tile-desc">Match answers · online or 1 phone</span></button>
+      <button class="mode-tile" id="gametype-converge-btn" onclick="setGameType('converge')"><span class="mode-tile-emoji">🔗</span><span class="mode-tile-label">Converge</span><span class="mode-tile-desc">Link words till you all match</span></button>
     </div>
   </div>
 
@@ -549,6 +550,15 @@
       <button class="btn btn-sm" onclick="setCatDuration(30)" data-dur="30">30s</button>
       <button class="btn btn-sm" onclick="setCatDuration(45)" data-dur="45">45s</button>
       <button class="btn btn-sm" onclick="setCatDuration(60)" data-dur="60">60s</button>
+    </div>
+  </div>
+
+  <!-- CONVERGE INFO (converge only) -->
+  <div id="host-converge-info" class="card" style="width:100%; display:none">
+    <div class="card-title">🔗 Converge — How it works</div>
+    <div style="font-size:0.85rem; color:var(--muted); line-height:1.5">
+      Everyone secretly types any word. Then you all see the words and try to think of <b>one word that links them</b>.
+      Keep going round after round until <b>everyone types the same word</b>. No scores — just vibes!
     </div>
   </div>
 
@@ -1674,6 +1684,75 @@
 
 
 
+<!-- ══════════════════════════════════════════ -->
+<!-- CONVERGE — PLAYING                         -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-converge-playing" class="screen" style="justify-content:flex-start; padding-top:18px; max-width:560px">
+  <div class="lobby-top" style="width:100%">
+    <div><span class="phase-badge" style="background:rgba(168,85,247,0.2); color:var(--accent2); border:1px solid var(--accent)">🔗 Converge</span></div>
+    <button class="btn-ghost" onclick="leaveRoom()">← Leave</button>
+  </div>
+
+  <!-- Round / prompt -->
+  <div id="cv-prompt-card" class="card text-center" style="width:100%; border-color:var(--accent)">
+    <div class="card-title" id="cv-round-title" style="color:var(--accent2)">Round 1</div>
+    <div id="cv-prompt" style="font-size:1.35rem; font-weight:900; line-height:1.3; margin:6px 0">Type any word!</div>
+    <div id="cv-link-words" style="display:none; flex-wrap:wrap; justify-content:center; gap:8px; margin:10px 0 4px"></div>
+    <div id="cv-prompt-sub" style="font-size:0.78rem; color:var(--muted)"></div>
+  </div>
+
+  <!-- Your word -->
+  <div id="cv-answer-box" class="card" style="width:100%; display:none; flex-direction:column; gap:10px">
+    <input type="text" id="cv-answer-input" maxlength="40" placeholder="Your word…" autocomplete="off"
+           onkeydown="if(event.key==='Enter')cvSubmit()" style="font-size:1.05rem; text-align:center" />
+    <button class="btn btn-primary" onclick="cvSubmit()">🔒 Lock It In</button>
+  </div>
+
+  <!-- Locked / waiting -->
+  <div id="cv-locked-box" class="card text-center" style="width:100%; display:none; border-color:var(--accent)">
+    <div class="card-title" style="color:var(--accent2)">Locked in ✓</div>
+    <div id="cv-your-word" style="font-size:1.3rem; font-weight:900; margin:4px 0">—</div>
+    <div id="cv-waiting-count" class="text-muted pulse" style="font-size:0.82rem">Waiting for others…</div>
+  </div>
+
+  <!-- Revealed words -->
+  <div id="cv-reveal-card" class="card text-center" style="width:100%; display:none">
+    <div class="card-title" id="cv-reveal-title">The words are…</div>
+    <div id="cv-reveal-words" style="display:flex; flex-direction:column; gap:8px; margin:6px 0 10px"></div>
+    <div id="cv-reveal-msg" style="font-size:0.88rem; color:var(--muted)"></div>
+  </div>
+
+  <!-- Synced! -->
+  <div id="cv-done-card" class="card text-center" style="width:100%; display:none; border-color:#22c55e; background:rgba(34,197,94,0.08)">
+    <div style="font-size:2.6rem">🎉</div>
+    <div style="font-size:1.4rem; font-weight:900; margin:4px 0">You synced!</div>
+    <div id="cv-done-word" style="font-size:2rem; font-weight:900; color:#4ade80; margin:6px 0; word-break:break-word">—</div>
+    <div id="cv-done-sub" class="text-muted" style="font-size:0.88rem"></div>
+  </div>
+
+  <!-- Host controls -->
+  <div id="cv-host-buttons" style="width:100%; display:none; flex-direction:column; gap:8px">
+    <button id="cv-reveal-btn" class="btn btn-outline" onclick="cvReveal()">👀 Reveal Now</button>
+    <button id="cv-next-btn" class="btn btn-primary" onclick="cvNext()">🔁 Next Round</button>
+    <button id="cv-match-btn" class="btn btn-outline" onclick="cvMatch()">✅ Close enough — we synced!</button>
+    <button id="cv-again-btn" class="btn btn-primary" onclick="cvAgain()">🔄 Play Again</button>
+    <button class="btn-ghost" onclick="cvEnd()" style="margin-top:2px">🏁 End &amp; Back to Lobby</button>
+  </div>
+  <div id="cv-wait-msg" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
+
+  <!-- Who's in -->
+  <div id="cv-status-card" class="card" style="width:100%">
+    <div class="card-title">Players</div>
+    <div id="cv-status-list" style="display:flex; flex-direction:column; gap:8px"></div>
+  </div>
+
+  <!-- History -->
+  <div id="cv-history-card" class="card" style="width:100%; display:none">
+    <div class="card-title">The journey so far</div>
+    <div id="cv-history" style="display:flex; flex-direction:column; gap:10px"></div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -2217,6 +2296,9 @@ function initSocket() {
   socket.on('mindmeld-started', function() {
     showScreen('mindmeld-playing');
   });
+  socket.on('converge-started', function() {
+    showScreen('converge-playing');
+  });
   socket.on('bidders-new-item', function() {
     const inp = document.getElementById('bidders-bid-input');
     if (inp) inp.value = '';
@@ -2633,6 +2715,14 @@ function applyRoomUpdate(room) {
     renderMindMeld(room);
   }
   if (room.gameState === 'lobby' && active === 'screen-mindmeld-playing') {
+    showScreen('lobby');
+  }
+
+  if (room.gameState === 'converge-playing') {
+    if (active !== 'screen-converge-playing') showScreen('converge-playing');
+    renderConverge(room);
+  }
+  if (room.gameState === 'lobby' && active === 'screen-converge-playing') {
     showScreen('lobby');
   }
 
@@ -3145,6 +3235,126 @@ function renderMindMeld(room) {
   }
 }
 
+// ── CONVERGE ──
+let cvMyWord = null;
+let cvLastRound = null;
+function cvSubmit() {
+  const inp = document.getElementById('cv-answer-input');
+  if (!inp) return;
+  const w = (inp.value || '').trim();
+  if (!w) return;
+  cvMyWord = w;
+  socket.emit('converge-answer', { word: w });
+}
+function cvReveal() { if (isHost) socket.emit('converge-reveal'); }
+function cvNext()   { if (isHost) socket.emit('converge-next'); }
+function cvMatch()  { if (isHost) socket.emit('converge-match'); }
+function cvAgain()  { if (isHost) socket.emit('converge-again'); }
+function cvEnd()    { if (!isHost) return; socket.emit('converge-restart'); showScreen('lobby'); }
+
+function cvChip(word, big) {
+  return `<span style="display:inline-block; padding:${big ? '8px 14px' : '4px 10px'}; border-radius:999px; background:rgba(168,85,247,0.18); border:1px solid var(--accent); color:var(--text); font-weight:800; font-size:${big ? '1.05rem' : '0.82rem'}">${mmEsc(word)}</span>`;
+}
+
+function renderConverge(room) {
+  const c = room.convergePublic;
+  if (!c) return;
+  const show = (id, on, disp) => { const el = document.getElementById(id); if (el) el.style.display = on ? (disp || 'block') : 'none'; };
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  // New round (or new game) → clear my local word + input
+  const roundKey = c.round + ':' + c.history.length;
+  if (roundKey !== cvLastRound) {
+    cvLastRound = roundKey;
+    cvMyWord = null;
+    const inp = document.getElementById('cv-answer-input');
+    if (inp) inp.value = '';
+  }
+
+  const meP = (room.players || []).find(p => p.id === myId);
+  const myNm = (meP && meP.name) || myPlayerName;
+  const myEntry = c.players.find(p => p.name === myNm);
+  const iSubmitted = cvMyWord != null || (myEntry && myEntry.submitted);
+
+  // Prompt
+  const prev = c.history.length ? c.history[c.history.length - 1].words : [];
+  setTxt('cv-round-title', 'Round ' + c.round);
+  const linkEl = document.getElementById('cv-link-words');
+  if (c.round === 1 || !prev.length) {
+    setTxt('cv-prompt', 'Type any word!');
+    if (linkEl) linkEl.style.display = 'none';
+    setTxt('cv-prompt-sub', "Anything at all — then you'll all try to meet in the middle");
+  } else {
+    setTxt('cv-prompt', 'Think of a word that links:');
+    if (linkEl) { linkEl.style.display = 'flex'; linkEl.innerHTML = prev.map(w => cvChip(w.word, true)).join(''); }
+    setTxt('cv-prompt-sub', 'Aim for the word everyone else will think of too');
+  }
+  show('cv-prompt-card', !c.done);
+
+  // Input / locked
+  show('cv-answer-box', !c.revealed && !iSubmitted, 'flex');
+  show('cv-locked-box', !c.revealed && iSubmitted);
+  if (!c.revealed && iSubmitted) {
+    setTxt('cv-your-word', cvMyWord || '✓');
+    setTxt('cv-waiting-count', `Waiting for others… (${c.submittedCount}/${c.totalCount} locked in)`);
+  }
+
+  // Reveal
+  const answered = c.players.filter(p => p.word);
+  show('cv-reveal-card', c.revealed && !c.done);
+  if (c.revealed && !c.done) {
+    const wordsEl = document.getElementById('cv-reveal-words');
+    if (wordsEl) wordsEl.innerHTML = answered.map(p => `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; background:var(--surface); border:1px solid var(--border)">
+        <span style="color:var(--muted); font-size:0.85rem">${mmEsc(p.name)}</span>
+        <span style="font-weight:900; font-size:1.15rem">${mmEsc(p.word)}</span>
+      </div>`).join('');
+    setTxt('cv-reveal-title', 'Round ' + c.round + ' words');
+    setTxt('cv-reveal-msg', 'Not quite in sync yet — ' + (isHost ? 'hit Next Round and find a word that links these!' : 'get ready to link these!'));
+  }
+
+  // Done
+  show('cv-done-card', c.done);
+  if (c.done) {
+    const final = answered.length ? answered[0].word : '';
+    setTxt('cv-done-word', '"' + final + '"');
+    setTxt('cv-done-sub', 'Everyone got there in ' + c.round + ' round' + (c.round === 1 ? ' — first try?! 🤯' : 's'));
+  }
+
+  // Host controls
+  show('cv-host-buttons', isHost, 'flex');
+  show('cv-wait-msg', !isHost && c.revealed);
+  show('cv-reveal-btn', isHost && !c.revealed && c.submittedCount > 0);
+  show('cv-next-btn', isHost && c.revealed && !c.done);
+  show('cv-match-btn', isHost && c.revealed && !c.done);
+  show('cv-again-btn', isHost && c.done);
+
+  // Player status (before reveal)
+  show('cv-status-card', !c.revealed);
+  const list = document.getElementById('cv-status-list');
+  if (list && !c.revealed) {
+    list.innerHTML = c.players.map(p => `
+      <div class="player-item" style="justify-content:space-between">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0">
+          <div class="player-avatar">${mmEsc(p.name[0].toUpperCase())}</div>
+          <div class="player-name">${mmEsc(p.name)}</div>
+        </div>
+        <span style="font-size:0.78rem; color:${p.submitted ? '#4ade80' : 'var(--muted)'}">${p.submitted ? '🔒 locked in' : '…thinking'}</span>
+      </div>`).join('');
+  }
+
+  // History (all rounds, plus the final one when done)
+  const rounds = c.history.slice();
+  if (c.done) rounds.push({ round: c.round, words: answered.map(p => ({ name: p.name, word: p.word })) });
+  show('cv-history-card', rounds.length > 0);
+  const hist = document.getElementById('cv-history');
+  if (hist) hist.innerHTML = rounds.map(r => `
+    <div>
+      <div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px">Round ${r.round}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px">${r.words.map(w => cvChip(w.word, false)).join('')}</div>
+    </div>`).join('');
+}
+
 let _catTimer = null;
 function renderCategories(room) {
   const c = room.categoriesPublic;
@@ -3583,6 +3793,7 @@ function renderLobbyData(room) {
   const isBidders     = gameType === 'bidders';
   const isCategories  = gameType === 'categories';
   const isMindmeld    = gameType === 'mindmeld';
+  const isConverge    = gameType === 'converge';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -3603,7 +3814,8 @@ function renderLobbyData(room) {
       'blind-ranking': gameType === 'blind-ranking',
       bidders: isBidders,
       categories: isCategories,
-      mindmeld: isMindmeld
+      mindmeld: isMindmeld,
+      converge: isConverge
     };
     Object.entries(modeSelected).forEach(([type, on]) => {
       const el = document.getElementById('gametype-' + type + '-btn');
@@ -3630,6 +3842,8 @@ function renderLobbyData(room) {
     if (catSettings && !isCategories) catSettings.style.display = 'none';
     const mmSettings = document.getElementById('host-mindmeld-settings');
     if (mmSettings && !isMindmeld) mmSettings.style.display = 'none';
+    const cvInfo = document.getElementById('host-converge-info');
+    if (cvInfo) cvInfo.style.display = isConverge ? 'block' : 'none';
 
     // ── CATEGORIES MODE ──
     if (isCategories) {
@@ -3646,6 +3860,21 @@ function renderLobbyData(room) {
       renderCategoriesSettings(room);
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Just 1 player needed';
+
+    // ── CONVERGE MODE (co-op word linking) ──
+    } else if (isConverge) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettingsV = document.getElementById('host-draw-settings');
+      const drawCatsV = document.getElementById('host-draw-categories');
+      if (drawSettingsV) drawSettingsV.style.display = 'none';
+      if (drawCatsV) drawCatsV.style.display = 'none';
+      const hint = document.getElementById('start-hint');
+      const n = (room.players || []).length;
+      if (hint) hint.textContent = n >= 2 ? 'Ready to play!' : 'Need at least 2 players';
 
     // ── MIND MELD MODE (everyone joins & types a word) ──
     } else if (isMindmeld) {

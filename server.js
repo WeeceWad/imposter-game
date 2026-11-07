@@ -1684,6 +1684,47 @@ function mindmeldNewPrompt(room) {
   d.revealed = (d.mode === 'offline');
 }
 
+// ── CONVERGE (everyone types a word; keep linking until you all say the same one) ──
+function convergeNorm(w) {
+  return String(w || '').toLowerCase().trim()
+    .replace(/^(the|a|an)\s+/, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function convergeCheckReveal(room) {
+  const d = room.convergeData;
+  if (!d || d.revealed) return;
+  if (Object.keys(d.answers).length >= room.players.length) convergeReveal(room);
+}
+
+function convergeReveal(room) {
+  const d = room.convergeData;
+  d.revealed = true;
+  const words = Object.values(d.answers);
+  const norms = new Set(words.map(convergeNorm));
+  if (words.length >= 2 && norms.size === 1) d.done = true;
+}
+
+function convergePublic(room) {
+  const d = room.convergeData;
+  const names = room.players.map(p => p.name);
+  // Include anyone who answered but has since left, so revealed rounds stay complete
+  Object.keys(d.answers).forEach(n => { if (!names.includes(n)) names.push(n); });
+  return {
+    round: d.round,
+    revealed: d.revealed,
+    done: d.done,
+    submittedCount: Object.keys(d.answers).length,
+    totalCount: room.players.length,
+    players: names.map(n => ({
+      name: n,
+      submitted: d.answers[n] != null,
+      word: d.revealed ? (d.answers[n] || null) : null
+    })),
+    history: d.history
+  };
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -1760,7 +1801,8 @@ function sanitizeRoom(room) {
         submitted: (room.mindmeldData.answers || {})[p.name] != null,
         answer: room.mindmeldData.revealed ? ((room.mindmeldData.answers || {})[p.name] || '') : null
       }))
-    } : null
+    } : null,
+    convergePublic: (room.gameState === 'converge-playing' && room.convergeData) ? convergePublic(room) : null
   };
 }
 
@@ -2834,6 +2876,16 @@ io.on('connection', (socket) => {
     // ── MIND MELD MODE ──
     // online  = everyone joins & types a word on their own phone
     // offline = one phone, host-managed name list, answers shouted out loud
+    // ── CONVERGE MODE (co-op: link words until everyone types the same one) ──
+    if (room.settings.gameType === 'converge') {
+      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players to start.' });
+      room.convergeData = { round: 1, answers: {}, revealed: false, done: false, history: [] };
+      room.gameState = 'converge-playing';
+      io.to(room.code).emit('converge-started');
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
+      return;
+    }
+
     if (room.settings.gameType === 'mindmeld') {
       const mmMode = room.settings.mindmeldMode === 'offline' ? 'offline' : 'online';
       let mmPlayers;
@@ -3379,6 +3431,7 @@ io.on('connection', (socket) => {
     room.biddersData = null;
     room.categoriesData = null;
     room.mindmeldData = null;
+    room.convergeData = null;
     // Reset game mode back to word so video mode doesn't persist into the next game
     if (room.settings.gameMode && room.settings.gameMode !== 'word') {
       room.settings.gameMode = 'word';
@@ -4133,6 +4186,66 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     room.gameState = 'lobby';
     room.mindmeldData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('converge-answer', ({ word }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || !room.convergeData || room.gameState !== 'converge-playing') return;
+    const d = room.convergeData;
+    if (d.revealed || d.done) return;
+    const name = socket.playerName;
+    if (!name) return;
+    const w = String(word || '').trim().slice(0, 40);
+    if (!w) return;
+    d.answers[name] = w;
+    convergeCheckReveal(room);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('converge-reveal', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.convergeData) return;
+    if (room.convergeData.revealed || Object.keys(room.convergeData.answers).length === 0) return;
+    convergeReveal(room);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // Host: "close enough" — e.g. cat vs cats — count it as synced
+  socket.on('converge-match', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.convergeData || !room.convergeData.revealed) return;
+    room.convergeData.done = true;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('converge-next', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.convergeData) return;
+    const d = room.convergeData;
+    if (!d.revealed || d.done) return;
+    d.history.push({
+      round: d.round,
+      words: Object.entries(d.answers).map(([name, word]) => ({ name, word }))
+    });
+    d.round++;
+    d.answers = {};
+    d.revealed = false;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('converge-again', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.convergeData) return;
+    room.convergeData = { round: 1, answers: {}, revealed: false, done: false, history: [] };
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('converge-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    room.gameState = 'lobby';
+    room.convergeData = null;
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 

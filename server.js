@@ -1725,6 +1725,30 @@ function convergePublic(room) {
   };
 }
 
+// ── PRIVATE PER-PLAYER EVENTS ──
+// Roles/words/locations are sent to one socket only. If that phone reloads the page
+// (OS discards a backgrounded tab), it rejoins with a blank slate — so we remember the
+// latest payload of each private event per player name and replay it on rejoin.
+function sendPrivate(room, playerId, event, data) {
+  io.to(playerId).emit(event, data);
+  const p = room.players.find(pl => pl.id === playerId);
+  if (!p) return;
+  if (!room.privateEvents) room.privateEvents = {};
+  if (!room.privateEvents[p.name]) room.privateEvents[p.name] = {};
+  room.privateEvents[p.name][event] = data;
+}
+
+// States where replaying a role card would be wrong (game finished / not started)
+const NO_REPLAY_STATES = ['lobby', 'game-over', 'ended', 'spyfall-ended', 'whoami-ended',
+  'bidders-ended', 'blind-ranking-ended', 'wavelength-end'];
+
+function replayPrivate(room, socket) {
+  if (!room.gameState || NO_REPLAY_STATES.includes(room.gameState)) return;
+  const evs = room.privateEvents && room.privateEvents[socket.playerName];
+  if (!evs) return;
+  Object.entries(evs).forEach(([ev, data]) => socket.emit(ev, data));
+}
+
 function sanitizeRoom(room) {
   return {
     code: room.code,
@@ -2056,7 +2080,7 @@ function resolveVotes(room) {
       io.to(room.code).emit('elimination-result', { ...elimResult, gameState: 'imposter-guess' });
       // Any caught imposter can attempt the word guess
       toEliminateIds.filter(id => room.imposters.includes(id)).forEach(id => {
-        io.to(id).emit('make-guess', { category: room.currentCategory });
+        sendPrivate(room, id, 'make-guess', { category: room.currentCategory });
       });
     } else {
       room.gameState = 'game-over';
@@ -2587,6 +2611,7 @@ io.on('connection', (socket) => {
   socket.on('start-game', async () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id) return;
+    room.privateEvents = {};
 
     // ── SPYFALL MODE ──
     if (room.settings.gameType === 'spyfall') {
@@ -2606,7 +2631,7 @@ io.on('connection', (socket) => {
       room.gameState = 'spyfall-playing';
       room.players.forEach(p => {
         const isSpy = p.id === room.spyfallData.spyId;
-        io.to(p.id).emit('spyfall-started', {
+        sendPrivate(room, p.id, 'spyfall-started', {
           isSpy,
           locationName: isSpy ? null : loc.name,
           locationEmoji: isSpy ? null : loc.emoji,
@@ -2633,7 +2658,7 @@ io.on('connection', (socket) => {
         const others = room.players
           .filter(p => p.id !== player.id)
           .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
-        io.to(player.id).emit('whoami-game-started', { others, categoryName: cat.name });
+        sendPrivate(room, player.id, 'whoami-game-started', { others, categoryName: cat.name });
       });
       io.to(room.code).emit('room-update', sanitizeRoom(room));
       return;
@@ -2679,7 +2704,7 @@ io.on('connection', (socket) => {
           playerWord = word;
           playerRole = 'player';
         }
-        io.to(player.id).emit('draw-role', {
+        sendPrivate(room, player.id, 'draw-role', {
           role: playerRole,
           word: playerWord,
           category,
@@ -2742,7 +2767,7 @@ io.on('connection', (socket) => {
           playerWord = word;
           playerRole = 'player';
         }
-        io.to(player.id).emit('collab-role', {
+        sendPrivate(room, player.id, 'collab-role', {
           role: playerRole,
           word: playerWord,
           category,
@@ -3016,7 +3041,7 @@ io.on('connection', (socket) => {
         roleData = { role: 'player', word: room.currentWord, category: room.currentCategory, blindMode: room.settings.blindImposter, gameMode: 'word' };
       }
 
-      io.to(player.id).emit('your-role', roleData);
+      sendPrivate(room, player.id, 'your-role', roleData);
     });
 
     io.to(room.code).emit('room-update', sanitizeRoom(room));
@@ -3179,7 +3204,7 @@ io.on('connection', (socket) => {
         const others = room.players
           .filter(p => p.id !== player.id)
           .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
-        io.to(player.id).emit('whoami-assignments-updated', { others });
+        sendPrivate(room, player.id, 'whoami-assignments-updated', { others });
       });
     } else {
       socket.emit('whoami-guess-result', { correct: false, failed: false, wasWord: null, newWord: null, attemptsLeft: 3 - attempts });
@@ -3205,7 +3230,7 @@ io.on('connection', (socket) => {
       const others = room.players
         .filter(p => p.id !== player.id)
         .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
-      io.to(player.id).emit('whoami-assignments-updated', { others });
+      sendPrivate(room, player.id, 'whoami-assignments-updated', { others });
     });
   });
 
@@ -3460,6 +3485,10 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
+  // Client asks "are you still there?" after coming back from the background —
+  // no reply within a couple of seconds means the socket is a zombie and it reconnects.
+  socket.on('alive-check', (ack) => { if (typeof ack === 'function') ack(true); });
+
   // Rejoin after reconnect (client sends this on every reconnect)
   socket.on('rejoin-room', ({ code, name }) => {
     const room = rooms[(code || '').toUpperCase()];
@@ -3487,9 +3516,9 @@ io.on('connection', (socket) => {
       socket.join(room.code);
       socket.roomCode = room.code;
       socket.playerName = name;
-      socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
+      delete player.isDisconnected;
+      socket.emit('rejoin-ack', { code: room.code, playerId: socket.id, quiet: true });
       socket.emit('room-update', sanitizeRoom(room));
-      wvResyncSocket(room, socket);
       return;
     }
     player.id = socket.id;
@@ -3558,6 +3587,10 @@ io.on('connection', (socket) => {
       });
     }
     if (room.wvCurrentPsychicId === oldId) room.wvCurrentPsychicId = socket.id;
+    // Stored private payloads may contain the old socket id (turn orders, player lists)
+    if (room.privateEvents) {
+      try { room.privateEvents = JSON.parse(JSON.stringify(room.privateEvents).split(oldId).join(socket.id)); } catch (e) {}
+    }
     // Bidders: remap the reconnecting player's id everywhere in the auction state
     if (room.biddersData) {
       const d = room.biddersData;
@@ -3572,8 +3605,14 @@ io.on('connection', (socket) => {
     }
 
     socket.emit('rejoin-ack', { code: room.code, playerId: socket.id });
+    // Give back anything only this player was told (role, word, location…) BEFORE the
+    // room-update, so the client's state machine then moves them to the current phase.
+    replayPrivate(room, socket);
+    if (room.gameState === 'game-over') {
+      try { socket.emit('game-over', buildResultPayload(room)); } catch (e) {}
+    }
     socket.emit('room-update', sanitizeRoom(room));
-    io.to(room.code).emit('room-update', sanitizeRoom(room));
+    socket.to(room.code).emit('room-update', sanitizeRoom(room));
 
     // If rejoining during collab, send full canvas state
     if (room.gameState === 'collab-drawing' && room.collabStrokes && room.collabStrokes.length > 0) {
@@ -3636,7 +3675,7 @@ io.on('connection', (socket) => {
       const others = room.players
         .filter(p => p.id !== player.id)
         .map(p => ({ name: p.name, word: room.assignments[p.id] }));
-      io.to(player.id).emit('whoami-game-started', { others, categoryName: cat.name });
+      sendPrivate(room, player.id, 'whoami-game-started', { others, categoryName: cat.name });
     });
   });
 
@@ -4293,15 +4332,15 @@ io.on('connection', (socket) => {
         try { biddersDoPass(room, socket.id); } catch(e) { console.error('bidders pass (dc) error:', e); }
       }
       const dcPlayer = room.players.find(p => p.id === socket.id);
-      if (dcPlayer) {
-        dcPlayer.isDisconnected = true;
-        io.to(room.code).emit('room-update', sanitizeRoom(room));
-      }
+      // A stale socket (player already reconnected on a new one) — nothing to do
+      if (!dcPlayer) return;
+      dcPlayer.isDisconnected = true;
+      io.to(room.code).emit('room-update', sanitizeRoom(room));
       if (!room._dcTimers) room._dcTimers = {};
       // Very generous grace periods — phones suspend sockets when backgrounded/locked,
       // and desktops drop them when minimised. Players should be able to tab away for
       // a long time without being removed mid-session.
-      const delay = room.gameState !== 'lobby' ? 30 * 60 * 1000 : 10 * 60 * 1000; // 30 min in-game, 10 min lobby
+      const delay = room.gameState !== 'lobby' ? 3 * 60 * 60 * 1000 : 30 * 60 * 1000; // 3 h in-game, 30 min lobby
       room._dcTimers[socket.id] = setTimeout(() => { _removePlayer(room, socket.id, name); }, delay);
     }
   });
@@ -4309,6 +4348,8 @@ io.on('connection', (socket) => {
 
 function _removePlayer(room, socketId, name) {
   if (!room) return;
+  // Socket id no longer belongs to anyone (they reconnected under a new id) — leave them be
+  if (!room.players.some(p => p.id === socketId)) return;
   room.players = room.players.filter(p => p.id !== socketId);
   if (room.readyPlayers) room.readyPlayers.delete(socketId);
   if (room.votes) delete room.votes[socketId];
@@ -4359,6 +4400,19 @@ app.get('/api/whoami-cats', (req, res) => {
   });
   res.json(out);
 });
+
+// Render's free tier sleeps after ~15 min with no inbound HTTP traffic — which happens
+// when every phone in a game is backgrounded — and a sleep wipes all in-memory rooms.
+// While any room exists, ping our own public URL so the instance stays awake.
+if (process.env.RENDER_EXTERNAL_URL) {
+  const selfUrl = process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '') + '/ping';
+  setInterval(() => {
+    if (Object.keys(rooms).length === 0) return;
+    try {
+      require('https').get(selfUrl, res => res.resume()).on('error', () => {});
+    } catch (e) {}
+  }, 10 * 60 * 1000);
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

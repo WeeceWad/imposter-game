@@ -240,6 +240,9 @@
     /* ─────────────── TOAST / ALERTS ─────────────── */
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1e1e38; border: 1px solid var(--border); color: var(--text); padding: 12px 20px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; transition: transform .3s, opacity .3s; opacity: 0; z-index: 9999; max-width: 340px; text-align: center; white-space: pre-line; }
     #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #conn-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 10000; display: none; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px; background: rgba(127,29,29,0.96); border-bottom: 1px solid #ef4444; color: #fee2e2; font-size: 0.88rem; font-weight: 700; text-align: center; }
+    #conn-banner.show { display: flex; }
+    #conn-banner button { background: #fff; color: #7f1d1d; border: none; border-radius: 999px; padding: 6px 14px; font-weight: 800; font-size: 0.85rem; cursor: pointer; }
     #toast.error { border-color: var(--danger); color: #fca5a5; }
     #toast.success { border-color: var(--success); color: #86efac; }
 
@@ -384,6 +387,13 @@
   <div class="logo">PARTY GAMES</div>
   <div class="logo-sub" id="home-sub">Pick a game. Grab your friends. Play.</div>
   <div style="height:8px"></div>
+
+  <!-- Rejoin last room (shown if you got disconnected / kicked to home) -->
+  <div id="home-rejoin" class="card" style="display:none; flex-direction:column; gap:10px; border-color:var(--accent)">
+    <div class="card-title" style="margin-bottom:0">Got disconnected?</div>
+    <button class="btn btn-primary" id="home-rejoin-btn" onclick="rejoinLastRoom()">🔄 Rejoin</button>
+    <button class="btn-ghost" style="font-size:0.8rem" onclick="forgetLastRoom()">Not now</button>
+  </div>
 
   <div class="card" style="display:flex; flex-direction:column; gap:14px">
     <div style="width:100%">
@@ -1756,6 +1766,12 @@
 <!-- TOAST -->
 <div id="toast"></div>
 
+<!-- CONNECTION LOST BANNER -->
+<div id="conn-banner">
+  <span id="conn-banner-text">⚠️ Connection lost — reconnecting…</span>
+  <button onclick="forceReconnect()">🔄 Reconnect</button>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
 // ──────────────────────────────────────────
@@ -1800,6 +1816,69 @@ function setMyId(id) {
 // ──────────────────────────────────────────
 // SOCKET SETUP — single unified handler, no duplicates
 // ──────────────────────────────────────────
+// ── Last session: survives failed rejoins so the home screen can offer "Rejoin" ──
+// (imposter_room/imposter_name drive automatic rejoin; this one is only cleared when
+// you deliberately leave or the host ends the lobby.)
+function saveLastSession(code, name) {
+  if (!code || !name) return;
+  try { safeStore.setItem('pg_last_session', JSON.stringify({ code, name })); } catch (e) {}
+}
+function getLastSession() {
+  try { const v = JSON.parse(safeStore.getItem('pg_last_session') || 'null'); return (v && v.code && v.name) ? v : null; }
+  catch (e) { return null; }
+}
+function forgetLastRoom() {
+  safeStore.removeItem('pg_last_session');
+  renderHomeRejoin();
+}
+function renderHomeRejoin() {
+  const card = document.getElementById('home-rejoin');
+  if (!card) return;
+  const last = getLastSession();
+  if (!last || currentRoom) { card.style.display = 'none'; return; }
+  card.style.display = 'flex';
+  const btn = document.getElementById('home-rejoin-btn');
+  if (btn) btn.textContent = '🔄 Rejoin ' + last.code + ' as ' + last.name;
+}
+let _manualRejoin = false;
+function rejoinLastRoom() {
+  const last = getLastSession();
+  if (!last) return;
+  _manualRejoin = true;
+  myPlayerName = last.name;
+  safeStore.setItem('imposter_room', last.code);
+  safeStore.setItem('imposter_name', last.name);
+  showToast('Rejoining ' + last.code + '…', 'success');
+  if (!socket) { initSocket(); return; }       // 'connect' handler sends rejoin-room
+  if (socket.connected) socket.emit('rejoin-room', { code: last.code, name: last.name });
+  else socket.connect();
+}
+
+// ── Connection banner ──
+function setConnBanner(show, text) {
+  const b = document.getElementById('conn-banner');
+  if (!b) return;
+  if (text) { const t = document.getElementById('conn-banner-text'); if (t) t.textContent = text; }
+  b.classList.toggle('show', !!show);
+}
+// Throw away the current (possibly dead) connection and open a fresh one.
+// The 'connect' handler rejoins the room automatically.
+function forceReconnect() {
+  setConnBanner(true, '⏳ Reconnecting…');
+  if (!socket) {
+    const last = getLastSession();
+    if (!myPlayerName && last) {
+      myPlayerName = last.name;
+      safeStore.setItem('imposter_room', last.code);
+      safeStore.setItem('imposter_name', last.name);
+    }
+    initSocket();
+    return;
+  }
+  try { socket.disconnect(); } catch (e) {}
+  socket.connect();
+}
+
 function initSocket() {
   if (socket) return;
   socket = io({
@@ -1821,10 +1900,25 @@ function initSocket() {
     if (!socket.connected) { socket.connect(); return; } // 'connect' handler rejoins once back
     const roomCode = currentRoom ? currentRoom.code : safeStore.getItem('imposter_room');
     const name = myPlayerName || safeStore.getItem('imposter_name');
-    if (roomCode && name) {
-      clearTimeout(_rejoinTimer);
-      _rejoinTimer = setTimeout(() => socket.emit('rejoin-room', { code: roomCode, name: name }), 150);
-    }
+    if (!roomCode || !name) return;
+    clearTimeout(_rejoinTimer);
+    _rejoinTimer = setTimeout(() => {
+      // After the phone/tab was in the background the socket can *look* connected
+      // but be dead (it can take ~2 min to notice). Ask the server; if there's no
+      // answer fast, drop it and reconnect immediately.
+      let answered = false;
+      const kill = setTimeout(() => {
+        if (answered || !socket) return;
+        setConnBanner(true, '⏳ Reconnecting…');
+        try { socket.disconnect(); } catch (e) {}
+        socket.connect();
+      }, 2500);
+      socket.emit('alive-check', () => {
+        answered = true;
+        clearTimeout(kill);
+        socket.emit('rejoin-room', { code: roomCode, name: name });
+      });
+    }, 150);
   }
 
   document.addEventListener('visibilitychange', () => {
@@ -1853,44 +1947,66 @@ function initSocket() {
       const c = code || savedRoom;
       if (c) { socket.emit('join-room', { code: c, name: savedName }); return; }
     }
-    // Be tolerant of transient failures (server briefly restarting, a reconnect
-    // race): retry a few times before actually giving up, so people aren't kicked
-    // just for tabbing away for a moment.
-    if (savedRoom && savedName && _rejoinRetries < 5) {
+    // The room itself is gone (host ended it / server restarted) — nothing to rejoin
+    if (reason === 'no-room') {
+      _rejoinRetries = 0; _manualRejoin = false;
+      safeStore.removeItem('imposter_room');
+      safeStore.removeItem('imposter_name');
+      safeStore.removeItem('pg_last_session');
+      currentRoom = null; myId = null; gameIsOver = false;
+      setConnBanner(false);
+      const activeScreen = document.querySelector('.screen.active');
+      const wasInGame = activeScreen && activeScreen.id !== 'screen-home';
+      showScreen('home');
+      if (wasInGame || _manualRejoin) showToast('That room has closed', 'error');
+      return;
+    }
+    // Be tolerant of transient failures (a reconnect race): retry for a while
+    // before giving up, so people aren't kicked just for tabbing away.
+    if (savedRoom && savedName && _rejoinRetries < 10) {
       _rejoinRetries++;
       setTimeout(() => {
         if (socket && socket.connected) socket.emit('rejoin-room', { code: savedRoom, name: savedName });
-      }, 2000);
+      }, 3000);
       return;
     }
-    // Genuinely gone — clean up
-    _rejoinRetries = 0;
+    // Couldn't get back in automatically — go home but KEEP the last session so
+    // the home screen shows a Rejoin button.
+    _rejoinRetries = 0; _manualRejoin = false;
     safeStore.removeItem('imposter_room');
     safeStore.removeItem('imposter_name');
     currentRoom = null; myId = null; gameIsOver = false;
-    const activeScreen = document.querySelector('.screen.active');
-    const wasInGame = activeScreen && activeScreen.id !== 'screen-home';
+    setConnBanner(false);
     showScreen('home');
-    if (wasInGame) showToast('The game has ended', 'error');
+    showToast(gameState && gameState !== 'lobby'
+      ? "Couldn't get you back into that game — tap Rejoin to try again"
+      : "Couldn't reconnect — tap Rejoin to try again", 'error');
   });
 
   // Host ended the whole lobby — everyone returns home
   socket.on('room-closed', () => {
+    safeStore.removeItem('pg_last_session');
+    setConnBanner(false);
     resetToHome('The host ended the lobby');
   });
 
-  socket.on('rejoin-ack', ({ code, playerId }) => {
+  socket.on('rejoin-ack', ({ code, playerId, quiet }) => {
     myId = playerId;
     _rejoinRetries = 0;
     if (code) safeStore.setItem('imposter_room', code);
     if (myPlayerName) safeStore.setItem('imposter_name', myPlayerName);
+    saveLastSession(code, myPlayerName);
     document.getElementById('lobby-code').textContent = code;
-    showToast('Reconnected ✓', 'success');
+    const wasDown = document.getElementById('conn-banner').classList.contains('show');
+    setConnBanner(false);
+    if (!quiet || wasDown || _manualRejoin) showToast('Reconnected ✓', 'success');
+    _manualRejoin = false;
   });
 
   // ── Room events ──
   socket.on('room-created', ({ code, playerId }) => {
     setMyId(playerId);
+    saveLastSession(code, myPlayerName);
     if (code) safeStore.setItem('imposter_room', code);
     if (myPlayerName) safeStore.setItem('imposter_name', myPlayerName);
     showScreen('lobby');
@@ -1899,6 +2015,9 @@ function initSocket() {
 
   socket.on('room-joined', ({ code, playerId }) => {
     setMyId(playerId);
+    saveLastSession(code, myPlayerName);
+    setConnBanner(false);
+    _manualRejoin = false;
     if (code) safeStore.setItem('imposter_room', code);
     if (myPlayerName) safeStore.setItem('imposter_name', myPlayerName);
     showScreen('lobby');
@@ -2111,6 +2230,10 @@ function initSocket() {
   });
 
   socket.on('kicked', () => {
+    safeStore.removeItem('pg_last_session');
+    safeStore.removeItem('imposter_room');
+    safeStore.removeItem('imposter_name');
+    setConnBanner(false);
     socket.disconnect();
     socket = null; myId = null; currentRoom = null;
     showScreen('home');
@@ -2127,8 +2250,9 @@ function initSocket() {
     if (reason !== 'io client disconnect') {
       clearTimeout(_reconnectToast);
       _reconnectToast = setTimeout(() => {
-        if (socket && !socket.connected) showToast('Reconnecting…', 'error');
-      }, 3000);
+        const inRoom = currentRoom || safeStore.getItem('imposter_room');
+        if (socket && !socket.connected && inRoom) setConnBanner(true, '⚠️ Connection lost — reconnecting…');
+      }, 2500);
     }
   });
 
@@ -2770,6 +2894,8 @@ function leaveRoom() {
   if (!confirm('Leave the room? You\'ll need the code to rejoin.')) return;
   safeStore.removeItem('imposter_room');
   safeStore.removeItem('imposter_name');
+  safeStore.removeItem('pg_last_session');
+  setConnBanner(false);
   // Tell the server this is a deliberate leave so we're removed immediately
   // (not left as a ghost for the disconnect grace period).
   if (socket) { socket.emit('leave-room'); socket.disconnect(); socket = null; }
@@ -4737,6 +4863,7 @@ function showScreen(name) {
   const target = document.getElementById(`screen-${name}`);
   if (!target) return;
   target.classList.add('active');
+  if (name === 'home') renderHomeRejoin();
 
   if (name === 'lobby') {
     if (categories.length === 0) loadCategories();
@@ -6145,6 +6272,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedRoom && savedName) {
     myPlayerName = savedName;
     initSocket();
+  } else {
+    renderHomeRejoin();
   }
 });
 </script>

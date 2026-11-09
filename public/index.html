@@ -427,7 +427,7 @@
     <button class="btn-ghost" onclick="leaveRoom()">← Leave</button>
   </div>
 
-  <div style="width:100%">
+  <div style="width:100%" id="lobby-code-section">
     <div class="card-title">Room Code <small>(tap to copy)</small></div>
     <div class="room-code-display" id="lobby-code" onclick="copyCode()">------</div>
     <div style="display:flex; gap:8px; margin-top:8px">
@@ -2053,8 +2053,17 @@ function initSocket() {
     document.getElementById('ready-btn').disabled = false;
     document.getElementById('ready-btn').textContent = "✅ I've seen my role";
     document.getElementById('ready-status').style.display = 'none';
-    showScreen('role');
     renderRoleCard(data);
+    // Rejoin replay: restore the word, but only show the role screen if we're
+    // genuinely still at that stage (room-update then moves us to the right phase).
+    if (data._replay && data._allReady) return;
+    showScreen('role');
+    if (data._replay && data._ready) {
+      document.getElementById('ready-btn').disabled = true;
+      document.getElementById('ready-btn').style.display = 'none';
+      document.getElementById('ready-count-text').textContent = 'Waiting for everyone...';
+      document.getElementById('ready-status').style.display = 'block';
+    }
   });
 
   socket.on('ready-update', ({ readyCount, totalCount }) => {
@@ -2149,6 +2158,10 @@ function initSocket() {
     mySfRole = data;
     mySfVote = null;
     renderSpyfallRoleCard(data);
+    if (data._replay) {
+      if (data._state === 'spyfall-playing') spyfallRoleReady();
+      return; // other spyfall phases are placed by room-update
+    }
     showScreen('spyfall-role');
   });
 
@@ -2315,7 +2328,9 @@ function initSocket() {
     if (readyBtn) { readyBtn.disabled = false; readyBtn.textContent = '✅ I\'m Ready!'; }
     if (readyCounter) readyCounter.textContent = `0 / ${data.others.length + 1} ready`;
 
+    if (data._replay && data._allReady) { showScreen('whoami-game'); return; }
     showScreen('whoami-role');
+    if (data._replay && data._ready && readyBtn) { readyBtn.disabled = true; readyBtn.textContent = '⏳ Waiting for others...'; }
   });
 
   socket.on('whoami-ready-update', ({ readyCount, totalCount }) => {
@@ -2482,7 +2497,16 @@ function initSocket() {
     if (countEl) countEl.textContent = '0 / ' + (currentRoom ? currentRoom.players.length : '?') + ' ready';
     const readyBtn = document.getElementById('draw-ready-btn');
     if (readyBtn) { readyBtn.disabled = false; readyBtn.textContent = '✅ Ready to Draw!'; }
+    if (data._replay && data._allReady) {
+      if (data._state === 'draw-drawing') {
+        showScreen('draw-canvas');
+        const wordEl = document.getElementById('draw-canvas-word');
+        if (wordEl) wordEl.textContent = myWord || '???';
+      }
+      return; // reveal / voting phases are placed by room-update
+    }
     showScreen('draw-role');
+    if (data._replay && data._ready && readyBtn) { readyBtn.disabled = true; readyBtn.textContent = '⏳ Waiting for others...'; }
   });
 
   socket.on('draw-ready-update', function(data) {
@@ -2598,7 +2622,9 @@ function initSocket() {
     const readyCount = document.getElementById('collab-ready-count');
     if (readyCount) readyCount.textContent = '0 / ' + (data.turnOrder ? data.turnOrder.length : 0) + ' ready';
 
+    if (data._replay && data._allReady) { showScreen('collab-canvas'); initCollabCanvas(); return; }
     showScreen('collab-role');
+    if (data._replay && data._ready && readyBtn) { readyBtn.disabled = true; readyBtn.textContent = '⏳ Waiting for others...'; }
   });
 
   socket.on('collab-turn-change', function(data) {
@@ -2754,7 +2780,7 @@ function applyRoomUpdate(room) {
   }
 
   if (room.gameState === 'draw-drawing') {
-    if (['screen-lobby', 'screen-draw-role'].includes(active)) showScreen('draw-canvas');
+    if (['screen-lobby', 'screen-draw-role', 'screen-home'].includes(active)) showScreen('draw-canvas');
   }
 
   if (room.gameState === 'draw-reveal') {
@@ -3923,6 +3949,9 @@ function renderLobbyData(room) {
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
+  // Players who joined just see the player list — room code / invite is the host's job
+  const codeSection = document.getElementById('lobby-code-section');
+  if (codeSection) codeSection.style.display = amHost ? 'block' : 'none';
   document.getElementById('host-start-btn').style.display = amHost ? 'block' : 'none';
   document.getElementById('player-waiting-msg').style.display = amHost ? 'none' : 'block';
   const endLobbyBtn = document.getElementById('host-end-lobby-btn');

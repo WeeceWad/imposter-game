@@ -1746,7 +1746,24 @@ function replayPrivate(room, socket) {
   if (!room.gameState || NO_REPLAY_STATES.includes(room.gameState)) return;
   const evs = room.privateEvents && room.privateEvents[socket.playerName];
   if (!evs) return;
-  Object.entries(evs).forEach(([ev, data]) => socket.emit(ev, data));
+  // Tell the client which stage this player is really at, so it restores the role
+  // data WITHOUT dumping them back on a "ready up" screen they already got past.
+  const id = socket.id;
+  const n = room.players.length;
+  const has = set => !!(set && set.has(id));
+  const stage = {
+    'your-role':           { ready: has(room.readyPlayers),       allReady: room.gameState !== 'role-reveal' },
+    'whoami-game-started': { ready: has(room.whoamiReady),        allReady: !!room.whoamiAllReady || (!!room.whoamiReady && room.whoamiReady.size >= n) },
+    'draw-role':           { ready: has(room.drawReadyPlayers),   allReady: room.gameState !== 'draw-role-reveal' },
+    'collab-role':         { ready: has(room.collabReadyPlayers), allReady: !!room.collabAllReady || (!!room.collabReadyPlayers && room.collabReadyPlayers.size >= n) },
+    'spyfall-started':     { ready: true, allReady: true }
+  };
+  Object.entries(evs).forEach(([ev, data]) => {
+    const st = stage[ev] || { ready: true, allReady: true };
+    socket.emit(ev, Object.assign({}, data, {
+      _replay: true, _ready: st.ready, _allReady: st.allReady, _state: room.gameState
+    }));
+  });
 }
 
 function sanitizeRoom(room) {
@@ -2652,6 +2669,7 @@ io.on('connection', (socket) => {
       room.whoamiAssignments = {};
       room.whoamiAttempts = {};
       room.whoamiReady = new Set();
+      room.whoamiAllReady = false;
       room.players.forEach((p, i) => { room.whoamiAssignments[p.id] = pool[i % pool.length]; });
       room.gameState = 'whoami-playing';
       room.players.forEach(player => {
@@ -2742,6 +2760,7 @@ io.on('connection', (socket) => {
       room.collabCurrentTurnIdx = 0;
       room.collabStrokes = [];
       room.collabReadyPlayers = new Set();
+      room.collabAllReady = false;
       room.gameState = 'collab-drawing';
       room.votes = {};
       room.eliminatedPlayers = [];
@@ -3170,6 +3189,7 @@ io.on('connection', (socket) => {
     const totalCount = room.players.length;
     io.to(room.code).emit('whoami-ready-update', { readyCount, totalCount });
     if (readyCount >= totalCount) {
+      room.whoamiAllReady = true;
       io.to(room.code).emit('whoami-all-ready');
     }
   });
@@ -3938,6 +3958,7 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('collab-ready-update', { readyCount, totalCount });
 
     if (readyCount >= totalCount) {
+      room.collabAllReady = true;
       io.to(room.code).emit('collab-all-ready');
     }
   });

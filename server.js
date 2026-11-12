@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const LWQ = require('./limitless-questions');
 
 // ── Crash guards ──────────────────────────────────────────────
 // A single unhandled error must NEVER take down the whole server — that would
@@ -1684,6 +1685,229 @@ function mindmeldNewPrompt(room) {
   d.revealed = (d.mode === 'offline');
 }
 
+// ─────────────────────────────────────────────
+// LIMITLESS WIN
+// Life Builder (60s quick-fire, +5 lives per correct) → the Limitless Ladder.
+// Each ladder answer is 1–50: you climb as many steps as you guess. Under costs
+// a life per step short; over loses everything; exact banks the last money line
+// reached and earns +5 lives. Lifelines sit on hidden steps of the ladder.
+// ─────────────────────────────────────────────
+const LW_MONEY = [500, 1000, 2500, 5000, 10000, 20000, 30000, 50000, 75000, 100000, 150000, 250000];
+const LW_LIFELINES = ['more-than', 'odd-even', 'range', 'take-two'];
+const LW_TEAM_NAMES = ['🔴 Red', '🔵 Blue', '🟢 Green', '🟡 Yellow'];
+
+// Money line at or below a step (a line every 10 steps; +£250k each line after £250k)
+function lwMoneyAt(step) {
+  const i = Math.floor(Math.max(0, step) / 10);
+  return i < LW_MONEY.length ? LW_MONEY[i] : 250000 + (i - (LW_MONEY.length - 1)) * 250000;
+}
+// Lifelines are found on steps 15, 40, 65, 90, … (every 25)
+function lwIsLifelineStep(step) { return step >= 15 && (step - 15) % 25 === 0; }
+
+function lwDrawLifeline(e) {
+  if (!e.deck || e.deckPos >= e.deck.length) { e.deck = shuffleArray(LW_LIFELINES); e.deckPos = 0; }
+  return e.deck[e.deckPos++];
+}
+
+function lwPick(pool, used) {
+  if (used.size >= pool.length) used.clear();
+  let idx;
+  do { idx = Math.floor(Math.random() * pool.length); } while (used.has(idx));
+  used.add(idx);
+  return idx;
+}
+
+function lwActive(e) { return e.status === 'playing' || e.status === 'sudden'; }
+function lwEntrantOf(room, name) {
+  const d = room.lwData;
+  return d ? d.entrants.find(e => e.members.includes(name)) : null;
+}
+function lwIsConnected(room, name) {
+  const p = room.players.find(pl => pl.name === name);
+  return !!(p && !p.isDisconnected && io.sockets.sockets.has(p.id));
+}
+
+// Does a guess agree with what the lifeline revealed? (only consistent answers are accepted)
+function lwGuessAllowed(e, v) {
+  const info = e.llInfo;
+  if (!info) return true;
+  if (info.type === 'more-than') return info.more ? v > info.value : v <= info.value;
+  if (info.type === 'odd-even') return (v % 2 === 0) === (info.parity === 'even');
+  if (info.type === 'range') return v >= info.low && v <= info.high;
+  return true;
+}
+
+function lwPublic(room) {
+  const d = room.lwData;
+  const phase = room.gameState;
+  const showQ = phase === 'limitless-question' || phase === 'limitless-reveal';
+  return {
+    mode: d.mode,
+    qNum: d.qNum,
+    question: showQ && d.q ? d.q.text : null,
+    tier: showQ && d.q ? d.q.tier : null,
+    answer: phase === 'limitless-reveal' && d.q ? d.q.a : null,
+    endsInMs: d.endsAt ? Math.max(0, d.endsAt - Date.now()) : 0,
+    entrants: d.entrants.map(e => ({
+      id: e.id, name: e.name, members: e.members,
+      lives: e.lives, step: e.step, bank: e.bank, money: lwMoneyAt(e.step),
+      status: e.status, final: e.final,
+      lifeline: e.lifeline, choice: e.choice, usedLL: e.usedLL,
+      locked: e.locked,
+      bCorrect: e.bCorrect,
+      builderQ: phase === 'limitless-builder' && e.bq != null ? LWQ.builder[e.bq][0] : null,
+      bTurn: e.members[e.bTurn] || e.members[0],
+      bLast: e.bLast,
+      result: phase === 'limitless-reveal' || phase === 'limitless-ended' ? e.result : null
+    }))
+  };
+}
+
+// Private per-team/per-player bits: the dial (so rivals can't copy) and lifeline clues
+function lwPrivatePayload(e) {
+  return { entrantId: e.id, dial: e.dial, dial2: e.dial2, llInfo: e.llInfo };
+}
+function lwSendPrivate(room, e, exceptSocketId) {
+  const payload = lwPrivatePayload(e);
+  e.members.forEach(name => {
+    const p = room.players.find(pl => pl.name === name);
+    if (p && p.id !== exceptSocketId) io.to(p.id).emit('lw-private', payload);
+  });
+}
+function lwBroadcast(room) {
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+  if (room.lwData) room.lwData.entrants.forEach(e => lwSendPrivate(room, e));
+}
+function lwResyncSocket(room, socket) {
+  if (!room.lwData || !room.gameState || !room.gameState.startsWith('limitless-')) return;
+  const e = lwEntrantOf(room, socket.playerName);
+  if (e) socket.emit('lw-private', lwPrivatePayload(e));
+}
+function lwSetTimer(room, ms, fn) {
+  clearTimeout(room._lwTimer);
+  room._lwTimer = setTimeout(() => { if (rooms[room.code] === room) fn(); }, ms);
+}
+
+function lwStartBuilder(room) {
+  const d = room.lwData;
+  room.gameState = 'limitless-builder';
+  d.endsAt = Date.now() + d.builderSeconds * 1000;
+  d.entrants.forEach(e => { e.bq = lwPick(LWQ.builder, d.usedBuilder); e.bTurn = 0; e.bLast = null; });
+  lwSetTimer(room, d.builderSeconds * 1000 + 250, () => lwEndBuilder(room));
+  io.to(room.code).emit('limitless-started');
+  lwBroadcast(room);
+}
+
+function lwEndBuilder(room) {
+  const d = room.lwData;
+  if (!d || room.gameState !== 'limitless-builder') return;
+  clearTimeout(room._lwTimer);
+  d.endsAt = 0;
+  d.entrants.forEach(e => {
+    e.bq = null;
+    if (e.lives <= 0) { e.status = 'out'; e.final = 0; e.result = { outcome: 'no-lives-builder' }; }
+    else e.status = 'playing';
+  });
+  room.gameState = d.entrants.some(lwActive) ? 'limitless-builder-done' : 'limitless-ended';
+  lwBroadcast(room);
+}
+
+function lwNextQuestion(room) {
+  const d = room.lwData;
+  const active = d.entrants.filter(lwActive);
+  if (!active.length) return lwEnd(room);
+  const top = Math.max(...active.map(e => e.step));
+  const tier = top < 50 ? 'easy' : top < 110 ? 'medium' : 'hard';
+  const pool = LWQ.ladder[tier];
+  const idx = lwPick(pool, d.usedLadder[tier]);
+  d.qNum++;
+  d.q = { text: pool[idx][0], a: pool[idx][1], tier };
+  d.entrants.forEach(e => {
+    e.dial = 0; e.dial2 = 0; e.locked = false; e.guess = null; e.guess2 = null;
+    e.usedLL = null; e.llInfo = null; e.result = null;
+    e.choice = null; // an unanswered lifeline swap keeps the one already held
+  });
+  room.gameState = 'limitless-question';
+  d.endsAt = Date.now() + d.questionSeconds * 1000;
+  lwSetTimer(room, d.questionSeconds * 1000 + 250, () => lwReveal(room));
+  lwBroadcast(room);
+}
+
+function lwCheckAllLocked(room) {
+  const d = room.lwData;
+  if (room.gameState !== 'limitless-question') return;
+  const active = d.entrants.filter(lwActive);
+  if (active.every(e => e.locked)) lwSetTimer(room, 700, () => lwReveal(room));
+}
+
+function lwReveal(room) {
+  const d = room.lwData;
+  if (!d || room.gameState !== 'limitless-question') return;
+  clearTimeout(room._lwTimer);
+  d.endsAt = 0;
+  const A = d.q.a;
+  d.entrants.filter(lwActive).forEach(e => {
+    // Time ran out → whatever is on the dial is locked in
+    if (!e.locked) {
+      e.guess = e.dial;
+      e.guess2 = e.usedLL === 'take-two' ? e.dial2 : null;
+      e.locked = true; e.autoLocked = true;
+    }
+    const guesses = [e.guess].concat(e.guess2 != null ? [e.guess2] : []);
+    const under = guesses.filter(g => g <= A);
+    const eff = under.length ? Math.max(...under) : Math.min(...guesses);
+    const r = { guess: e.guess, guess2: e.guess2, used: eff, answer: A, llInfo: e.llInfo, usedLL: e.usedLL, auto: !!e.autoLocked };
+    e.autoLocked = false;
+    if (eff > A) {
+      e.status = 'bust'; e.final = 0; r.outcome = 'over';
+    } else {
+      const err = A - eff;
+      const oldStep = e.step;
+      e.step += eff; r.climbed = eff;
+      if (err === 0) {
+        e.lives += 5;
+        e.bank = Math.max(e.bank, lwMoneyAt(e.step));
+        if (e.status === 'sudden') e.status = 'playing';
+        r.outcome = 'exact'; r.banked = e.bank;
+      } else if (e.status === 'sudden') {
+        e.status = 'bust'; e.final = 0; r.outcome = 'sudden-out'; r.short = err;
+      } else if (err > e.lives) {
+        r.livesLost = e.lives; e.lives = 0; e.status = 'bust'; e.final = 0; r.outcome = 'no-lives'; r.short = err;
+      } else {
+        e.lives -= err; r.livesLost = err; r.short = err;
+        if (e.lives === 0) { e.status = 'sudden'; r.outcome = 'sudden'; } else r.outcome = 'under';
+      }
+      // Lifelines discovered on the way up
+      if (lwActive(e)) {
+        const found = [];
+        for (let st = oldStep + 1; st <= e.step; st++) if (lwIsLifelineStep(st)) found.push(lwDrawLifeline(e));
+        if (found.length) {
+          r.found = found;
+          if (!e.lifeline && found.length === 1) e.lifeline = found[0];
+          else e.choice = [...new Set([e.lifeline, ...found].filter(Boolean))];
+          if (e.choice && e.choice.length === 1) { e.lifeline = e.choice[0]; e.choice = null; }
+        }
+      }
+    }
+    e.result = r;
+  });
+  room.gameState = 'limitless-reveal';
+  lwBroadcast(room);
+}
+
+function lwEnd(room) {
+  const d = room.lwData;
+  if (!d) return;
+  clearTimeout(room._lwTimer);
+  d.endsAt = 0;
+  d.entrants.forEach(e => {
+    if (lwActive(e)) { e.status = 'cashed'; e.final = e.bank; e.endedByHost = true; }
+    if (e.final == null) e.final = 0;
+  });
+  room.gameState = 'limitless-ended';
+  lwBroadcast(room);
+}
+
 // ── CONVERGE (everyone types a word; keep linking until you all say the same one) ──
 function convergeNorm(w) {
   return String(w || '').toLowerCase().trim()
@@ -1740,7 +1964,7 @@ function sendPrivate(room, playerId, event, data) {
 
 // States where replaying a role card would be wrong (game finished / not started)
 const NO_REPLAY_STATES = ['lobby', 'game-over', 'ended', 'spyfall-ended', 'whoami-ended',
-  'bidders-ended', 'blind-ranking-ended', 'wavelength-end'];
+  'bidders-ended', 'blind-ranking-ended', 'wavelength-end', 'limitless-ended'];
 
 function replayPrivate(room, socket) {
   if (!room.gameState || NO_REPLAY_STATES.includes(room.gameState)) return;
@@ -1843,7 +2067,8 @@ function sanitizeRoom(room) {
         answer: room.mindmeldData.revealed ? ((room.mindmeldData.answers || {})[p.name] || '') : null
       }))
     } : null,
-    convergePublic: (room.gameState === 'converge-playing' && room.convergeData) ? convergePublic(room) : null
+    convergePublic: (room.gameState === 'converge-playing' && room.convergeData) ? convergePublic(room) : null,
+    limitlessPublic: (room.gameState && room.gameState.startsWith('limitless-') && room.lwData) ? lwPublic(room) : null
   };
 }
 
@@ -2920,6 +3145,44 @@ io.on('connection', (socket) => {
     // ── MIND MELD MODE ──
     // online  = everyone joins & types a word on their own phone
     // offline = one phone, host-managed name list, answers shouted out loud
+    // ── LIMITLESS WIN ──
+    if (room.settings.gameType === 'limitless') {
+      const mode = room.settings.lwMode === 'teams' ? 'teams' : 'solo';
+      let groups;
+      if (mode === 'solo') {
+        groups = room.players.map(p => ({ name: p.name, members: [p.name] }));
+      } else {
+        const count = Math.min(4, Math.max(2, parseInt(room.settings.lwTeamCount, 10) || 2));
+        const teamOf = room.settings.lwTeamOf || {};
+        groups = Array.from({ length: count }, (_, i) => ({ name: LW_TEAM_NAMES[i], members: [] }));
+        room.players.forEach(p => {
+          let t = teamOf[p.name];
+          if (!(t >= 0 && t < count)) t = groups.reduce((best, g, i) => g.members.length < groups[best].members.length ? i : best, 0);
+          groups[t].members.push(p.name);
+        });
+        groups = groups.filter(g => g.members.length > 0);
+      }
+      if (!groups.length) return socket.emit('error', { message: 'Need at least 1 player.' });
+      const secs = v => [30, 45, 60, 90, 120].includes(parseInt(v, 10)) ? parseInt(v, 10) : 60;
+      room.lwData = {
+        mode,
+        builderSeconds: secs(room.settings.lwBuilderSeconds),
+        questionSeconds: secs(room.settings.lwQuestionSeconds),
+        usedBuilder: new Set(),
+        usedLadder: { easy: new Set(), medium: new Set(), hard: new Set() },
+        qNum: 0, q: null, endsAt: 0,
+        entrants: groups.map((g, i) => ({
+          id: 'e' + i, name: g.name, members: g.members,
+          lives: 0, step: 0, bank: 0, status: 'builder', final: null,
+          lifeline: null, choice: null, deck: null, deckPos: 0,
+          dial: 0, dial2: 0, locked: false, guess: null, guess2: null, usedLL: null, llInfo: null,
+          bq: null, bTurn: 0, bCorrect: 0, bLast: null, result: null
+        }))
+      };
+      lwStartBuilder(room);
+      return;
+    }
+
     // ── CONVERGE MODE (co-op: link words until everyone types the same one) ──
     if (room.settings.gameType === 'converge') {
       if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players to start.' });
@@ -3477,6 +3740,8 @@ io.on('connection', (socket) => {
     room.categoriesData = null;
     room.mindmeldData = null;
     room.convergeData = null;
+    if (room._lwTimer) { clearTimeout(room._lwTimer); room._lwTimer = null; }
+    room.lwData = null;
     // Reset game mode back to word so video mode doesn't persist into the next game
     if (room.settings.gameMode && room.settings.gameMode !== 'word') {
       room.settings.gameMode = 'word';
@@ -3639,6 +3904,7 @@ io.on('connection', (socket) => {
       socket.emit('collab-full-state', { strokes: room.collabStrokes });
     }
     wvResyncSocket(room, socket);
+    lwResyncSocket(room, socket);
   });
 
   // ─────────────────────────────────────────────
@@ -4306,6 +4572,142 @@ io.on('connection', (socket) => {
     if (!room || room.host !== socket.id) return;
     room.gameState = 'lobby';
     room.convergeData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  // ── LIMITLESS WIN ──
+  function lwCtx() {
+    const room = rooms[socket.roomCode];
+    if (!room || !room.lwData) return {};
+    return { room, d: room.lwData, e: lwEntrantOf(room, socket.playerName) };
+  }
+
+  // Life Builder: answer the current quick-fire question
+  socket.on('lw-builder-answer', ({ value }) => {
+    const { room, d, e } = lwCtx();
+    if (!room || !e || room.gameState !== 'limitless-builder' || Date.now() > d.endsAt + 500) return;
+    // Teams: only the player whose turn it is (unless they've dropped out)
+    const active = e.members[e.bTurn] || e.members[0];
+    if (socket.playerName !== active && lwIsConnected(room, active)) return;
+    const n = parseInt(String(value == null ? '' : value).replace(/[,\s£]/g, ''), 10);
+    if (isNaN(n)) return;
+    const q = LWQ.builder[e.bq];
+    const correct = n === q[1];
+    e.bLast = { q: q[0], answer: q[1], given: n, correct, by: socket.playerName, at: Date.now() };
+    if (correct) {
+      e.lives += 5; e.bCorrect++;
+      e.bTurn = (e.bTurn + 1) % e.members.length; // turn passes only after a correct answer
+    }
+    e.bq = lwPick(LWQ.builder, d.usedBuilder);
+    lwBroadcast(room);
+  });
+
+  socket.on('lw-builder-pass', () => {
+    const { room, d, e } = lwCtx();
+    if (!room || !e || room.gameState !== 'limitless-builder') return;
+    const active = e.members[e.bTurn] || e.members[0];
+    if (socket.playerName !== active && lwIsConnected(room, active)) return;
+    const q = LWQ.builder[e.bq];
+    e.bLast = { q: q[0], answer: q[1], pass: true, by: socket.playerName, at: Date.now() };
+    e.bq = lwPick(LWQ.builder, d.usedBuilder);
+    lwBroadcast(room);
+  });
+
+  socket.on('lw-start-ladder', () => {
+    const { room } = lwCtx();
+    if (!room || room.host !== socket.id || room.gameState !== 'limitless-builder-done') return;
+    lwNextQuestion(room);
+  });
+
+  // Dial moved (teams share one dial; only teammates are told)
+  socket.on('lw-dial', ({ value, which }) => {
+    const { room, e } = lwCtx();
+    if (!room || !e || room.gameState !== 'limitless-question' || !lwActive(e) || e.locked) return;
+    const v = Math.max(0, Math.min(50, parseInt(value, 10) || 0));
+    if (which === 2 && e.usedLL === 'take-two') e.dial2 = v; else e.dial = v;
+    lwSendPrivate(room, e, socket.id);
+  });
+
+  socket.on('lw-lock', ({ value, value2 }) => {
+    const { room, e } = lwCtx();
+    if (!room || !e || room.gameState !== 'limitless-question' || !lwActive(e) || e.locked) return;
+    const v = Math.max(0, Math.min(50, parseInt(value, 10) || 0));
+    if (!lwGuessAllowed(e, v)) return socket.emit('error', { message: "That answer doesn't fit your lifeline clue." });
+    e.dial = v; e.guess = v;
+    if (e.usedLL === 'take-two') {
+      const v2 = Math.max(0, Math.min(50, parseInt(value2, 10) || 0));
+      e.dial2 = v2; e.guess2 = v2;
+    }
+    e.locked = true;
+    lwBroadcast(room);
+    lwCheckAllLocked(room);
+  });
+
+  socket.on('lw-lifeline', ({ value }) => {
+    const { room, d, e } = lwCtx();
+    if (!room || !e || room.gameState !== 'limitless-question' || !lwActive(e) || e.locked) return;
+    if (!e.lifeline || e.usedLL) return;
+    const A = d.q.a;
+    const type = e.lifeline;
+    let info = { type };
+    if (type === 'more-than') {
+      const v = Math.max(0, Math.min(50, parseInt(value, 10) || 0));
+      info = { type, value: v, more: A > v };
+    } else if (type === 'odd-even') {
+      info = { type, parity: A % 2 === 0 ? 'even' : 'odd' };
+    } else if (type === 'range') {
+      const low = Math.max(0, A - Math.floor(Math.random() * 11));
+      info = { type, low, high: low + 10 };
+    }
+    e.usedLL = type; e.llInfo = info; e.lifeline = null;
+    if (type === 'take-two') e.dial2 = e.dial;
+    lwBroadcast(room);
+  });
+
+  // Found a lifeline while already holding one — keep one
+  socket.on('lw-choose-lifeline', ({ type }) => {
+    const { room, e } = lwCtx();
+    if (!room || !e || !e.choice || !e.choice.includes(type)) return;
+    e.lifeline = type; e.choice = null;
+    lwBroadcast(room);
+  });
+
+  // The golden button — walk away with the bank (not after locking or using a lifeline this question)
+  socket.on('lw-cashout', () => {
+    const { room, e } = lwCtx();
+    if (!room || !e || !lwActive(e)) return;
+    const ok = ['limitless-builder-done', 'limitless-question', 'limitless-reveal'].includes(room.gameState);
+    if (!ok) return;
+    if (room.gameState === 'limitless-question' && (e.locked || e.usedLL)) {
+      return socket.emit('error', { message: "Too late to cash out on this question." });
+    }
+    e.status = 'cashed'; e.final = e.bank; e.choice = null;
+    e.result = Object.assign({}, e.result || {}, { cashedOut: true });
+    lwBroadcast(room);
+    if (room.gameState === 'limitless-question') {
+      if (!room.lwData.entrants.some(lwActive)) lwSetTimer(room, 500, () => lwReveal(room));
+      else lwCheckAllLocked(room);
+    }
+  });
+
+  socket.on('lw-next', () => {
+    const { room } = lwCtx();
+    if (!room || room.host !== socket.id || room.gameState !== 'limitless-reveal') return;
+    if (room.lwData.entrants.some(lwActive)) lwNextQuestion(room); else lwEnd(room);
+  });
+
+  socket.on('lw-end-game', () => {
+    const { room } = lwCtx();
+    if (!room || room.host !== socket.id || !room.gameState.startsWith('limitless-')) return;
+    lwEnd(room);
+  });
+
+  socket.on('lw-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (room._lwTimer) { clearTimeout(room._lwTimer); room._lwTimer = null; }
+    room.gameState = 'lobby';
+    room.lwData = null;
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 

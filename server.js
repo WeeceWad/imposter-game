@@ -1828,8 +1828,13 @@ function lwNextQuestion(room) {
     e.choice = null; // an unanswered lifeline swap keeps the one already held
   });
   room.gameState = 'limitless-question';
-  d.endsAt = Date.now() + d.questionSeconds * 1000;
-  lwSetTimer(room, d.questionSeconds * 1000 + 250, () => lwReveal(room));
+  if (d.questionSeconds > 0) {
+    d.endsAt = Date.now() + d.questionSeconds * 1000;
+    lwSetTimer(room, d.questionSeconds * 1000 + 250, () => lwReveal(room));
+  } else {
+    d.endsAt = 0; // ∞ — reveal when everyone has locked in (or the host forces it)
+    clearTimeout(room._lwTimer);
+  }
   lwBroadcast(room);
 }
 
@@ -3164,10 +3169,11 @@ io.on('connection', (socket) => {
       }
       if (!groups.length) return socket.emit('error', { message: 'Need at least 1 player.' });
       const secs = v => [30, 45, 60, 90, 120].includes(parseInt(v, 10)) ? parseInt(v, 10) : 60;
+      const qs = room.settings.lwQuestionSeconds;
       room.lwData = {
         mode,
         builderSeconds: secs(room.settings.lwBuilderSeconds),
-        questionSeconds: secs(room.settings.lwQuestionSeconds),
+        questionSeconds: (qs === 0 || qs === '0') ? 0 : secs(qs), // 0 = no time limit
         usedBuilder: new Set(),
         usedLadder: { easy: new Set(), medium: new Set(), hard: new Set() },
         qNum: 0, q: null, endsAt: 0,
@@ -4688,6 +4694,13 @@ io.on('connection', (socket) => {
       if (!room.lwData.entrants.some(lwActive)) lwSetTimer(room, 500, () => lwReveal(room));
       else lwCheckAllLocked(room);
     }
+  });
+
+  // Host: reveal now — anyone not locked in gets what's on their dial
+  socket.on('lw-force-reveal', () => {
+    const { room } = lwCtx();
+    if (!room || room.host !== socket.id || room.gameState !== 'limitless-question') return;
+    lwReveal(room);
   });
 
   socket.on('lw-next', () => {

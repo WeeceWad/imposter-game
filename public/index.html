@@ -361,6 +361,58 @@
     .lw-tier-medium { background:rgba(251,191,36,0.18); color:#fcd34d; }
     .lw-tier-hard { background:rgba(239,68,68,0.18); color:#fca5a5; }
 
+    /* Limitless tower (show-style) */
+    .lw-hud { display:flex; justify-content:space-between; align-items:center; width:100%; gap:8px; padding:0 4px; }
+    .lw-hud-item { text-align:center; min-width:84px; }
+    .lw-hud-label { font-size:1.05rem; font-weight:900; letter-spacing:1.5px; color:#fff; text-shadow:0 2px 0 #0e7490, 0 0 14px rgba(34,211,238,0.55); }
+    .lw-hud-val { font-size:2.1rem; font-weight:900; color:#fff; line-height:1.05; text-shadow:0 3px 0 #0e7490, 0 0 16px rgba(34,211,238,0.5); white-space:nowrap; }
+    .lw-hud-val.danger { color:#fca5a5; text-shadow:0 3px 0 #7f1d1d, 0 0 16px rgba(239,68,68,0.6); }
+    .lw-hud-ll { flex:1; display:flex; justify-content:center; }
+    .lw-ll-chip { border:2px solid #fff; background:rgba(255,255,255,0.08); color:#fff; border-radius:999px; padding:6px 12px; font-weight:900; font-size:0.78rem; white-space:nowrap; }
+    button.lw-ll-chip { cursor:pointer; box-shadow:0 0 14px rgba(255,255,255,0.35); animation: pulse 2s ease-in-out infinite; }
+    .lw-banner { width:100%; text-align:center; }
+    .lw-banner-main { font-size:1.6rem; font-weight:900; color:#fbbf24; text-shadow:0 2px 0 #92400e, 0 0 14px rgba(251,191,36,0.5); }
+    .lw-banner-sub { font-size:0.9rem; font-weight:800; margin-top:2px; }
+    .lw-tower-wrap { position:relative; width:min(74vw, 310px); margin:0 auto; }
+    .lw-tower { position:relative; height:clamp(240px, 38vh, 420px); background:linear-gradient(180deg,#1b1e8c,#1d3fb8); border-left:7px solid #22d3ee; border-right:7px solid #22d3ee; border-radius:6px 6px 0 0; overflow:hidden; touch-action:none; cursor:pointer; box-shadow:0 0 28px rgba(34,211,238,0.35); user-select:none; }
+    .lw-step { position:absolute; left:0; right:0; background:linear-gradient(180deg,#3756d6,#1e3a8a); border-top:1px solid rgba(147,197,253,0.55); }
+    .lw-step.line { border-top:2px solid #93c5fd; box-shadow:0 -1px 6px rgba(147,197,253,0.6); }
+    .lw-step.on { background:linear-gradient(180deg,#67e8f9,#06b6d4); border-top-color:#cffafe; }
+    .lw-step.gold { background:linear-gradient(180deg,#fde68a,#f59e0b); border-top-color:#fef3c7; animation: lwFlash .55s ease 3; }
+    .lw-step.red { background:linear-gradient(180deg,#fca5a5,#dc2626); border-top-color:#fee2e2; animation: lwFlash .55s ease 3; }
+    .lw-step.dim { opacity:0.28; }
+    .lw-step.ll { background:#fff; border-top-color:#fff; box-shadow:0 0 8px #fff; }
+    @keyframes lwFlash { 0%,100% { filter:none; } 50% { filter:brightness(1.6); } }
+    .lw-money { position:absolute; left:0; right:0; transform:translateY(50%); text-align:center; font-size:0.86rem; font-weight:900; color:#fff; letter-spacing:0.5px; text-shadow:0 2px 3px #000, 0 0 6px #000; pointer-events:none; z-index:2; }
+    .lw-tag { position:absolute; right:3px; transform:translateY(50%); font-size:0.6rem; font-weight:900; color:#fff; background:rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.4); padding:1px 6px; border-radius:8px; white-space:nowrap; z-index:3; pointer-events:none; }
+    .lw-mark { position:absolute; left:0; right:0; height:3px; transform:translateY(50%); z-index:4; pointer-events:none; }
+    .lw-mark span { position:absolute; left:3px; top:50%; transform:translateY(-50%); font-size:0.62rem; font-weight:900; padding:1px 6px; border-radius:8px; white-space:nowrap; }
+    .lw-mark.ans { background:#fbbf24; box-shadow:0 0 10px #fbbf24; }
+    .lw-mark.ans span { background:#fbbf24; color:#1c1300; }
+    .lw-mark.dial { background:#fff; }
+    .lw-mark.dial span { background:#fff; color:#0b0b2a; }
+    .lw-boxes { display:flex; border-left:7px solid #22d3ee; border-right:7px solid #22d3ee; background:#000; }
+    .lw-box { flex:1; height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-size:2.7rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums; }
+    .lw-box small { font-size:0.62rem; font-weight:900; letter-spacing:1px; color:#67e8f9; margin-bottom:2px; }
+    .lw-box.pick { cursor:pointer; opacity:0.55; }
+    .lw-box.pick.active { opacity:1; box-shadow:inset 0 0 0 3px #67e8f9; }
+    .lw-box.bad { color:#fca5a5; }
+    .lw-bx-btn { width:44px; flex-shrink:0; border:none; border-left:1px solid #164e63; border-right:1px solid #164e63; background:#03131a; color:#67e8f9; font-weight:900; font-size:0.9rem; cursor:pointer; }
+    .lw-bx-btn:active { background:#0e7490; color:#fff; }
+    .lw-boxes.two .lw-box { font-size:1.9rem; }
+    .lw-base { height:12px; background:linear-gradient(180deg,#fbbf24,#b45309); border-radius:0 0 10px 10px; box-shadow:0 6px 18px rgba(245,158,11,0.35); }
+    .lw-ctrl { display:flex; gap:8px; justify-content:center; width:100%; }
+    .lw-ctrl button { width:58px; height:46px; border-radius:12px; border:2px solid #22d3ee; background:rgba(34,211,238,0.1); color:#fff; font-size:1rem; font-weight:900; cursor:pointer; }
+    .lw-ctrl button:active { background:rgba(34,211,238,0.35); }
+    .lw-mini { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; background:var(--surface); border:1px solid var(--border); font-size:0.8rem; }
+    .lw-overlay { position:fixed; inset:0; z-index:9000; background:rgba(5,5,20,0.82); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:20px; }
+    .lw-overlay-card { width:100%; max-width:380px; background:linear-gradient(180deg,#1e1b4b,#111133); border:2px solid #fff; border-radius:20px; padding:22px 18px; text-align:center; box-shadow:0 0 40px rgba(255,255,255,0.25); animation: reveal .35s ease; }
+    .lw-ov-title { font-size:1.5rem; font-weight:900; color:#fff; letter-spacing:1px; text-shadow:0 0 14px rgba(255,255,255,0.5); }
+    .lw-ov-ll { display:flex; align-items:center; gap:12px; text-align:left; padding:12px; border-radius:14px; border:2px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.06); margin-top:10px; }
+    .lw-ov-ll.big { flex-direction:column; text-align:center; border:none; background:none; }
+    .lw-ov-icon { font-size:2.2rem; }
+    .lw-ov-ll.big .lw-ov-icon { font-size:4rem; }
+
     /* ─── WAVELENGTH ─── */
     .wv-screen { justify-content:flex-start; padding-top:24px; overflow-y:auto; max-width:680px; }
     .wv-screen .wv-spectrum-wrap { padding:14px 10px; }
@@ -633,7 +685,7 @@
       <div style="display:flex; gap:6px" id="lw-bsecs"></div>
     </div>
     <div class="setting-row">
-      <div><div class="setting-label">Question timer</div><div class="setting-desc">Auto-locks the dial at zero</div></div>
+      <div><div class="setting-label">Question timer</div><div class="setting-desc">Auto-locks the dial at zero · ∞ = no limit</div></div>
       <div style="display:flex; gap:6px" id="lw-qsecs"></div>
     </div>
   </div>
@@ -1892,68 +1944,49 @@
     </div>
   </div>
 
-  <!-- QUESTION / REVEAL -->
-  <div id="lw-sec-q" style="width:100%; display:none; flex-direction:column; gap:12px">
-    <div class="card text-center" style="width:100%; border-color:#f59e0b">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+  <!-- QUESTION / REVEAL — the show-style tower -->
+  <div id="lw-sec-q" style="width:100%; display:none; flex-direction:column; gap:12px; align-items:center">
+    <div class="card text-center" style="width:100%; border-color:#22d3ee; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center">
         <span id="lw-q-num" class="card-title" style="margin:0">Question 1</span>
-        <span id="lw-q-tier" class="lw-chip lw-tier-easy">EASY</span>
         <span id="lw-q-timer" class="lw-timer" style="font-size:1.3rem">60</span>
       </div>
-      <div id="lw-q-text" style="font-size:1.32rem; font-weight:900; line-height:1.3; margin:12px 0 4px">—</div>
+      <div id="lw-q-text" style="font-size:1.25rem; font-weight:900; line-height:1.3; margin-top:8px">—</div>
     </div>
 
-    <div class="lw-stats" id="lw-mystats"></div>
-    <div id="lw-my-msg" class="text-center" style="width:100%; font-weight:800; display:none"></div>
-
-    <!-- Dial -->
-    <div id="lw-dial-card" class="card" style="width:100%; display:none; flex-direction:column; gap:12px; align-items:center">
-      <div id="lw-ll-clue" class="lw-clue" style="display:none"></div>
-      <div id="lw-dials" style="width:100%; display:flex; gap:12px"></div>
-      <div id="lw-dial-warn" style="color:#f87171; font-weight:800; font-size:0.85rem; text-align:center; display:none"></div>
-      <button id="lw-lock-btn" class="btn btn-primary" onclick="lwLock()">🔒 Lock In</button>
+    <div class="lw-hud">
+      <div class="lw-hud-item"><div class="lw-hud-label">LIVES</div><div class="lw-hud-val" id="lw-hud-lives">0</div></div>
+      <div class="lw-hud-ll" id="lw-hud-ll"></div>
+      <div class="lw-hud-item"><div class="lw-hud-label">BANK</div><div class="lw-hud-val" id="lw-hud-bank">£0</div></div>
     </div>
 
-    <!-- Lifeline held -->
-    <div id="lw-ll-card" style="width:100%; display:none"></div>
-
-    <!-- Locked, waiting -->
-    <div id="lw-locked-card" class="card text-center" style="width:100%; display:none; border-color:var(--accent)">
-      <div class="card-title" style="color:var(--accent2)">Locked in</div>
-      <div id="lw-locked-val" style="font-size:2.4rem; font-weight:900">—</div>
-      <div id="lw-locked-wait" class="text-muted pulse" style="font-size:0.82rem"></div>
+    <div id="lw-banner" class="lw-banner" style="display:none">
+      <div id="lw-banner-main" class="lw-banner-main"></div>
+      <div id="lw-banner-sub" class="lw-banner-sub"></div>
     </div>
 
-    <!-- Reveal -->
-    <div id="lw-reveal-card" class="card text-center" style="width:100%; display:none; border-color:#f59e0b">
-      <div class="card-title" style="color:#fbbf24">The answer is…</div>
-      <div id="lw-answer" class="lw-answer-big">—</div>
-      <div id="lw-results" style="display:flex; flex-direction:column; gap:8px; margin-top:14px"></div>
+    <div class="lw-tower-wrap">
+      <div id="lw-tower" class="lw-tower"></div>
+      <div id="lw-boxes" class="lw-boxes"></div>
+      <div class="lw-base"></div>
     </div>
 
-    <!-- Found a lifeline while holding one -->
-    <div id="lw-choice-card" class="card" style="width:100%; display:none; border-color:#e5e7eb"></div>
+    <button id="lw-lock-btn" class="btn btn-primary" style="display:none" onclick="lwLock()">🔒 Lock In</button>
+    <div id="lw-status" class="text-muted text-center" style="width:100%; font-weight:800; font-size:0.85rem; display:none"></div>
+    <div id="lw-results" style="width:100%; display:none; flex-direction:column; gap:6px"></div>
   </div>
 
   <!-- Cash out + host controls (shared) -->
   <button id="lw-cashout-btn" class="btn lw-cashout" style="width:100%; display:none" onclick="lwCashOut()">💰 Cash Out</button>
   <div id="lw-host-ctrl" style="width:100%; display:none; flex-direction:column; gap:8px">
     <button id="lw-host-main" class="btn btn-primary" onclick="lwHostMain()">▶️ Next Question</button>
+    <button id="lw-host-reveal" class="btn-ghost" onclick="lwForceReveal()">⏭ Reveal now</button>
     <button id="lw-host-end" class="btn-ghost" onclick="lwEndGame()">🏁 End game now</button>
   </div>
   <div id="lw-wait-host" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
 
-  <!-- Ladder -->
-  <div id="lw-ladder-card" class="card" style="width:100%; display:none; padding:12px">
-    <div class="card-title">The Limitless Ladder</div>
-    <div id="lw-ladder" class="lw-ladder"></div>
-  </div>
-
-  <!-- Everyone (during a question) -->
-  <div id="lw-others-card" class="card" style="width:100%; display:none">
-    <div class="card-title">Everyone</div>
-    <div id="lw-others" style="display:flex; flex-direction:column; gap:6px"></div>
-  </div>
+  <!-- Lifeline claim / choose overlay -->
+  <div id="lw-overlay" class="lw-overlay"><div id="lw-overlay-card" class="lw-overlay-card"></div></div>
 
   <!-- END -->
   <div id="lw-sec-end" style="width:100%; display:none; flex-direction:column; gap:12px">
@@ -3713,10 +3746,12 @@ function renderLimitlessSettings(room) {
         <span style="font-weight:900; font-size:0.85rem">${LW_TEAM_NAMES_C[out[p.name]]}</span>
       </div>`).join('');
   }
-  const secBtns = (cur, fn) => [45, 60, 90].map(n =>
-    `<button class="btn btn-sm${(parseInt(cur, 10) || 60) === n ? ' btn-primary' : ' btn-outline'}" onclick="${fn}(${n})">${n}s</button>`).join('');
-  const b = document.getElementById('lw-bsecs'); if (b) b.innerHTML = secBtns(st.lwBuilderSeconds, 'lwSetBuilderSecs');
-  const q = document.getElementById('lw-qsecs'); if (q) q.innerHTML = secBtns(st.lwQuestionSeconds, 'lwSetQuestionSecs');
+  const secBtns = (cur, fn, opts) => {
+    const c = (cur === 0 || cur === '0') ? 0 : (parseInt(cur, 10) || 60);
+    return opts.map(n => `<button class="btn btn-sm${c === n ? ' btn-primary' : ' btn-outline'}" onclick="${fn}(${n})">${n === 0 ? '∞' : n + 's'}</button>`).join('');
+  };
+  const b = document.getElementById('lw-bsecs'); if (b) b.innerHTML = secBtns(st.lwBuilderSeconds, 'lwSetBuilderSecs', [45, 60, 90]);
+  const q = document.getElementById('lw-qsecs'); if (q) q.innerHTML = secBtns(st.lwQuestionSeconds, 'lwSetQuestionSecs', [45, 60, 90, 0]);
 }
 
 // ── Actions ──
@@ -3763,7 +3798,11 @@ function lwUseLifeline() {
   lwFlushDial(1);
   socket.emit('lw-lifeline', { value: lwDial });
 }
-function lwChoose(type) { socket.emit('lw-choose-lifeline', { type }); }
+function lwChoose(type) {
+  const me = currentRoom && lwMe(currentRoom);
+  if (me) lwClaimed[lwClaimKey(currentRoom.limitlessPublic, me)] = true;
+  socket.emit('lw-choose-lifeline', { type });
+}
 function lwCashOut() {
   const me = currentRoom && lwMe(currentRoom);
   if (!me) return;
@@ -3780,6 +3819,11 @@ function lwEndGame() {
   if (!confirm('End the game now? Anyone still climbing takes home their bank.')) return;
   socket.emit('lw-end-game');
 }
+function lwForceReveal() {
+  if (!isHost) return;
+  if (!confirm("Reveal now? Anyone who hasn't locked in gets whatever is on their dial.")) return;
+  socket.emit('lw-force-reveal');
+}
 function lwBackToLobby() { if (!isHost) return; socket.emit('lw-restart'); showScreen('lobby'); }
 
 // ── Timer ──
@@ -3793,52 +3837,46 @@ function lwStartTicker() {
     ['lw-b-timer', 'lw-q-timer'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
-      el.textContent = lwEndsAtLocal ? left : '—';
+      el.textContent = lwEndsAtLocal ? left : (lwTickPhase === 'limitless-question' ? '∞' : '');
       el.classList.toggle('warn', !!lwEndsAtLocal && left <= warnAt);
     });
   }, 250);
 }
 
 // ── Rendering ──
-function lwRenderDials() {
-  const wrap = document.getElementById('lw-dials');
-  if (!wrap) return;
-  const info = lwPriv && lwPriv.llInfo;
-  const two = info && info.type === 'take-two';
-  const one = (which, val, label) => {
-    const bad = which === 1 && !lwGuessOk(info, val);
-    return `
-    <div class="lw-dial">
-      ${label ? `<div class="card-title" style="margin:0">${label}</div>` : ''}
-      <div class="lw-dial-num${bad ? ' bad' : ''}">${val}</div>
-      <input type="range" class="lw-slider" min="0" max="50" value="${val}" oninput="lwSetDial(${which}, this.value)" />
-      <div class="lw-dial-row">
-        <button class="btn btn-sm btn-outline" onclick="lwBump(${which},-10)">−10</button>
-        <button class="btn btn-sm btn-outline" onclick="lwBump(${which},-1)">−1</button>
-        <button class="btn btn-sm btn-outline" onclick="lwBump(${which},1)">+1</button>
-        <button class="btn btn-sm btn-outline" onclick="lwBump(${which},10)">+10</button>
-      </div>
-    </div>`;
+const LW_VIS = 50;          // the tower always shows the next 50 steps (the biggest possible answer)
+let lwActiveDial = 1;       // which Take Two box the controls move
+const lwClaimed = {};       // lifelines I've already tapped "Claim" on
+let lwTowerBound = false;
+
+function lwRenderDials() { lwRenderTower(); }
+function lwSelectDial(n) { lwActiveDial = n; lwRenderTower(); }
+function lwBumpActive(d) { lwBump(lwActiveDial, d); }
+function lwCanDial() {
+  const room = currentRoom;
+  if (!room || room.gameState !== 'limitless-question') return false;
+  const me = lwMe(room);
+  return !!(me && lwActiveC(me) && !me.locked);
+}
+// Tap or drag up the tower to set your answer
+function lwBindTower() {
+  if (lwTowerBound) return;
+  const t = document.getElementById('lw-tower');
+  if (!t) return;
+  lwTowerBound = true;
+  let dragging = false;
+  const setFrom = y => {
+    const r = t.getBoundingClientRect();
+    lwSetDial(lwActiveDial, Math.ceil((r.bottom - y) / (r.height / LW_VIS)));
   };
-  // Don't rebuild the slider mid-drag (it would drop the touch) — just update numbers
-  const sig = two ? 'two' : 'one';
-  if (wrap.dataset.sig === sig && wrap.children.length) {
-    const nums = wrap.querySelectorAll('.lw-dial-num');
-    const sliders = wrap.querySelectorAll('.lw-slider');
-    const vals = two ? [lwDial, lwDial2] : [lwDial];
-    vals.forEach((v, i) => {
-      if (nums[i]) { nums[i].textContent = v; nums[i].classList.toggle('bad', i === 0 && !lwGuessOk(info, v)); }
-      if (sliders[i] && document.activeElement !== sliders[i]) sliders[i].value = v;
-    });
-  } else {
-    wrap.dataset.sig = sig;
-    wrap.innerHTML = two ? one(1, lwDial, 'Answer 1') + one(2, lwDial2, 'Answer 2') : one(1, lwDial, '');
-  }
-  const ok = lwGuessOk(info, lwDial);
-  const warn = document.getElementById('lw-dial-warn');
-  if (warn) { warn.style.display = ok ? 'none' : 'block'; warn.textContent = "That number doesn't fit your lifeline clue"; }
-  const lockBtn = document.getElementById('lw-lock-btn');
-  if (lockBtn) lockBtn.disabled = !ok;
+  t.addEventListener('pointerdown', e => {
+    if (!lwCanDial()) return;
+    dragging = true;
+    try { t.setPointerCapture(e.pointerId); } catch (err) {}
+    setFrom(e.clientY);
+  });
+  t.addEventListener('pointermove', e => { if (dragging) setFrom(e.clientY); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => t.addEventListener(ev, () => { dragging = false; }));
 }
 
 function lwOutcomeText(r, e) {
@@ -3847,55 +3885,135 @@ function lwOutcomeText(r, e) {
   const g = r.guess2 != null ? `${r.guess} & ${r.guess2}` : `${r.guess}`;
   const auto = r.auto ? ' (time ran out)' : '';
   switch (r.outcome) {
-    case 'exact': return `🎯 Guessed ${g}${auto} — EXACT! +5 lives, banked ${lwFmt(r.banked)}`;
-    case 'under': return `⬇️ Guessed ${g}${auto} — ${r.short} under, −${r.livesLost} ${r.livesLost === 1 ? 'life' : 'lives'}`;
-    case 'sudden': return `☠️ Guessed ${g}${auto} — ${r.short} under. SUDDEN DEATH!`;
-    case 'over': return `💥 Guessed ${g}${auto} — OVER! Lost everything`;
-    case 'no-lives': return `💀 Guessed ${g}${auto} — ${r.short} under, not enough lives. Out!`;
-    case 'sudden-out': return `💀 Guessed ${g}${auto} — needed exact in sudden death. Out!`;
+    case 'exact': return `🎯 ${g}${auto} — EXACT! +5 lives, banked ${lwFmt(r.banked)}`;
+    case 'under': return `⬇️ ${g}${auto} — ${r.short} under, −${r.livesLost} ${r.livesLost === 1 ? 'life' : 'lives'}`;
+    case 'sudden': return `☠️ ${g}${auto} — ${r.short} under. SUDDEN DEATH!`;
+    case 'over': return `💥 ${g}${auto} — OVER! Lost everything`;
+    case 'no-lives': return `💀 ${g}${auto} — ${r.short} under, not enough lives`;
+    case 'sudden-out': return `💀 ${g}${auto} — needed exact in sudden death`;
     case 'no-lives-builder': return '❌ No lives from the Life Builder';
     default: return '';
   }
 }
-function lwOutcomeClass(r) {
-  if (!r) return '';
-  if (r.outcome === 'exact') return 'exact';
-  if (['over', 'no-lives', 'sudden-out'].includes(r.outcome)) return 'bad';
-  if (r.outcome === 'sudden') return 'warn';
-  return '';
-}
-function lwStatusIcon(e) {
-  return { playing: '🧗', sudden: '☠️', cashed: '💰', bust: '💥', out: '❌', builder: '❤️' }[e.status] || '';
+
+function lwRenderTower() {
+  const room = currentRoom;
+  if (!room || !room.limitlessPublic) return;
+  const pub = room.limitlessPublic, phase = room.gameState, me = lwMe(room);
+  const tower = document.getElementById('lw-tower');
+  const boxes = document.getElementById('lw-boxes');
+  if (!tower || !boxes) return;
+  lwBindTower();
+  const reveal = phase === 'limitless-reveal';
+  const r = reveal && me ? me.result : null;
+  const info = !reveal && lwPriv ? lwPriv.llInfo : null;
+  const two = !!(info && info.type === 'take-two');
+  const canDial = lwCanDial();
+  const A = pub.answer;
+
+  // The bottom of the tower is where this climb started
+  const base = me ? (r && r.climbed ? me.step - r.climbed : me.step) : 0;
+  const H = tower.clientHeight || 420;
+  const h = H / LW_VIS;
+  const y = k => (k * h).toFixed(1);
+
+  // What's lit up
+  let lit = 0, lit2 = 0;
+  if (!reveal) { lit = lwDial; lit2 = two ? lwDial2 : 0; }
+  const used = r && r.used != null ? r.used : null;
+
+  let out = '';
+  for (let k = 1; k <= LW_VIS; k++) {
+    const abs = base + k;
+    let cls = 'lw-step';
+    if (abs % 10 === 0) cls += ' line';
+    if (reveal && r && r.outcome && A != null && used != null) {
+      if (r.outcome === 'exact') { if (k <= A) cls += ' gold'; }
+      else if (r.outcome === 'over') { if (k <= A) cls += ' on'; else if (k <= used) cls += ' red'; }
+      else { if (k <= used) cls += ' on'; else if (k <= A) cls += ' red'; }
+    } else if (!reveal) {
+      if (k <= Math.max(lit, lit2)) cls += ' on';
+      if (info && !two && !lwGuessOk(info, k) && canDial) cls += ' dim';
+    }
+    if (lwIsLLStep(abs) && !/ (on|gold|red)/.test(cls)) cls += ' ll';
+    out += `<div class="${cls}" style="bottom:${y(k - 1)}px; height:${h.toFixed(1)}px"></div>`;
+    if (abs % 10 === 0 && k < LW_VIS) out += `<div class="lw-money" style="bottom:${y(k)}px">${lwFmt(lwMoneyAtC(abs))}</div>`;
+  }
+  // Answer marker on reveal
+  if (reveal && A != null) out += `<div class="lw-mark ans" style="bottom:${y(Math.min(A, LW_VIS))}px"><span>ANSWER ${A}</span></div>`;
+  // Take Two: mark both answers
+  if (two) {
+    out += `<div class="lw-mark dial" style="bottom:${y(lwDial)}px"><span>A ${lwDial}</span></div>`;
+    out += `<div class="lw-mark dial" style="bottom:${y(lwDial2)}px; left:50%"><span>B ${lwDial2}</span></div>`;
+  }
+  // Everyone else on the same ladder
+  const tagGroups = {};
+  pub.entrants.forEach(e => {
+    if (me && e.id === me.id) return;
+    const rel = e.step - base;
+    const pos = Math.max(0.5, Math.min(LW_VIS - 0.5, rel));
+    const arrow = rel > LW_VIS ? '↑' : rel < 0 ? '↓' : '';
+    const icon = !lwActiveC(e) ? (e.status === 'cashed' ? '💰' : '💥') : (phase === 'limitless-question' && e.locked ? '🔒' : '');
+    const key = pos.toFixed(1) + arrow;
+    (tagGroups[key] = tagGroups[key] || { pos, arrow, names: [] }).names.push(icon + mmEsc(e.name));
+  });
+  Object.values(tagGroups).forEach(g => {
+    out += `<div class="lw-tag" style="bottom:${y(g.pos)}px">${g.names.join(' · ')}${g.arrow ? ' ' + g.arrow : ''}</div>`;
+  });
+  tower.innerHTML = out;
+
+  // The black box(es) at the bottom
+  const okA = lwGuessOk(info, lwDial);
+  let mid;
+  if (reveal) {
+    const g = r && r.guess != null ? (r.guess2 != null ? `${r.guess}·${r.guess2}` : r.guess) : '—';
+    mid = `<div class="lw-box">${g}</div>`;
+  } else if (two) {
+    mid = [1, 2].map(n => `<div class="lw-box pick${lwActiveDial === n ? ' active' : ''}" onclick="lwSelectDial(${n})"><small>ANSWER ${n === 1 ? 'A' : 'B'}</small>${n === 1 ? lwDial : lwDial2}</div>`).join('');
+  } else {
+    const showVal = me && (lwActiveC(me) || phase !== 'limitless-question') ? lwDial : '—';
+    mid = `<div class="lw-box${okA ? '' : ' bad'}">${me && me.locked ? '🔒 ' : ''}${showVal}</div>`;
+  }
+  const btn = (d, label) => `<button class="lw-bx-btn" onclick="lwBumpActive(${d})">${label}</button>`;
+  boxes.className = 'lw-boxes' + (two ? ' two' : '');
+  boxes.innerHTML = canDial ? btn(-10, '−10') + btn(-1, '−1') + mid + btn(1, '+1') + btn(10, '+10') : mid;
+  const lockBtn = document.getElementById('lw-lock-btn');
+  if (lockBtn) {
+    lockBtn.disabled = !okA;
+    lockBtn.textContent = okA ? '🔒 Lock In' : "That doesn't fit your clue";
+  }
 }
 
-function lwRenderLadder(pub, me) {
-  const el = document.getElementById('lw-ladder');
-  if (!el) return;
-  const myStep = me ? me.step : 0;
-  const lo = Math.max(0, Math.floor((myStep - 20) / 10) * 10);
-  const hi = lo + 80;
-  const H = el.clientHeight || 320;
-  const pad = 14;
-  const y = st => pad + (Math.min(hi, Math.max(lo, st)) - lo) / (hi - lo) * (H - pad * 2);
+function lwClaimKey(pub, me) { return pub.qNum + ':' + (me.result && me.result.found ? me.result.found.join(',') : ''); }
+function lwClaim() {
+  const me = currentRoom && lwMe(currentRoom);
+  if (me) lwClaimed[lwClaimKey(currentRoom.limitlessPublic, me)] = true;
+  renderLimitless(currentRoom);
+}
+function lwRenderOverlay(room, me, phase) {
+  const ov = document.getElementById('lw-overlay');
+  const card = document.getElementById('lw-overlay-card');
+  if (!ov || !card) return;
+  const pub = room.limitlessPublic;
   let html = '';
-  for (let st = lo; st <= hi; st += 10) {
-    html += `<div class="lw-rung" style="bottom:${y(st)}px"><span class="lw-rung-label">${lwFmt(lwMoneyAtC(st))}</span></div>`;
+  if (me && lwActiveC(me) && me.choice && me.choice.length > 1) {
+    html = `<div style="font-size:2.4rem">🎁</div><div class="lw-ov-title">NEW LIFELINE!</div>
+      <div class="text-muted" style="margin-top:4px; font-size:0.88rem">You can only hold one — which do you keep?</div>
+      ${me.choice.map(t => `
+        <div class="lw-ov-ll"><div class="lw-ov-icon">${LW_LL_INFO[t].icon}</div>
+          <div style="flex:1; min-width:0"><div style="font-weight:900; color:#fff">${LW_LL_INFO[t].name}${me.lifeline === t ? ' <span class="text-muted" style="font-size:0.72rem">(holding)</span>' : ''}</div>
+            <div class="text-muted" style="font-size:0.76rem">${LW_LL_INFO[t].desc}</div></div>
+          <button class="btn btn-sm btn-primary" onclick="lwChoose('${t}')">Keep</button></div>`).join('')}`;
+  } else if (me && lwActiveC(me) && phase === 'limitless-reveal' && me.result && me.result.found && me.lifeline && !lwClaimed[lwClaimKey(pub, me)]) {
+    const L = LW_LL_INFO[me.lifeline];
+    html = `<div class="lw-ov-title">🎁 NEW LIFELINE!</div>
+      <div class="lw-ov-ll big"><div class="lw-ov-icon">${L.icon}</div>
+        <div style="font-size:1.5rem; font-weight:900; color:#fff">${L.name}</div>
+        <div class="text-muted" style="font-size:0.9rem">${L.desc}</div></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="lwClaim()">✅ Claim</button>`;
   }
-  if (me && lwActiveC(me)) {
-    for (let st = myStep + 1; st <= hi; st++) {
-      if (lwIsLLStep(st)) html += `<div class="lw-llstep" style="bottom:${y(st)}px"><span>🎁 lifeline</span></div>`;
-    }
-  }
-  pub.entrants.forEach((e, i) => {
-    const isMe = me && e.id === me.id;
-    const col = LW_COLOURS[i % LW_COLOURS.length];
-    const left = 46 + (i % 4) * 13;
-    const off = e.step > hi ? ' ↑' : e.step < lo ? ' ↓' : '';
-    const faded = lwActiveC(e) ? '' : 'opacity:0.45;';
-    html += `<div class="lw-marker${isMe ? ' me' : ''}" style="left:${left}%; bottom:${y(e.step)}px; ${faded}">
-      <span class="lw-dot" style="background:${col}"></span><span>${mmEsc(isMe ? 'You' : e.name)} ${e.step}${off}</span></div>`;
-  });
-  el.innerHTML = html;
+  ov.style.display = html ? 'flex' : 'none';
+  if (html) card.innerHTML = html;
 }
 
 function renderLimitless(room) {
@@ -3915,16 +4033,14 @@ function renderLimitless(room) {
   // New question → fresh dials
   if (phase === 'limitless-question' && pub.qNum !== lwLastQNum) {
     lwLastQNum = pub.qNum;
-    lwDial = 0; lwDial2 = 0;
+    lwDial = 0; lwDial2 = 0; lwActiveDial = 1;
     if (lwPriv) lwPriv.llInfo = null;
-    const w = $('lw-dials'); if (w) { w.dataset.sig = ''; w.innerHTML = ''; }
   }
 
   show('lw-sec-builder', phase === 'limitless-builder', 'flex');
   show('lw-sec-bdone', phase === 'limitless-builder-done', 'flex');
   show('lw-sec-q', phase === 'limitless-question' || phase === 'limitless-reveal', 'flex');
   show('lw-sec-end', phase === 'limitless-ended', 'flex');
-  show('lw-ladder-card', ['limitless-builder-done', 'limitless-question', 'limitless-reveal'].includes(phase));
 
   // ── LIFE BUILDER ──
   if (phase === 'limitless-builder' && me) {
@@ -3963,97 +4079,78 @@ function renderLimitless(room) {
       </div>`).join('');
   }
 
-  // ── QUESTION / REVEAL ──
-  if (phase === 'limitless-question' || phase === 'limitless-reveal') {
-    const tierName = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' }[pub.tier] || '';
+  // ── QUESTION / REVEAL (the tower) ──
+  const onTower = phase === 'limitless-question' || phase === 'limitless-reveal';
+  if (onTower) {
+    const reveal = phase === 'limitless-reveal';
     setTxt('lw-q-num', 'Question ' + pub.qNum);
-    const tierEl = $('lw-q-tier'); if (tierEl) { tierEl.textContent = tierName; tierEl.className = 'lw-chip lw-tier-' + (pub.tier || 'easy'); }
     setTxt('lw-q-text', pub.question || '—');
-    if (phase === 'limitless-reveal') { const t = $('lw-q-timer'); if (t) { t.textContent = '⏱'; t.classList.remove('warn'); } }
 
-    // My stats
-    const stats = $('lw-mystats');
-    if (stats && me) {
-      const ll = me.lifeline ? LW_LL_INFO[me.lifeline].icon + ' ' + LW_LL_INFO[me.lifeline].name : (me.usedLL ? 'Used' : '—');
-      stats.innerHTML = `
-        <div class="lw-stat${me.status === 'sudden' ? ' danger' : ''}"><div class="lw-stat-label">Lives</div><div class="lw-stat-val">${me.status === 'sudden' ? '☠️ 0' : '❤️ ' + me.lives}</div></div>
-        <div class="lw-stat"><div class="lw-stat-label">Step</div><div class="lw-stat-val">🪜 ${me.step}</div></div>
-        <div class="lw-stat"><div class="lw-stat-label">Bank</div><div class="lw-stat-val" style="color:#fbbf24">${lwFmt(me.bank)}</div></div>
-        <div class="lw-stat"><div class="lw-stat-label">Lifeline</div><div class="lw-stat-val" style="font-size:0.78rem">${ll}</div></div>`;
-    }
-    const msg = $('lw-my-msg');
-    if (msg && me) {
-      let m = '', col = 'var(--muted)';
-      if (me.status === 'sudden') { m = '☠️ SUDDEN DEATH — only an exact answer keeps you in!'; col = '#f87171'; }
-      else if (me.status === 'cashed') { m = `💰 You cashed out with ${lwFmt(me.final)} — enjoy the show`; col = '#fbbf24'; }
-      else if (me.status === 'bust' || me.status === 'out') { m = '💥 You\'re out — watching the others climb'; col = '#f87171'; }
-      msg.textContent = m; msg.style.color = col; msg.style.display = m ? 'block' : 'none';
-    }
+    // LIVES / BANK
+    const livesEl = $('lw-hud-lives');
+    if (livesEl && me) { livesEl.textContent = me.lives; livesEl.classList.toggle('danger', me.status === 'sudden' || me.lives <= 3); }
+    setTxt('lw-hud-bank', me ? lwFmt(lwActiveC(me) ? me.bank : (me.final || 0)) : '£0');
 
-    const canAct = phase === 'limitless-question' && me && lwActiveC(me) && !me.locked;
-    show('lw-dial-card', canAct, 'flex');
-    if (canAct) {
-      const info = lwPriv && lwPriv.llInfo;
-      const clue = $('lw-ll-clue');
-      if (clue) { clue.textContent = lwClueText(info); clue.style.display = info ? 'block' : 'none'; }
-      lwRenderDials();
-    }
-    // Lifeline card
-    const llCard = $('lw-ll-card');
-    const canLL = canAct && me.lifeline && !me.usedLL;
-    if (llCard) {
-      llCard.style.display = canLL ? 'block' : 'none';
-      if (canLL) {
+    // Lifeline chip
+    const canDial = lwCanDial();
+    const llEl = $('lw-hud-ll');
+    if (llEl) {
+      if (me && me.lifeline) {
         const L = LW_LL_INFO[me.lifeline];
-        llCard.innerHTML = `<div class="lw-ll"><div class="lw-ll-icon">${L.icon}</div>
-          <div style="flex:1"><div style="font-weight:900">${L.name}</div><div class="text-muted" style="font-size:0.78rem">${L.desc}</div></div>
-          <button class="btn btn-sm btn-outline" onclick="lwUseLifeline()">Use</button></div>`;
-      }
-    }
-    // Locked card
-    const lockedNow = phase === 'limitless-question' && me && lwActiveC(me) && me.locked;
-    show('lw-locked-card', lockedNow);
-    if (lockedNow) {
-      setTxt('lw-locked-val', (lwPriv && lwPriv.llInfo && lwPriv.llInfo.type === 'take-two') ? `${lwDial} & ${lwDial2}` : String(lwDial));
-      const act = pub.entrants.filter(lwActiveC);
-      setTxt('lw-locked-wait', `Waiting for others… (${act.filter(e => e.locked).length}/${act.length} locked in)`);
+        llEl.innerHTML = canDial && !me.usedLL
+          ? `<button class="lw-ll-chip" onclick="lwUseLifeline()">${L.icon} ${L.name} · USE</button>`
+          : `<span class="lw-ll-chip">${L.icon} ${L.name}</span>`;
+      } else if (me && me.usedLL && !reveal) {
+        llEl.innerHTML = `<span class="lw-ll-chip" style="opacity:0.55">${LW_LL_INFO[me.usedLL].icon} used</span>`;
+      } else llEl.innerHTML = '';
     }
 
-    // Reveal
-    show('lw-reveal-card', phase === 'limitless-reveal');
-    if (phase === 'limitless-reveal') {
-      setTxt('lw-answer', pub.answer);
-      const res = $('lw-results');
-      if (res) res.innerHTML = pub.entrants.filter(e => e.result).map(e => `
-        <div class="lw-res ${lwOutcomeClass(e.result)}">
-          <div style="min-width:0">
-            <div style="font-weight:900">${mmEsc(e.name)}${me && e.id === me.id ? ' (you)' : ''}</div>
-            <div style="font-size:0.8rem">${lwOutcomeText(e.result, e)}</div>
-            ${e.result.found ? `<div style="font-size:0.76rem; color:#e5e7eb">🎁 Found: ${e.result.found.map(t => LW_LL_INFO[t].name).join(', ')}</div>` : ''}
-          </div>
-          <div style="text-align:right; white-space:nowrap; font-size:0.8rem">
-            <div>🪜 ${e.step}</div><div>❤️ ${e.lives}</div><div style="color:#fbbf24; font-weight:900">${lwFmt(lwActiveC(e) ? e.bank : e.final)}</div>
-          </div>
-        </div>`).join('') || '<div class="text-muted">Nobody was climbing this time.</div>';
+    // Banner: the answer on reveal, otherwise clues / status
+    let main = '', sub = '', subCol = '#e5e7eb';
+    if (reveal) {
+      main = 'ANSWER: ' + pub.answer;
+      if (me && me.result && me.result.outcome) {
+        sub = lwOutcomeText(me.result, me);
+        subCol = { exact: '#fbbf24', over: '#f87171', 'no-lives': '#f87171', 'sudden-out': '#f87171', sudden: '#fb923c' }[me.result.outcome] || '#93c5fd';
+      } else if (me && me.status === 'cashed') { sub = `💰 You cashed out with ${lwFmt(me.final)}`; subCol = '#fbbf24'; }
+    } else if (me) {
+      const info = lwPriv && lwPriv.llInfo;
+      if (me.status === 'cashed') { sub = `💰 You cashed out with ${lwFmt(me.final)} — watching`; subCol = '#fbbf24'; }
+      else if (me.status === 'bust' || me.status === 'out') { sub = "💥 You're out — watching the others climb"; subCol = '#f87171'; }
+      else if (info && info.type === 'take-two') { sub = '✌️ Take Two — tap a box, set both answers. The better one counts.'; subCol = '#67e8f9'; }
+      else if (info) { sub = lwClueText(info); subCol = '#67e8f9'; }
+      if (me.status === 'sudden') { main = '☠️ SUDDEN DEATH'; sub = 'Only an exact answer keeps you in!'; subCol = '#f87171'; }
     }
-    // Lifeline swap choice
-    const ch = $('lw-choice-card');
-    const hasChoice = phase === 'limitless-reveal' && me && me.choice && me.choice.length > 1 && lwActiveC(me);
-    if (ch) {
-      ch.style.display = hasChoice ? 'block' : 'none';
-      if (hasChoice) ch.innerHTML = `<div class="card-title">🎁 New lifeline! You can only hold one — keep:</div>
-        <div style="display:flex; flex-direction:column; gap:8px">${me.choice.map(t => `
-          <button class="btn btn-outline" style="text-align:left" onclick="lwChoose('${t}')">${LW_LL_INFO[t].icon} <b>${LW_LL_INFO[t].name}</b>${me.lifeline === t ? ' (current)' : ''}<br><span class="text-muted" style="font-size:0.75rem">${LW_LL_INFO[t].desc}</span></button>`).join('')}</div>`;
+    const banner = $('lw-banner');
+    if (banner) {
+      banner.style.display = (main || sub) ? 'block' : 'none';
+      setTxt('lw-banner-main', main);
+      const se = $('lw-banner-sub'); if (se) { se.textContent = sub; se.style.color = subCol; }
+      const me2 = $('lw-banner-main'); if (me2) me2.style.display = main ? 'block' : 'none';
     }
 
-    // Everyone's progress during a question
-    const others = $('lw-others');
-    show('lw-others-card', phase === 'limitless-question');
-    if (others && phase === 'limitless-question') {
-      others.innerHTML = pub.entrants.map(e => `
-        <div class="player-item" style="justify-content:space-between; padding:8px 12px">
-          <div class="player-name">${lwStatusIcon(e)} ${mmEsc(e.name)}${me && e.id === me.id ? ' (you)' : ''}</div>
-          <span style="font-size:0.78rem; font-weight:800">${lwActiveC(e) ? (e.locked ? '🔒 locked' : '🤔 thinking') + ' · 🪜' + e.step : (e.status === 'cashed' ? '💰 ' + lwFmt(e.final) : '💥 out')}</span>
+    lwRenderTower();
+
+    show('lw-lock-btn', canDial);
+    // Status line
+    const st = $('lw-status');
+    if (st) {
+      let t = '';
+      if (!reveal && me && lwActiveC(me) && me.locked) {
+        const act = pub.entrants.filter(lwActiveC);
+        t = `🔒 Locked in — waiting for others (${act.filter(e => e.locked).length}/${act.length})`;
+      } else if (canDial) t = 'Tap or drag up the ladder, or use the buttons';
+      st.textContent = t; st.style.display = t ? 'block' : 'none';
+    }
+    // Everyone's results (multiplayer only)
+    const res = $('lw-results');
+    if (res) {
+      const rows = reveal && pub.entrants.length > 1 ? pub.entrants.filter(e => e.result) : [];
+      res.style.display = rows.length ? 'flex' : 'none';
+      res.innerHTML = rows.map(e => `
+        <div class="lw-mini">
+          <div style="min-width:0"><b>${mmEsc(e.name)}${me && e.id === me.id ? ' (you)' : ''}</b><div class="text-muted" style="font-size:0.74rem">${lwOutcomeText(e.result, e)}</div></div>
+          <div style="text-align:right; white-space:nowrap"><div>❤️ ${e.lives}</div><div style="color:#fbbf24; font-weight:900">${lwFmt(lwActiveC(e) ? e.bank : e.final)}</div></div>
         </div>`).join('');
     }
   }
@@ -4066,8 +4163,10 @@ function renderLimitless(room) {
 
   // ── Host controls ──
   const hostPhase = phase === 'limitless-builder-done' || phase === 'limitless-reveal';
-  show('lw-host-ctrl', isHost && hostPhase, 'flex');
+  show('lw-host-ctrl', isHost && (hostPhase || phase === 'limitless-question'), 'flex');
   show('lw-wait-host', !isHost && hostPhase);
+  show('lw-host-main', hostPhase);
+  show('lw-host-reveal', phase === 'limitless-question');
   const mainBtn = $('lw-host-main');
   if (mainBtn) {
     if (phase === 'limitless-builder-done') mainBtn.textContent = '🪜 Start Climbing!';
@@ -4075,7 +4174,8 @@ function renderLimitless(room) {
   }
   show('lw-host-end', isHost && phase === 'limitless-reveal' && pub.entrants.some(lwActiveC));
 
-  if (['limitless-builder-done', 'limitless-question', 'limitless-reveal'].includes(phase)) lwRenderLadder(pub, me);
+  // ── Lifeline overlays ──
+  lwRenderOverlay(room, me, phase);
 
   // ── END ──
   if (phase === 'limitless-ended') {
@@ -4088,7 +4188,7 @@ function renderLimitless(room) {
         <div style="min-width:0">
           <div style="font-weight:900">${medal(i)} ${mmEsc(e.name)}${me && e.id === me.id ? ' (you)' : ''}</div>
           ${pub.mode === 'teams' ? `<div class="text-muted" style="font-size:0.72rem">${e.members.map(mmEsc).join(', ')}</div>` : ''}
-          <div class="text-muted" style="font-size:0.75rem">${how(e)} · reached step ${e.step}</div>
+          <div class="text-muted" style="font-size:0.75rem">${how(e)} · climbed to the ${lwFmt(lwMoneyAtC(e.step))} line</div>
         </div>
         <div style="font-size:1.25rem; font-weight:900; color:#fbbf24">${lwFmt(e.final)}</div>
       </div>`).join('');

@@ -362,6 +362,7 @@
     .lw-tier-hard { background:rgba(239,68,68,0.18); color:#fca5a5; }
 
     /* Limitless tower (show-style) */
+    .lw-team-badge { padding:6px 14px; border-radius:999px; font-weight:900; font-size:0.85rem; color:#fff; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.3); text-align:center; }
     .lw-hud { display:flex; justify-content:space-between; align-items:center; width:100%; gap:8px; padding:0 4px; }
     .lw-hud-item { text-align:center; min-width:84px; }
     .lw-hud-label { font-size:1.05rem; font-weight:900; letter-spacing:1.5px; color:#fff; text-shadow:0 2px 0 #0e7490, 0 0 14px rgba(34,211,238,0.55); }
@@ -1901,16 +1902,27 @@
 
   <!-- LIFE BUILDER -->
   <div id="lw-sec-builder" style="width:100%; display:none; flex-direction:column; gap:12px">
-    <div class="card text-center" style="width:100%; border-color:#f59e0b">
-      <div class="card-title" style="color:#fbbf24; margin-bottom:2px">❤️ Life Builder</div>
+    <!-- Teams: whose turn is next -->
+    <div id="lw-b-ready" class="card text-center" style="width:100%; display:none; border-color:#f59e0b">
+      <div class="card-title" style="color:#fbbf24">❤️ Life Builder</div>
+      <div id="lw-b-ready-step" class="text-muted" style="font-size:0.8rem">Team 1 of 2</div>
+      <div class="text-muted" style="font-size:0.8rem; margin-top:10px">UP NEXT</div>
+      <div id="lw-b-ready-team" style="font-size:2.1rem; font-weight:900; margin:2px 0 4px">—</div>
+      <div id="lw-b-ready-members" class="text-muted" style="font-size:0.88rem"></div>
+      <div id="lw-b-ready-rules" style="font-size:0.86rem; line-height:1.5; margin:14px 0"></div>
+      <button id="lw-b-go" class="btn btn-primary" onclick="lwBuilderGo()">▶️ Start</button>
+      <div id="lw-b-ready-wait" class="text-muted pulse" style="font-size:0.85rem; margin-top:8px"></div>
+    </div>
+    <div id="lw-b-timer-card" class="card text-center" style="width:100%; border-color:#f59e0b">
+      <div id="lw-b-title" class="card-title" style="color:#fbbf24; margin-bottom:2px">❤️ Life Builder</div>
       <div id="lw-b-timer" class="lw-timer">60</div>
       <div class="text-muted" style="font-size:0.78rem">Every correct answer = <b>+5 lives</b></div>
     </div>
-    <div class="lw-stats">
+    <div class="lw-stats" id="lw-b-stats">
       <div class="lw-stat"><div class="lw-stat-label" id="lw-b-lives-label">Your lives</div><div class="lw-stat-val" id="lw-b-lives">0</div></div>
       <div class="lw-stat"><div class="lw-stat-label">Correct</div><div class="lw-stat-val" id="lw-b-correct">0</div></div>
     </div>
-    <div class="card text-center" style="width:100%">
+    <div id="lw-b-qcard" class="card text-center" style="width:100%">
       <div id="lw-b-turn" style="font-size:0.8rem; font-weight:800; color:var(--accent2); margin-bottom:6px"></div>
       <div id="lw-b-q" style="font-size:1.3rem; font-weight:900; line-height:1.3">—</div>
       <div id="lw-b-answer-box" style="display:flex; flex-direction:column; gap:8px; margin-top:12px">
@@ -1923,7 +1935,7 @@
       </div>
       <div id="lw-b-flash" style="min-height:22px; margin-top:10px; font-weight:800; font-size:0.9rem"></div>
     </div>
-    <div class="card" style="width:100%"><div class="card-title">Lives so far</div><div id="lw-b-board" style="display:flex; flex-direction:column; gap:6px"></div></div>
+    <div class="card" style="width:100%"><div class="card-title" id="lw-b-board-title">Lives so far</div><div id="lw-b-board" style="display:flex; flex-direction:column; gap:6px"></div></div>
   </div>
 
   <!-- LIVES EARNED (between Life Builder and the ladder) -->
@@ -1954,6 +1966,7 @@
       <div id="lw-q-text" style="font-size:1.25rem; font-weight:900; line-height:1.3; margin-top:8px">—</div>
     </div>
 
+    <div id="lw-team-badge" class="lw-team-badge" style="display:none"></div>
     <div class="lw-hud">
       <div class="lw-hud-item"><div class="lw-hud-label">LIVES</div><div class="lw-hud-val" id="lw-hud-lives">0</div></div>
       <div class="lw-hud-ll" id="lw-hud-ll"></div>
@@ -2684,8 +2697,11 @@ function initSocket() {
   socket.on('lw-private', function(data) {
     const fresh = !lwPriv || lwPriv.entrantId !== data.entrantId;
     lwPriv = data;
-    // Don't yank the dial back while I'm actively moving it
-    if (fresh || Date.now() - lwLastLocalDialAt > 700) { lwDial = data.dial || 0; lwDial2 = data.dial2 || 0; }
+    // A teammate moved the dial → always show it. My own echo → don't yank the
+    // dial back while I'm still dragging it.
+    const myNm = currentRoom ? lwMyNameC(currentRoom) : myPlayerName;
+    const byTeammate = data.dialBy && data.dialBy !== myNm;
+    if (fresh || byTeammate || Date.now() - lwLastLocalDialAt > 700) { lwDial = data.dial || 0; lwDial2 = data.dial2 || 0; }
     if (currentRoom && currentRoom.limitlessPublic) renderLimitless(currentRoom);
   });
   socket.on('bidders-new-item', function() {
@@ -3764,6 +3780,7 @@ function lwBuilderSubmit() {
   inp.value = '';
   inp.focus();
 }
+function lwBuilderGo() { socket.emit('lw-builder-go'); }
 function lwBuilderPass() {
   socket.emit('lw-builder-pass');
   const inp = document.getElementById('lw-b-input');
@@ -4043,29 +4060,74 @@ function renderLimitless(room) {
   show('lw-sec-end', phase === 'limitless-ended', 'flex');
 
   // ── LIFE BUILDER ──
-  if (phase === 'limitless-builder' && me) {
+  if (phase === 'limitless-builder') {
     const teams = pub.mode === 'teams';
-    setTxt('lw-b-lives-label', teams ? 'Team lives' : 'Your lives');
-    setTxt('lw-b-lives', me.lives);
-    setTxt('lw-b-correct', me.bCorrect);
-    setTxt('lw-b-q', me.builderQ || '—');
-    const myTurn = !teams || me.bTurn === myName;
-    setTxt('lw-b-turn', teams ? (myTurn ? '🎤 Your turn — no conferring!' : `🎤 ${me.bTurn} is answering…`) : '');
-    show('lw-b-answer-box', myTurn, 'flex');
-    const f = $('lw-b-flash');
-    if (f) {
-      const b = me.bLast;
-      if (!b) { f.textContent = ''; }
-      else if (b.correct) { f.textContent = `✅ Correct${teams ? ' (' + b.by + ')' : ''}! +5 lives`; f.style.color = '#4ade80'; }
-      else if (b.pass) { f.textContent = `⏭ Passed — it was ${b.answer}`; f.style.color = 'var(--muted)'; }
-      else { f.textContent = `❌ ${b.given} — it was ${b.answer}`; f.style.color = '#f87171'; }
+    const bt = pub.builderTurn;
+    // Whose round is on screen: my own (solo), or the team whose turn it is (teams)
+    const cur = teams ? (bt && pub.entrants.find(e => e.id === bt.entrantId)) : me;
+    const myTeamUp = !!(teams && cur && me && cur.id === me.id);
+    const waiting = teams && bt && !bt.running;
+
+    show('lw-b-ready', !!waiting);
+    show('lw-b-timer-card', !waiting);
+    show('lw-b-stats', !waiting, 'flex');
+    show('lw-b-qcard', !waiting);
+
+    if (waiting && cur) {
+      setTxt('lw-b-ready-step', `Team ${bt.pos + 1} of ${bt.total}`);
+      setTxt('lw-b-ready-team', cur.name);
+      setTxt('lw-b-ready-members', cur.members.join(' · '));
+      setTxt('lw-b-ready-rules', `${pub.builderSeconds} seconds of quick-fire. Every right answer is +5 lives. Take it in turns to answer — no conferring!`);
+      const go = $('lw-b-go');
+      if (go) {
+        go.style.display = (myTeamUp || isHost) ? 'block' : 'none';
+        go.textContent = myTeamUp ? `▶️ We're ready — start our ${pub.builderSeconds}s` : `▶️ Start ${cur.name}'s round`;
+      }
+      setTxt('lw-b-ready-wait', myTeamUp ? '' : `Waiting for ${cur.name} to start…`);
     }
+
+    if (!waiting && cur) {
+      setTxt('lw-b-title', teams ? `❤️ ${cur.name}'s Life Builder` : '❤️ Life Builder');
+      setTxt('lw-b-lives-label', teams ? (myTeamUp ? 'Team lives' : `${cur.name} lives`) : 'Your lives');
+      setTxt('lw-b-lives', cur.lives);
+      setTxt('lw-b-correct', cur.bCorrect);
+      setTxt('lw-b-q', cur.builderQ || '—');
+      const myTurn = !teams || (myTeamUp && cur.bTurn === myName);
+      let turnTxt = '';
+      if (teams) turnTxt = myTurn ? '🎤 Your turn — no conferring!' : myTeamUp ? `🎤 ${cur.bTurn} is answering — no conferring!` : `👀 Watching ${cur.name} — ${cur.bTurn} is answering`;
+      setTxt('lw-b-turn', turnTxt);
+      show('lw-b-answer-box', myTurn, 'flex');
+      const f = $('lw-b-flash');
+      if (f) {
+        const b = cur.bLast;
+        if (!b) { f.textContent = ''; }
+        else if (b.correct) { f.textContent = `✅ ${teams ? (b.by === myName ? 'You got it' : b.by + ' got it') : 'Correct'}! +5 lives`; f.style.color = '#4ade80'; }
+        else if (b.pass) { f.textContent = `⏭ Passed — it was ${b.answer}`; f.style.color = 'var(--muted)'; }
+        else { f.textContent = `❌ ${b.given} — it was ${b.answer}`; f.style.color = '#f87171'; }
+      }
+    }
+
+    // Board: everyone's lives (teams: in turn order, with who's done / up now / next)
+    setTxt('lw-b-board-title', teams ? 'Team lives' : 'Lives so far');
     const board = $('lw-b-board');
-    if (board) board.innerHTML = [...pub.entrants].sort((a, b) => b.lives - a.lives).map(e => `
-      <div class="player-item" style="justify-content:space-between; padding:8px 12px">
-        <div class="player-name">${mmEsc(e.name)}${me && e.id === me.id ? ' (you)' : ''}</div>
-        <span style="font-weight:900">❤️ ${e.lives}</span>
-      </div>`).join('');
+    if (board) {
+      let rows;
+      if (teams && bt) {
+        rows = bt.order.map((id, i) => {
+          const e = pub.entrants.find(x => x.id === id);
+          const tag = i < bt.pos ? '✅ done' : i === bt.pos ? (bt.running ? '🎤 now' : '⏳ up next') : '⏳ waiting';
+          return { e, tag };
+        });
+      } else {
+        rows = [...pub.entrants].sort((a, b) => b.lives - a.lives).map(e => ({ e, tag: '' }));
+      }
+      board.innerHTML = rows.map(({ e, tag }) => `
+        <div class="player-item" style="justify-content:space-between; padding:8px 12px">
+          <div style="min-width:0"><div class="player-name">${mmEsc(e.name)}${me && e.id === me.id ? ' (you)' : ''}</div>
+            ${tag ? `<div class="text-muted" style="font-size:0.72rem">${tag}</div>` : ''}</div>
+          <span style="font-weight:900">❤️ ${e.lives}</span>
+        </div>`).join('');
+    }
   }
 
   // ── LIVES EARNED ──
@@ -4085,6 +4147,14 @@ function renderLimitless(room) {
     const reveal = phase === 'limitless-reveal';
     setTxt('lw-q-num', 'Question ' + pub.qNum);
     setTxt('lw-q-text', pub.question || '—');
+
+    // Team badge
+    const badge = $('lw-team-badge');
+    if (badge) {
+      const showBadge = pub.mode === 'teams' && me;
+      badge.style.display = showBadge ? 'block' : 'none';
+      if (showBadge) badge.textContent = `${me.name.toUpperCase()} TEAM · ${me.members.map(n => n === myName ? 'You' : n).join(' & ')}`;
+    }
 
     // LIVES / BANK
     const livesEl = $('lw-hud-lives');
@@ -4115,7 +4185,10 @@ function renderLimitless(room) {
       } else if (me && me.status === 'cashed') { sub = `💰 You cashed out with ${lwFmt(me.final)}`; subCol = '#fbbf24'; }
     } else if (me) {
       const info = lwPriv && lwPriv.llInfo;
-      if (me.status === 'cashed') { sub = `💰 You cashed out with ${lwFmt(me.final)} — watching`; subCol = '#fbbf24'; }
+      if (me.status === 'cashed') {
+        const who = pub.mode === 'teams' ? (me.cashedBy && me.cashedBy !== myName ? `${me.cashedBy} cashed out for the team` : 'You cashed out for the team') : 'You cashed out';
+        sub = `💰 ${who} with ${lwFmt(me.final)} — watching`; subCol = '#fbbf24';
+      }
       else if (me.status === 'bust' || me.status === 'out') { sub = "💥 You're out — watching the others climb"; subCol = '#f87171'; }
       else if (info && info.type === 'take-two') { sub = '✌️ Take Two — tap a box, set both answers. The better one counts.'; subCol = '#67e8f9'; }
       else if (info) { sub = lwClueText(info); subCol = '#67e8f9'; }
@@ -4136,10 +4209,15 @@ function renderLimitless(room) {
     const st = $('lw-status');
     if (st) {
       let t = '';
+      const teams = pub.mode === 'teams';
       if (!reveal && me && lwActiveC(me) && me.locked) {
         const act = pub.entrants.filter(lwActiveC);
-        t = `🔒 Locked in — waiting for others (${act.filter(e => e.locked).length}/${act.length})`;
-      } else if (canDial) t = 'Tap or drag up the ladder, or use the buttons';
+        const by = teams && me.lockedBy ? ` by ${me.lockedBy === myName ? 'you' : me.lockedBy}` : '';
+        t = `🔒 Locked in${by} — waiting for ${teams ? 'other teams' : 'others'} (${act.filter(e => e.locked).length}/${act.length})`;
+      } else if (canDial) {
+        const mover = teams && lwPriv && lwPriv.dialBy && lwPriv.dialBy !== myName ? lwPriv.dialBy : null;
+        t = mover ? `🎛 ${mover} set your team's dial` : (teams ? 'Agree as a team — anyone can move the dial or lock in' : 'Tap or drag up the ladder, or use the buttons');
+      }
       st.textContent = t; st.style.display = t ? 'block' : 'none';
     }
     // Everyone's results (multiplayer only)

@@ -1743,6 +1743,14 @@ function lwPublic(room) {
   const showQ = phase === 'limitless-question' || phase === 'limitless-reveal';
   return {
     mode: d.mode,
+    builderSeconds: d.builderSeconds,
+    builderTurn: d.mode === 'teams' && d.bOrder ? {
+      entrantId: (lwBuilderTeam(d) || {}).id || null,
+      running: !!d.bRunning,
+      pos: d.bPos,
+      total: d.bOrder.length,
+      order: d.bOrder.map(i => d.entrants[i].id)
+    } : null,
     qNum: d.qNum,
     question: showQ && d.q ? d.q.text : null,
     tier: showQ && d.q ? d.q.tier : null,
@@ -1754,6 +1762,8 @@ function lwPublic(room) {
       status: e.status, final: e.final,
       lifeline: e.lifeline, choice: e.choice, usedLL: e.usedLL,
       locked: e.locked,
+      lockedBy: e.lockedBy || null,
+      cashedBy: e.cashedBy || null,
       bCorrect: e.bCorrect,
       builderQ: phase === 'limitless-builder' && e.bq != null ? LWQ.builder[e.bq][0] : null,
       bTurn: e.members[e.bTurn] || e.members[0],
@@ -1765,7 +1775,7 @@ function lwPublic(room) {
 
 // Private per-team/per-player bits: the dial (so rivals can't copy) and lifeline clues
 function lwPrivatePayload(e) {
-  return { entrantId: e.id, dial: e.dial, dial2: e.dial2, llInfo: e.llInfo };
+  return { entrantId: e.id, dial: e.dial, dial2: e.dial2, llInfo: e.llInfo, dialBy: e.dialBy || null };
 }
 function lwSendPrivate(room, e, exceptSocketId) {
   const payload = lwPrivatePayload(e);
@@ -1791,10 +1801,40 @@ function lwSetTimer(room, ms, fn) {
 function lwStartBuilder(room) {
   const d = room.lwData;
   room.gameState = 'limitless-builder';
-  d.endsAt = Date.now() + d.builderSeconds * 1000;
-  d.entrants.forEach(e => { e.bq = lwPick(LWQ.builder, d.usedBuilder); e.bTurn = 0; e.bLast = null; });
-  lwSetTimer(room, d.builderSeconds * 1000 + 250, () => lwEndBuilder(room));
+  d.entrants.forEach(e => { e.bq = null; e.bTurn = 0; e.bLast = null; });
+  if (d.mode === 'teams') {
+    // Party mode: one team at a time builds its lives while everyone else watches.
+    // Each turn waits on a "Start" tap so the next team can get ready.
+    d.bOrder = shuffleArray(d.entrants.map((_, i) => i));
+    d.bPos = 0;
+    d.bRunning = false;
+    d.endsAt = 0;
+    clearTimeout(room._lwTimer);
+  } else {
+    // Solo: everyone builds at once on their own phone
+    d.endsAt = Date.now() + d.builderSeconds * 1000;
+    d.entrants.forEach(e => { e.bq = lwPick(LWQ.builder, d.usedBuilder); });
+    lwSetTimer(room, d.builderSeconds * 1000 + 250, () => lwEndBuilder(room));
+  }
   io.to(room.code).emit('limitless-started');
+  lwBroadcast(room);
+}
+
+// Teams: the team whose Life Builder turn it is (or null)
+function lwBuilderTeam(d) {
+  return d.mode === 'teams' && d.bOrder ? d.entrants[d.bOrder[d.bPos]] || null : null;
+}
+
+function lwBuilderTurnEnd(room) {
+  const d = room.lwData;
+  if (!d || room.gameState !== 'limitless-builder' || !d.bRunning) return;
+  clearTimeout(room._lwTimer);
+  const e = lwBuilderTeam(d);
+  if (e) e.bq = null;
+  d.bRunning = false;
+  d.endsAt = 0;
+  d.bPos++;
+  if (d.bPos >= d.bOrder.length) return lwEndBuilder(room);
   lwBroadcast(room);
 }
 
@@ -1825,6 +1865,7 @@ function lwNextQuestion(room) {
   d.entrants.forEach(e => {
     e.dial = 0; e.dial2 = 0; e.locked = false; e.guess = null; e.guess2 = null;
     e.usedLL = null; e.llInfo = null; e.result = null;
+    e.lockedBy = null; e.dialBy = null;
     e.choice = null; // an unanswered lifeline swap keeps the one already held
   });
   room.gameState = 'limitless-question';
@@ -4592,6 +4633,8 @@ io.on('connection', (socket) => {
   socket.on('lw-builder-answer', ({ value }) => {
     const { room, d, e } = lwCtx();
     if (!room || !e || room.gameState !== 'limitless-builder' || Date.now() > d.endsAt + 500) return;
+    if (d.mode === 'teams' && (!d.bRunning || lwBuilderTeam(d) !== e)) return;
+    if (e.bq == null) return;
     // Teams: only the player whose turn it is (unless they've dropped out)
     const active = e.members[e.bTurn] || e.members[0];
     if (socket.playerName !== active && lwIsConnected(room, active)) return;
@@ -4611,11 +4654,26 @@ io.on('connection', (socket) => {
   socket.on('lw-builder-pass', () => {
     const { room, d, e } = lwCtx();
     if (!room || !e || room.gameState !== 'limitless-builder') return;
+    if (d.mode === 'teams' && (!d.bRunning || lwBuilderTeam(d) !== e)) return;
+    if (e.bq == null) return;
     const active = e.members[e.bTurn] || e.members[0];
     if (socket.playerName !== active && lwIsConnected(room, active)) return;
     const q = LWQ.builder[e.bq];
     e.bLast = { q: q[0], answer: q[1], pass: true, by: socket.playerName, at: Date.now() };
     e.bq = lwPick(LWQ.builder, d.usedBuilder);
+    lwBroadcast(room);
+  });
+
+  socket.on('lw-builder-go', () => {
+    const { room, d, e } = lwCtx();
+    if (!room || room.gameState !== 'limitless-builder' || d.mode !== 'teams' || d.bRunning) return;
+    const team = lwBuilderTeam(d);
+    if (!team || (team !== e && room.host !== socket.id)) return;
+    d.bRunning = true;
+    team.bTurn = 0;
+    team.bq = lwPick(LWQ.builder, d.usedBuilder);
+    d.endsAt = Date.now() + d.builderSeconds * 1000;
+    lwSetTimer(room, d.builderSeconds * 1000 + 250, () => lwBuilderTurnEnd(room));
     lwBroadcast(room);
   });
 
@@ -4631,6 +4689,7 @@ io.on('connection', (socket) => {
     if (!room || !e || room.gameState !== 'limitless-question' || !lwActive(e) || e.locked) return;
     const v = Math.max(0, Math.min(50, parseInt(value, 10) || 0));
     if (which === 2 && e.usedLL === 'take-two') e.dial2 = v; else e.dial = v;
+    e.dialBy = socket.playerName;
     lwSendPrivate(room, e, socket.id);
   });
 
@@ -4645,6 +4704,7 @@ io.on('connection', (socket) => {
       e.dial2 = v2; e.guess2 = v2;
     }
     e.locked = true;
+    e.lockedBy = socket.playerName;
     lwBroadcast(room);
     lwCheckAllLocked(room);
   });
@@ -4687,7 +4747,7 @@ io.on('connection', (socket) => {
     if (room.gameState === 'limitless-question' && (e.locked || e.usedLL)) {
       return socket.emit('error', { message: "Too late to cash out on this question." });
     }
-    e.status = 'cashed'; e.final = e.bank; e.choice = null;
+    e.status = 'cashed'; e.final = e.bank; e.choice = null; e.cashedBy = socket.playerName;
     e.result = Object.assign({}, e.result || {}, { cashedOut: true });
     lwBroadcast(room);
     if (room.gameState === 'limitless-question') {

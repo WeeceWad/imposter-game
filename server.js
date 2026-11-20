@@ -2801,6 +2801,18 @@ function whoamiBuildPool(room) {
   return [...new Set(pool)];
 }
 
+// Sub-category name for a word (e.g. "Footballers") — helps the client find the
+// right Wikipedia picture when a name is ambiguous ("Joker" → Superheroes)
+function whoamiHint(room, word) {
+  const cat = WHOAMI_CATS[(room.settings && room.settings.whoamiCategory) || 'people'] || WHOAMI_CATS.people;
+  if (cat.subs) {
+    for (const sub of Object.values(cat.subs)) {
+      if (sub.items && sub.items.includes(word)) return sub.name.replace(/^[^A-Za-z0-9]+/, '').trim();
+    }
+  }
+  return (cat.name || '').replace(/^[^A-Za-z0-9]+/, '').trim();
+}
+
 // Who Am I "Video Games" shares the full, expanded video-games list
 WHOAMI_CATS.videoGames.items = CATEGORIES.videoGames.items;
 
@@ -2946,7 +2958,7 @@ io.on('connection', (socket) => {
       room.players.forEach(player => {
         const others = room.players
           .filter(p => p.id !== player.id)
-          .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
+          .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id], hint: whoamiHint(room, room.whoamiAssignments[p.id]) }));
         sendPrivate(room, player.id, 'whoami-game-started', { others, categoryName: cat.name });
       });
       io.to(room.code).emit('room-update', sanitizeRoom(room));
@@ -3533,7 +3545,7 @@ io.on('connection', (socket) => {
       room.players.forEach(player => {
         const others = room.players
           .filter(p => p.id !== player.id)
-          .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
+          .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id], hint: whoamiHint(room, room.whoamiAssignments[p.id]) }));
         sendPrivate(room, player.id, 'whoami-assignments-updated', { others });
       });
     } else {
@@ -3559,7 +3571,7 @@ io.on('connection', (socket) => {
     room.players.forEach(player => {
       const others = room.players
         .filter(p => p.id !== player.id)
-        .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id] }));
+        .map(p => ({ id: p.id, name: p.name, word: room.whoamiAssignments[p.id], hint: whoamiHint(room, room.whoamiAssignments[p.id]) }));
       sendPrivate(room, player.id, 'whoami-assignments-updated', { others });
     });
   });

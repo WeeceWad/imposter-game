@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const LWQ = require('./limitless-questions');
+const MHC = require('./misheard-cards');
 
 // ── Crash guards ──────────────────────────────────────────────
 // A single unhandled error must NEVER take down the whole server — that would
@@ -1954,6 +1955,114 @@ function lwEnd(room) {
   lwBroadcast(room);
 }
 
+// ─────────────────────────────────────────────
+// MISHEARD — a card that sounds like a famous title when said out loud.
+// offline: one phone, host reveals and awards team points
+// online:  everyone types guesses; faster correct answers score more
+// The answer never leaves the server until the card is revealed.
+// ─────────────────────────────────────────────
+const MH_GENRES = {
+  movies: '🎬 Movies', tv: '📺 TV Shows', songs: '🎵 Songs', people: '🧑 People', games: '🎮 Games'
+};
+
+function mhNorm(t) {
+  return String(t || '').toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/['’.]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/^(the|a|an) /, '')
+    .replace(/ /g, '');
+}
+function mhLev(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+// Close-enough spelling counts ("pirates of the caribean")
+function mhMatches(guess, card) {
+  const g = mhNorm(guess);
+  if (!g) return false;
+  return [card[1]].concat(card[2] || []).some(ans => {
+    const a = mhNorm(ans);
+    if (g === a) return true;
+    const tol = a.length <= 5 ? 0 : a.length <= 10 ? 1 : a.length <= 18 ? 2 : 3;
+    return mhLev(g, a) <= tol;
+  });
+}
+
+function mhCurrent(d) { return d.card ? MHC[d.card.g][d.card.i] : null; }
+
+function mhPublic(room) {
+  const d = room.mhData;
+  const c = mhCurrent(d);
+  return {
+    mode: d.mode,
+    cardNum: d.cardNum,
+    total: d.total,
+    genre: d.card ? d.card.g : null,
+    genreName: d.card ? MH_GENRES[d.card.g] : null,
+    card: c ? c[0] : null,
+    revealed: !!d.revealed,
+    answer: d.revealed && c ? c[1] : null,       // hidden until revealed
+    endsInMs: d.endsAt ? Math.max(0, d.endsAt - Date.now()) : 0,
+    teams: d.teams,
+    scores: d.mode === 'online'
+      ? room.players.map(p => ({ name: p.name, score: (d.scores[p.name] || 0) }))
+          .concat(Object.keys(d.scores).filter(n => !room.players.some(p => p.name === n)).map(n => ({ name: n, score: d.scores[n] })))
+      : null,
+    solved: d.solved,                             // [{ name, pts }] — names only, never the answer
+    deckLeft: d.deck.length - d.pos
+  };
+}
+
+function mhSetTimer(room, ms, fn) {
+  clearTimeout(room._mhTimer);
+  room._mhTimer = setTimeout(() => { if (rooms[room.code] === room) fn(); }, ms);
+}
+
+function mhNextCard(room) {
+  const d = room.mhData;
+  clearTimeout(room._mhTimer);
+  if ((d.total && d.cardNum >= d.total) || d.pos >= d.deck.length) return mhEnd(room);
+  d.card = d.deck[d.pos++];
+  d.cardNum++;
+  d.revealed = false;
+  d.solved = [];
+  d.endsAt = d.seconds ? Date.now() + d.seconds * 1000 : 0;
+  // Online: time up reveals the answer. Offline: the clock is just for the room to watch.
+  if (d.seconds) mhSetTimer(room, d.seconds * 1000 + 250, () => {
+    if (d.mode === 'online') mhReveal(room);
+    else { d.endsAt = 0; io.to(room.code).emit('room-update', sanitizeRoom(room)); }
+  });
+  room.gameState = 'misheard-card';
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
+function mhReveal(room) {
+  const d = room.mhData;
+  if (!d || d.revealed) return;
+  clearTimeout(room._mhTimer);
+  d.revealed = true;
+  d.endsAt = 0;
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
+function mhEnd(room) {
+  clearTimeout(room._mhTimer);
+  if (room.mhData) { room.mhData.endsAt = 0; room.mhData.card = null; }
+  room.gameState = 'misheard-ended';
+  io.to(room.code).emit('room-update', sanitizeRoom(room));
+}
+
 // ── CONVERGE (everyone types a word; keep linking until you all say the same one) ──
 function convergeNorm(w) {
   return String(w || '').toLowerCase().trim()
@@ -2010,7 +2119,7 @@ function sendPrivate(room, playerId, event, data) {
 
 // States where replaying a role card would be wrong (game finished / not started)
 const NO_REPLAY_STATES = ['lobby', 'game-over', 'ended', 'spyfall-ended', 'whoami-ended',
-  'bidders-ended', 'blind-ranking-ended', 'wavelength-end', 'limitless-ended'];
+  'bidders-ended', 'blind-ranking-ended', 'wavelength-end', 'limitless-ended', 'misheard-ended'];
 
 function replayPrivate(room, socket) {
   if (!room.gameState || NO_REPLAY_STATES.includes(room.gameState)) return;
@@ -2114,7 +2223,8 @@ function sanitizeRoom(room) {
       }))
     } : null,
     convergePublic: (room.gameState === 'converge-playing' && room.convergeData) ? convergePublic(room) : null,
-    limitlessPublic: (room.gameState && room.gameState.startsWith('limitless-') && room.lwData) ? lwPublic(room) : null
+    limitlessPublic: (room.gameState && room.gameState.startsWith('limitless-') && room.lwData) ? lwPublic(room) : null,
+    misheardPublic: (room.gameState && room.gameState.startsWith('misheard-') && room.mhData) ? mhPublic(room) : null
   };
 }
 
@@ -3203,6 +3313,30 @@ io.on('connection', (socket) => {
     // ── MIND MELD MODE ──
     // online  = everyone joins & types a word on their own phone
     // offline = one phone, host-managed name list, answers shouted out loud
+    // ── MISHEARD ──
+    if (room.settings.gameType === 'misheard') {
+      const st = room.settings;
+      const mode = st.mhMode === 'online' ? 'online' : 'offline';
+      let genres = Array.isArray(st.mhGenres) ? st.mhGenres.filter(g => MHC[g]) : [];
+      if (!genres.length) genres = Object.keys(MH_GENRES);
+      const deck = [];
+      genres.forEach(g => MHC[g].forEach((_, i) => deck.push({ g, i })));
+      const teamNames = Array.isArray(st.mhTeams) && st.mhTeams.length ? st.mhTeams : ['Team 1', 'Team 2'];
+      const total = [10, 20, 30, 0].includes(parseInt(st.mhCards, 10)) ? parseInt(st.mhCards, 10) : 20;
+      const secsRaw = st.mhSeconds;
+      const seconds = (secsRaw === 0 || secsRaw === '0') ? 0 : ([30, 45, 60, 90].includes(parseInt(secsRaw, 10)) ? parseInt(secsRaw, 10) : 45);
+      room.mhData = {
+        mode, genres, total, seconds,
+        deck: shuffleArray(deck), pos: 0, card: null, cardNum: 0,
+        revealed: false, endsAt: 0, solved: [],
+        teams: mode === 'offline' ? teamNames.map(n => ({ name: String(n).slice(0, 20), score: 0 })) : null,
+        scores: {}
+      };
+      io.to(room.code).emit('misheard-started');
+      mhNextCard(room);
+      return;
+    }
+
     // ── LIMITLESS WIN ──
     if (room.settings.gameType === 'limitless') {
       const mode = room.settings.lwMode === 'teams' ? 'teams' : 'solo';
@@ -3801,6 +3935,8 @@ io.on('connection', (socket) => {
     room.convergeData = null;
     if (room._lwTimer) { clearTimeout(room._lwTimer); room._lwTimer = null; }
     room.lwData = null;
+    if (room._mhTimer) { clearTimeout(room._mhTimer); room._mhTimer = null; }
+    room.mhData = null;
     // Reset game mode back to word so video mode doesn't persist into the next game
     if (room.settings.gameMode && room.settings.gameMode !== 'word') {
       room.settings.gameMode = 'word';
@@ -4785,6 +4921,61 @@ io.on('connection', (socket) => {
     const { room } = lwCtx();
     if (!room || room.host !== socket.id || !room.gameState.startsWith('limitless-')) return;
     lwEnd(room);
+  });
+
+  // ── MISHEARD ──
+  socket.on('mh-guess', ({ text }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || !room.mhData || room.gameState !== 'misheard-card') return;
+    const d = room.mhData;
+    if (d.mode !== 'online' || d.revealed || !socket.playerName) return;
+    if (d.solved.some(x => x.name === socket.playerName)) return;
+    const guess = String(text || '').slice(0, 80);
+    if (!mhMatches(guess, mhCurrent(d))) return socket.emit('mh-wrong', { guess });
+    const pts = Math.max(1, 3 - d.solved.length);   // 1st 3, 2nd 2, everyone after 1
+    d.solved.push({ name: socket.playerName, pts });
+    d.scores[socket.playerName] = (d.scores[socket.playerName] || 0) + pts;
+    socket.emit('mh-correct', { pts });
+    // Everyone's got it → reveal straight away
+    const connected = room.players.filter(p => !p.isDisconnected);
+    if (connected.every(p => d.solved.some(x => x.name === p.name))) return mhReveal(room);
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('mh-reveal', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.mhData || room.gameState !== 'misheard-card') return;
+    mhReveal(room);
+  });
+
+  socket.on('mh-next', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.mhData || room.gameState !== 'misheard-card') return;
+    mhNextCard(room);
+  });
+
+  socket.on('mh-award', ({ team, delta }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.mhData || !room.mhData.teams) return;
+    const t = room.mhData.teams[team];
+    if (!t) return;
+    t.score = Math.max(0, t.score + (delta < 0 ? -1 : 1));
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
+  });
+
+  socket.on('mh-end', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id || !room.mhData) return;
+    mhEnd(room);
+  });
+
+  socket.on('mh-restart', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.host !== socket.id) return;
+    if (room._mhTimer) { clearTimeout(room._mhTimer); room._mhTimer = null; }
+    room.gameState = 'lobby';
+    room.mhData = null;
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
   socket.on('lw-restart', () => {

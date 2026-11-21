@@ -420,6 +420,16 @@
     .lw-ov-icon { font-size:2.2rem; }
     .lw-ov-ll.big .lw-ov-icon { font-size:4rem; }
 
+    /* ─── MISHEARD ─── */
+    .mh-card { width:100%; border-radius:20px; padding:26px 18px 22px; text-align:center; background:linear-gradient(160deg,#fef3c7,#fde68a 55%,#fbbf24); color:#1c1300; box-shadow:0 10px 30px rgba(251,191,36,0.3); border:3px solid #fff7d6; }
+    .mh-card-genre { display:inline-block; font-size:0.78rem; font-weight:900; letter-spacing:1px; text-transform:uppercase; background:#1c1300; color:#fde68a; padding:4px 12px; border-radius:999px; }
+    .mh-card-text { font-size:2rem; font-weight:900; line-height:1.2; margin:16px 0 8px; word-break:break-word; }
+    .mh-card-hint { font-size:0.8rem; font-weight:800; opacity:0.65; }
+    .mh-answer { width:100%; text-align:center; padding:18px 16px; border-radius:16px; background:rgba(34,197,94,0.14); border:2px solid #22c55e; animation: reveal .4s ease; }
+    .mh-answer-text { font-size:1.6rem; font-weight:900; color:#4ade80; line-height:1.25; }
+    .mh-hidden { width:100%; text-align:center; padding:16px; border-radius:16px; border:2px dashed rgba(255,255,255,0.3); color:var(--muted); font-weight:800; }
+    .mh-chip { display:inline-block; padding:4px 10px; border-radius:999px; font-size:0.78rem; font-weight:800; background:rgba(34,197,94,0.16); color:#86efac; border:1px solid rgba(34,197,94,0.5); margin:3px; }
+
     /* ─── WAVELENGTH ─── */
     .wv-screen { justify-content:flex-start; padding-top:24px; overflow-y:auto; max-width:680px; }
     .wv-screen .wv-spectrum-wrap { padding:14px 10px; }
@@ -556,6 +566,7 @@
       <button class="mode-tile" id="gametype-mindmeld-btn" onclick="setGameType('mindmeld')"><span class="mode-tile-emoji">🧠</span><span class="mode-tile-label">Mind Meld</span><span class="mode-tile-desc">Match answers · online or 1 phone</span></button>
       <button class="mode-tile" id="gametype-converge-btn" onclick="setGameType('converge')"><span class="mode-tile-emoji">🔗</span><span class="mode-tile-label">Converge</span><span class="mode-tile-desc">Link words till you all match</span></button>
       <button class="mode-tile" id="gametype-limitless-btn" onclick="setGameType('limitless')"><span class="mode-tile-emoji">♾️</span><span class="mode-tile-label">Limitless Win</span><span class="mode-tile-desc">Climb the endless money ladder</span></button>
+      <button class="mode-tile" id="gametype-misheard-btn" onclick="setGameType('misheard')"><span class="mode-tile-emoji">👂</span><span class="mode-tile-label">Misheard</span><span class="mode-tile-desc">Say it aloud, guess the title</span></button>
     </div>
   </div>
 
@@ -656,6 +667,38 @@
       <button class="btn btn-sm" onclick="setCatDuration(30)" data-dur="30">30s</button>
       <button class="btn btn-sm" onclick="setCatDuration(45)" data-dur="45">45s</button>
       <button class="btn btn-sm" onclick="setCatDuration(60)" data-dur="60">60s</button>
+    </div>
+  </div>
+
+  <!-- MISHEARD SETTINGS (misheard only) -->
+  <div id="host-misheard-settings" class="card" style="width:100%; display:none">
+    <div class="card-title">👂 Misheard</div>
+    <div style="font-size:0.84rem; color:var(--muted); line-height:1.5; margin-bottom:12px">
+      Read the card out loud — it sounds like a famous title. <b>"Pay roots over carry bee urn"</b> = Pirates of the Caribbean! The answer stays hidden until it's revealed.
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">How are you playing?</div><div class="setting-desc">Online: everyone types guesses · Offline: one phone, shout it out</div></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn btn-sm" id="mh-mode-online-btn" onclick="mhSet({ mhMode: 'online' })">📱 Online</button>
+        <button class="btn btn-sm" id="mh-mode-offline-btn" onclick="mhSet({ mhMode: 'offline' })">🗣️ Offline</button>
+      </div>
+    </div>
+    <div class="setting-label" style="margin:10px 0 6px">Genres</div>
+    <div id="mh-genres" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px"></div>
+    <div class="setting-row">
+      <div><div class="setting-label">Cards</div><div class="setting-desc">How many to play</div></div>
+      <div style="display:flex; gap:6px" id="mh-cards-row"></div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Timer</div><div class="setting-desc">Per card · ∞ = no limit</div></div>
+      <div style="display:flex; gap:6px" id="mh-secs-row"></div>
+    </div>
+    <div id="mh-teams-wrap" style="display:none">
+      <div class="setting-label" style="margin:10px 0 6px">Team names</div>
+      <div style="display:flex; gap:8px">
+        <input type="text" id="mh-team1-input" maxlength="16" placeholder="Team 1" onchange="mhSetTeam(0, this.value)" style="flex:1; text-align:center" />
+        <input type="text" id="mh-team2-input" maxlength="16" placeholder="Team 2" onchange="mhSetTeam(1, this.value)" style="flex:1; text-align:center" />
+      </div>
     </div>
   </div>
 
@@ -2023,6 +2066,70 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════ -->
+<!-- MISHEARD                                    -->
+<!-- ══════════════════════════════════════════ -->
+<div id="screen-misheard" class="screen" style="justify-content:flex-start; padding-top:18px; max-width:560px; gap:14px">
+  <div class="lobby-top" style="width:100%">
+    <div><span class="phase-badge" style="background:rgba(251,191,36,0.18); color:#fbbf24; border:1px solid #f59e0b">👂 Misheard</span></div>
+    <button class="btn-ghost" onclick="leaveRoom()">← Leave</button>
+  </div>
+
+  <div id="mh-sec-play" style="width:100%; display:none; flex-direction:column; gap:14px; align-items:center">
+    <div style="width:100%; display:flex; justify-content:space-between; align-items:center">
+      <span id="mh-count" class="card-title" style="margin:0">Card 1</span>
+      <span id="mh-timer" class="lw-timer" style="font-size:1.4rem"></span>
+    </div>
+
+    <div class="mh-card">
+      <span id="mh-genre" class="mh-card-genre">🎬 Movies</span>
+      <div id="mh-card-text" class="mh-card-text">—</div>
+      <div class="mh-card-hint">🗣️ Say it out loud — fast!</div>
+    </div>
+
+    <!-- Answer (hidden until revealed) -->
+    <div id="mh-answer" class="mh-answer" style="display:none">
+      <div class="card-title" style="color:#86efac; margin-bottom:4px">The answer is</div>
+      <div id="mh-answer-text" class="mh-answer-text">—</div>
+    </div>
+    <div id="mh-hidden" class="mh-hidden">🔒 Answer hidden</div>
+
+    <!-- Online: type your guess -->
+    <div id="mh-guess-box" style="width:100%; display:none; flex-direction:column; gap:8px">
+      <input type="text" id="mh-guess-input" autocomplete="off" placeholder="What's the title?" style="text-align:center; font-size:1.1rem"
+             onkeydown="if(event.key==='Enter')mhGuess()" />
+      <button class="btn btn-primary" onclick="mhGuess()">✅ Guess</button>
+    </div>
+    <div id="mh-feedback" class="text-center" style="width:100%; font-weight:800; min-height:20px"></div>
+    <div id="mh-solved" class="text-center" style="width:100%"></div>
+
+    <!-- Offline: award the point -->
+    <div id="mh-award" style="width:100%; display:none; flex-direction:column; gap:8px"></div>
+
+    <!-- Host controls -->
+    <div id="mh-host" style="width:100%; display:none; flex-direction:column; gap:8px">
+      <button id="mh-reveal-btn" class="btn btn-primary" onclick="mhReveal()">👀 Reveal the answer</button>
+      <button id="mh-next-btn" class="btn btn-primary" onclick="mhNext()">▶️ Next card</button>
+      <button class="btn-ghost" onclick="mhEndGame()">🏁 End game</button>
+    </div>
+    <div id="mh-wait" class="text-muted text-center pulse" style="width:100%; display:none">Waiting for the host…</div>
+
+    <div class="card" style="width:100%">
+      <div class="card-title">Scores</div>
+      <div id="mh-scores" style="display:flex; flex-direction:column; gap:6px"></div>
+    </div>
+  </div>
+
+  <div id="mh-sec-end" style="width:100%; display:none; flex-direction:column; gap:12px">
+    <div class="card text-center" style="width:100%; border-color:#f59e0b">
+      <div style="font-size:2.6rem">🏆</div>
+      <div style="font-size:1.4rem; font-weight:900">Final Scores</div>
+    </div>
+    <div id="mh-end-list" style="display:flex; flex-direction:column; gap:8px; width:100%"></div>
+    <button id="mh-end-lobby" class="btn btn-primary" onclick="mhBackToLobby()" style="display:none">🔄 Back to Lobby</button>
+  </div>
+</div>
+
 <!-- Who Am I: tap a picture to see it big -->
 <div id="whoami-pic-zoom" onclick="this.style.display='none'"><img alt="" /><div id="whoami-pic-zoom-name" style="font-weight:900; font-size:1.2rem; color:#fff"></div><div class="text-muted" style="font-size:0.8rem">Tap anywhere to close</div></div>
 
@@ -2681,6 +2788,19 @@ function initSocket() {
   socket.on('converge-started', function() {
     showScreen('converge-playing');
   });
+  socket.on('misheard-started', function() {
+    mhLastCard = null;
+    showScreen('misheard');
+  });
+  socket.on('mh-wrong', function() {
+    const f = document.getElementById('mh-feedback');
+    if (f) { f.textContent = '❌ Not quite — try again!'; f.style.color = '#f87171'; }
+  });
+  socket.on('mh-correct', function({ pts }) {
+    mhMySolvedCard = currentRoom && currentRoom.misheardPublic ? currentRoom.misheardPublic.cardNum : null;
+    const f = document.getElementById('mh-feedback');
+    if (f) { f.textContent = `✅ You got it! +${pts}`; f.style.color = '#4ade80'; }
+  });
   socket.on('limitless-started', function() {
     gameIsOver = false;
     lwLastQNum = null; lwPriv = null; lwDial = 0; lwDial2 = 0;
@@ -3140,6 +3260,14 @@ function applyRoomUpdate(room) {
     renderLimitless(room);
   }
   if (room.gameState === 'lobby' && active === 'screen-limitless') {
+    showScreen('lobby');
+  }
+
+  if (room.gameState && room.gameState.startsWith('misheard-')) {
+    if (active !== 'screen-misheard') showScreen('misheard');
+    renderMisheard(room);
+  }
+  if (room.gameState === 'lobby' && active === 'screen-misheard') {
     showScreen('lobby');
   }
 
@@ -3651,6 +3779,166 @@ function renderMindMeld(room) {
         </div>
       </div>`;
     }).join('');
+  }
+}
+
+// ── MISHEARD ──
+const MH_GENRES_C = { movies: '🎬 Movies', tv: '📺 TV Shows', songs: '🎵 Songs', people: '🧑 People', games: '🎮 Games' };
+let mhLastCard = null;       // card number on screen (to reset the guess box)
+let mhMySolvedCard = null;   // card number I've already solved
+let mhEndsAtLocal = 0, mhTickTimer = null;
+
+function mhSet(obj) { if (isHost) socket.emit('update-settings', { settings: obj }); }
+function mhToggleGenre(g) {
+  if (!isHost || !currentRoom) return;
+  const cur = Array.isArray(currentRoom.settings.mhGenres) && currentRoom.settings.mhGenres.length ? currentRoom.settings.mhGenres : Object.keys(MH_GENRES_C);
+  let next = cur.includes(g) ? cur.filter(x => x !== g) : cur.concat(g);
+  if (!next.length) return showToast('Keep at least one genre', 'error');
+  mhSet({ mhGenres: next });
+}
+function mhSetTeam(i, val) {
+  if (!isHost || !currentRoom) return;
+  const teams = [...((currentRoom.settings && currentRoom.settings.mhTeams) || ['Team 1', 'Team 2'])];
+  teams[i] = (val || '').trim() || ('Team ' + (i + 1));
+  mhSet({ mhTeams: teams });
+}
+function renderMisheardSettings(room) {
+  const st = room.settings || {};
+  const mode = st.mhMode === 'online' ? 'online' : 'offline';
+  const cls = on => 'btn btn-sm' + (on ? ' btn-primary' : ' btn-outline');
+  const on = document.getElementById('mh-mode-online-btn'); if (on) on.className = cls(mode === 'online');
+  const off = document.getElementById('mh-mode-offline-btn'); if (off) off.className = cls(mode === 'offline');
+  const sel = Array.isArray(st.mhGenres) && st.mhGenres.length ? st.mhGenres : Object.keys(MH_GENRES_C);
+  const gEl = document.getElementById('mh-genres');
+  if (gEl) gEl.innerHTML = Object.entries(MH_GENRES_C).map(([k, n]) =>
+    `<button class="${cls(sel.includes(k))}" onclick="mhToggleGenre('${k}')">${n}</button>`).join('');
+  const cards = [10, 20, 30, 0].includes(parseInt(st.mhCards, 10)) ? parseInt(st.mhCards, 10) : 20;
+  const cEl = document.getElementById('mh-cards-row');
+  if (cEl) cEl.innerHTML = [10, 20, 30, 0].map(n => `<button class="${cls(cards === n)}" onclick="mhSet({ mhCards: ${n} })">${n || '∞'}</button>`).join('');
+  const secs = (st.mhSeconds === 0 || st.mhSeconds === '0') ? 0 : ([30, 45, 60, 90].includes(parseInt(st.mhSeconds, 10)) ? parseInt(st.mhSeconds, 10) : 45);
+  const sEl = document.getElementById('mh-secs-row');
+  if (sEl) sEl.innerHTML = [30, 45, 60, 0].map(n => `<button class="${cls(secs === n)}" onclick="mhSet({ mhSeconds: ${n} })">${n ? n + 's' : '∞'}</button>`).join('');
+  const tw = document.getElementById('mh-teams-wrap'); if (tw) tw.style.display = mode === 'offline' ? 'block' : 'none';
+  const teams = st.mhTeams || ['Team 1', 'Team 2'];
+  const t1 = document.getElementById('mh-team1-input'); if (t1 && document.activeElement !== t1) t1.value = teams[0] || '';
+  const t2 = document.getElementById('mh-team2-input'); if (t2 && document.activeElement !== t2) t2.value = teams[1] || '';
+}
+
+function mhGuess() {
+  const inp = document.getElementById('mh-guess-input');
+  if (!inp) return;
+  const v = inp.value.trim();
+  if (!v) return;
+  socket.emit('mh-guess', { text: v });
+  inp.select();
+}
+function mhReveal() { if (isHost) socket.emit('mh-reveal'); }
+function mhNext() { if (isHost) socket.emit('mh-next'); }
+function mhAward(team, delta) { if (isHost) socket.emit('mh-award', { team, delta }); }
+function mhEndGame() { if (!isHost) return; if (confirm('End the game and show the final scores?')) socket.emit('mh-end'); }
+function mhBackToLobby() { if (!isHost) return; socket.emit('mh-restart'); showScreen('lobby'); }
+
+function mhStartTicker() {
+  if (mhTickTimer) return;
+  mhTickTimer = setInterval(() => {
+    const active = document.querySelector('.screen.active');
+    if (!active || active.id !== 'screen-misheard') { clearInterval(mhTickTimer); mhTickTimer = null; return; }
+    const el = document.getElementById('mh-timer');
+    if (!el) return;
+    if (!mhEndsAtLocal) { el.textContent = ''; el.classList.remove('warn'); return; }
+    const left = Math.max(0, Math.ceil((mhEndsAtLocal - Date.now()) / 1000));
+    el.textContent = left > 0 ? '⏱ ' + left : "⏰ Time's up!";
+    el.classList.toggle('warn', left <= 10);
+  }, 250);
+}
+
+function renderMisheard(room) {
+  const m = room.misheardPublic;
+  if (!m) return;
+  const $ = id => document.getElementById(id);
+  const show = (id, on, disp) => { const el = $(id); if (el) el.style.display = on ? (disp || 'block') : 'none'; };
+  const setTxt = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  const ended = room.gameState === 'misheard-ended';
+  show('mh-sec-play', !ended, 'flex');
+  show('mh-sec-end', ended, 'flex');
+  const online = m.mode === 'online';
+  const myNm = lwMyNameC(room);
+
+  // Scoreboard rows (teams offline, players online)
+  const rows = online ? [...(m.scores || [])].sort((a, b) => b.score - a.score)
+                      : (m.teams || []).map((t, i) => ({ name: t.name, score: t.score, i }));
+
+  if (!ended) {
+    // New card → clear the guess box / feedback
+    if (m.cardNum !== mhLastCard) {
+      mhLastCard = m.cardNum;
+      const inp = $('mh-guess-input'); if (inp) inp.value = '';
+      setTxt('mh-feedback', '');
+    }
+    mhEndsAtLocal = m.endsInMs ? Date.now() + m.endsInMs : 0;
+    mhStartTicker();
+    setTxt('mh-count', `Card ${m.cardNum}${m.total ? ' of ' + m.total : ''}`);
+    setTxt('mh-genre', m.genreName || '');
+    setTxt('mh-card-text', m.card || '—');
+
+    // Answer — only exists on the client once revealed
+    show('mh-answer', m.revealed);
+    show('mh-hidden', !m.revealed);
+    if (m.revealed) setTxt('mh-answer-text', m.answer || '');
+    setTxt('mh-hidden', online ? '🔒 Answer hidden — get guessing!' : (isHost ? '🔒 Answer hidden — reveal it when your team is ready' : '🔒 Answer hidden'));
+
+    // Online guessing
+    const iSolved = online && (mhMySolvedCard === m.cardNum || (m.solved || []).some(x => x.name === myNm));
+    show('mh-guess-box', online && !m.revealed && !iSolved, 'flex');
+    if (online && iSolved && !m.revealed) { const f = $('mh-feedback'); if (f && !f.textContent.startsWith('✅')) { f.textContent = '✅ You got it!'; f.style.color = '#4ade80'; } }
+    const solvedEl = $('mh-solved');
+    if (solvedEl) {
+      if (online && (m.solved || []).length) {
+        solvedEl.innerHTML = (m.revealed ? '<div class="text-muted" style="font-size:0.78rem; margin-bottom:4px">Got it:</div>' : '')
+          + m.solved.map((x, i) => `<span class="mh-chip">${i === 0 ? '🥇 ' : ''}${mmEsc(x.name)} +${x.pts}</span>`).join('');
+      } else if (online && m.revealed) {
+        solvedEl.innerHTML = '<span class="text-muted" style="font-size:0.85rem">Nobody got that one!</span>';
+      } else solvedEl.innerHTML = '';
+    }
+
+    // Offline: host awards points to a team after the reveal
+    const award = $('mh-award');
+    if (award) {
+      const can = !online && isHost && m.revealed;
+      award.style.display = can ? 'flex' : 'none';
+      if (can) award.innerHTML = '<div class="text-muted text-center" style="font-size:0.82rem">Who got it?</div>'
+        + rows.map(r => `<button class="btn btn-outline" onclick="mhAward(${r.i}, 1)">➕ Point to ${mmEsc(r.name)}</button>`).join('');
+    }
+
+    // Host controls
+    show('mh-host', isHost, 'flex');
+    show('mh-reveal-btn', isHost && !m.revealed);
+    const nb = $('mh-next-btn');
+    if (nb) {
+      nb.style.display = isHost && m.revealed ? 'block' : 'none';
+      nb.textContent = (m.total && m.cardNum >= m.total) || m.deckLeft <= 0 ? '🏆 Final scores' : '▶️ Next card';
+    }
+    show('mh-wait', !isHost && m.revealed);
+
+    const sc = $('mh-scores');
+    if (sc) sc.innerHTML = rows.map(r => `
+      <div class="player-item" style="justify-content:space-between; padding:8px 12px">
+        <div class="player-name">${mmEsc(r.name)}${online && r.name === myNm ? ' (you)' : ''}</div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <span style="font-weight:900; font-size:1.15rem">${r.score}</span>
+          ${!online && isHost ? `<button class="btn btn-sm btn-outline" style="padding:2px 10px" onclick="mhAward(${r.i}, -1)">−</button><button class="btn btn-sm btn-success" style="padding:2px 10px" onclick="mhAward(${r.i}, 1)">+</button>` : ''}
+        </div>
+      </div>`).join('') || '<div class="text-muted">No scores yet</div>';
+  } else {
+    const sorted = [...rows].sort((a, b) => b.score - a.score);
+    const medal = i => ['🥇', '🥈', '🥉'][i] || '🏅';
+    const el = $('mh-end-list');
+    if (el) el.innerHTML = sorted.map((r, i) => `
+      <div class="lw-res${i === 0 && r.score > 0 ? ' exact' : ''}">
+        <div style="font-weight:900">${medal(i)} ${mmEsc(r.name)}${online && r.name === myNm ? ' (you)' : ''}</div>
+        <div style="font-size:1.3rem; font-weight:900; color:#fbbf24">${r.score}</div>
+      </div>`).join('');
+    show('mh-end-lobby', isHost);
   }
 }
 
@@ -4922,6 +5210,7 @@ function renderLobbyData(room) {
   const isMindmeld    = gameType === 'mindmeld';
   const isConverge    = gameType === 'converge';
   const isLimitless   = gameType === 'limitless';
+  const isMisheard    = gameType === 'misheard';
 
   // Host-only top-level visibility
   document.getElementById('host-game-type').style.display = amHost ? 'block' : 'none';
@@ -4947,7 +5236,8 @@ function renderLobbyData(room) {
       categories: isCategories,
       mindmeld: isMindmeld,
       converge: isConverge,
-      limitless: isLimitless
+      limitless: isLimitless,
+      misheard: isMisheard
     };
     Object.entries(modeSelected).forEach(([type, on]) => {
       const el = document.getElementById('gametype-' + type + '-btn');
@@ -4978,6 +5268,8 @@ function renderLobbyData(room) {
     if (cvInfo) cvInfo.style.display = isConverge ? 'block' : 'none';
     const lwSettingsCard = document.getElementById('host-limitless-settings');
     if (lwSettingsCard) lwSettingsCard.style.display = isLimitless ? 'block' : 'none';
+    const mhSettingsCard = document.getElementById('host-misheard-settings');
+    if (mhSettingsCard) mhSettingsCard.style.display = isMisheard ? 'block' : 'none';
 
     // ── CATEGORIES MODE ──
     if (isCategories) {
@@ -4994,6 +5286,21 @@ function renderLobbyData(room) {
       renderCategoriesSettings(room);
       const hint = document.getElementById('start-hint');
       if (hint) hint.textContent = 'Just 1 player needed';
+
+    // ── MISHEARD ──
+    } else if (isMisheard) {
+      if (hostSettings) hostSettings.style.display = 'none';
+      if (wordCats)    wordCats.style.display    = 'none';
+      if (videoCats)   videoCats.style.display   = 'none';
+      if (whoamiCats)  whoamiCats.style.display  = 'none';
+      if (spyfallInfo) spyfallInfo.style.display = 'none';
+      const drawSettingsH = document.getElementById('host-draw-settings');
+      const drawCatsH = document.getElementById('host-draw-categories');
+      if (drawSettingsH) drawSettingsH.style.display = 'none';
+      if (drawCatsH) drawCatsH.style.display = 'none';
+      renderMisheardSettings(room);
+      const hint = document.getElementById('start-hint');
+      if (hint) hint.textContent = 'Ready to play!';
 
     // ── LIMITLESS WIN ──
     } else if (isLimitless) {

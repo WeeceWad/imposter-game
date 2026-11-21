@@ -2014,12 +2014,7 @@ function mhPublic(room) {
     revealed: !!d.revealed,
     answer: d.revealed && c ? c[1] : null,       // hidden until revealed
     endsInMs: d.endsAt ? Math.max(0, d.endsAt - Date.now()) : 0,
-    teams: d.teams,
-    scores: d.mode === 'online'
-      ? room.players.map(p => ({ name: p.name, score: (d.scores[p.name] || 0) }))
-          .concat(Object.keys(d.scores).filter(n => !room.players.some(p => p.name === n)).map(n => ({ name: n, score: d.scores[n] })))
-      : null,
-    solved: d.solved,                             // [{ name, pts }] — names only, never the answer
+    solved: d.solved,                             // [{ name }] — names only, never the answer
     deckLeft: d.deck.length - d.pos
   };
 }
@@ -3321,7 +3316,6 @@ io.on('connection', (socket) => {
       if (!genres.length) genres = Object.keys(MH_GENRES);
       const deck = [];
       genres.forEach(g => MHC[g].forEach((_, i) => deck.push({ g, i })));
-      const teamNames = Array.isArray(st.mhTeams) && st.mhTeams.length ? st.mhTeams : ['Team 1', 'Team 2'];
       const total = [10, 20, 30, 0].includes(parseInt(st.mhCards, 10)) ? parseInt(st.mhCards, 10) : 20;
       const secsRaw = st.mhSeconds;
       const seconds = (secsRaw === 0 || secsRaw === '0') ? 0 : ([30, 45, 60, 90].includes(parseInt(secsRaw, 10)) ? parseInt(secsRaw, 10) : 45);
@@ -3329,8 +3323,6 @@ io.on('connection', (socket) => {
         mode, genres, total, seconds,
         deck: shuffleArray(deck), pos: 0, card: null, cardNum: 0,
         revealed: false, endsAt: 0, solved: [],
-        teams: mode === 'offline' ? teamNames.map(n => ({ name: String(n).slice(0, 20), score: 0 })) : null,
-        scores: {}
       };
       io.to(room.code).emit('misheard-started');
       mhNextCard(room);
@@ -4932,35 +4924,27 @@ io.on('connection', (socket) => {
     if (d.solved.some(x => x.name === socket.playerName)) return;
     const guess = String(text || '').slice(0, 80);
     if (!mhMatches(guess, mhCurrent(d))) return socket.emit('mh-wrong', { guess });
-    const pts = Math.max(1, 3 - d.solved.length);   // 1st 3, 2nd 2, everyone after 1
-    d.solved.push({ name: socket.playerName, pts });
-    d.scores[socket.playerName] = (d.scores[socket.playerName] || 0) + pts;
-    socket.emit('mh-correct', { pts });
+    d.solved.push({ name: socket.playerName });   // just for fun — no points
+    socket.emit('mh-correct', {});
     // Everyone's got it → reveal straight away
     const connected = room.players.filter(p => !p.isDisconnected);
     if (connected.every(p => d.solved.some(x => x.name === p.name))) return mhReveal(room);
     io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
-  socket.on('mh-reveal', () => {
+  socket.on('mh-toggle-answer', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id || !room.mhData || room.gameState !== 'misheard-card') return;
-    mhReveal(room);
+    const d = room.mhData;
+    if (!d.revealed) return mhReveal(room);
+    d.revealed = false; // hidden again — the answer stops being sent
+    io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
   socket.on('mh-next', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.host !== socket.id || !room.mhData || room.gameState !== 'misheard-card') return;
     mhNextCard(room);
-  });
-
-  socket.on('mh-award', ({ team, delta }) => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.host !== socket.id || !room.mhData || !room.mhData.teams) return;
-    const t = room.mhData.teams[team];
-    if (!t) return;
-    t.score = Math.max(0, t.score + (delta < 0 ? -1 : 1));
-    io.to(room.code).emit('room-update', sanitizeRoom(room));
   });
 
   socket.on('mh-end', () => {
